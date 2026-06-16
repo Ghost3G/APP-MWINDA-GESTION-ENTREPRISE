@@ -2,8 +2,9 @@ services:
   - type: web
     name: appmwinda
     runtime: python
+    region: frankfurt
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "python manage.py migrate && python manage.py create_admin --username admin --password Admin@123456 && gunicorn AppMwinda.wsgi:application --bind 0.0.0.0:$PORT"
+    startCommand: "python manage.py wait_for_db && python manage.py migrate && python manage.py create_admin --username admin --password Admin@123456 && gunicorn AppMwinda.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: DEBUG
         value: False
@@ -22,5 +23,6 @@ services:
 
 databases:
   - name: appmwinda-db
+    region: frankfurt
     databaseName: appmwinda
     user: appmwinda_user
