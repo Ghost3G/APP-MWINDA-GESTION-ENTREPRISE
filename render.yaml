@@ -17,6 +17,8 @@ services:
         fromDatabase:
           name: appmwinda-db
           property: connectionString
+      - key: DATABASE_SSL_REQUIRE
+        value: False
 
 databases:
   - name: appmwinda-db

@@ -10,7 +10,8 @@ from django.test import Client
 
 # Configuration Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AppMwinda.settings')
-sys.path.insert(0, 'c:\\Users\\PLEXYBOY\\CONSO CODE\\AppMwinda')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 django.setup()
 
 from messaging.models import Message

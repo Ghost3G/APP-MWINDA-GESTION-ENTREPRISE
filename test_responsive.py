@@ -7,7 +7,8 @@ import sys
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AppMwinda.settings')
-sys.path.insert(0, 'c:\\Users\\PLEXYBOY\\CONSO CODE\\AppMwinda')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 django.setup()
 
 from django.test import Client
@@ -46,7 +47,7 @@ response = client.get('/')
 content = response.content.decode('utf-8')
 
 # Vérifier aussi le fichier CSS directement
-dashboard_css_path = 'c:\\Users\\PLEXYBOY\\CONSO CODE\\AppMwinda\\static\\css\\dashboard.css'
+dashboard_css_path = os.path.join(BASE_DIR, 'static', 'css', 'dashboard.css')
 with open(dashboard_css_path, 'r') as f:
     css_content = f.read()
 
@@ -95,7 +96,7 @@ if response.status_code == 403:
     if response_login.status_code == 403:
         print("  ⚠ Accès refusé, vérification du template source directement...")
         # On va vérifier le fichier source directement
-        with open('c:\\Users\\PLEXYBOY\\CONSO CODE\\AppMwinda\\templates\\admin\\base.html', 'r') as f:
+        with open(os.path.join(BASE_DIR, 'templates', 'admin', 'base.html'), 'r') as f:
             admin_content = f.read()
     else:
         admin_content = response_login.content.decode('utf-8')
@@ -135,7 +136,7 @@ print("\n[5] Vérification des images et media...")
 # Vérifier dans les fichiers CSS et HTML
 messaging_response = client.get('/messaging/')
 response = client.get('/')
-dashboard_css_path = 'c:\\Users\\PLEXYBOY\\CONSO CODE\\AppMwinda\\static\\css\\dashboard.css'
+dashboard_css_path = os.path.join(BASE_DIR, 'static', 'css', 'dashboard.css')
 
 messaging_content = messaging_response.content.decode('utf-8')
 with open(dashboard_css_path, 'r') as f:
