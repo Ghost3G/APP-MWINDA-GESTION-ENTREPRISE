@@ -21,7 +21,7 @@
         {% for project in projects %}
         <tr>
             <td><strong>{{ project.name }}</strong></td>
-            <td>{{ project.manager.username }}</td>
+            <td>{{ project.manager.get_labeled_name }}</td>
             <td>{{ project.start_date|date:"d/m/Y" }}</td>
             <td>{{ project.end_date|date:"d/m/Y" }}</td>
             <td>

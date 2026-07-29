@@ -71,7 +71,9 @@ def messaging_view(request):
         initial_conversations.append({
             'id': user.id,
             'username': user.username,
-            'name': user.get_full_name() or user.username,
+            'name': user.get_labeled_name(),
+            'short_name': user.get_display_name(),
+            'title': user.get_title_label(),
             'email': user.email,
             'branch': user.get_org_group_display(),
             'department': user.get_org_group_display(),
@@ -130,7 +132,9 @@ def get_messages(request, user_id):
         'messages': [_serialize_message(msg, request.user) for msg in messages],
         'contact': {
             'id': other_user.id,
-            'name': other_user.get_display_name(),
+            'name': other_user.get_labeled_name(),
+            'short_name': other_user.get_display_name(),
+            'title': other_user.get_title_label(),
             'username': other_user.username,
             'branch': other_user.get_org_group_display(),
             'role': other_user.get_role_display(),
@@ -168,7 +172,7 @@ def initiate_call(request, user_id):
     Message.objects.create(
         sender=request.user,
         receiver=other_user,
-        content=f"📞 Appel vers {other_user.get_full_name() or other_user.username} à {now_label}",
+        content=f"📞 Appel vers {other_user.get_labeled_name()} à {now_label}",
         message_type='call',
     )
 
@@ -179,7 +183,7 @@ def initiate_call(request, user_id):
         'ok': True,
         'phone': phone,
         'tel_url': tel_url,
-        'contact_name': other_user.get_full_name() or other_user.username,
+        'contact_name': other_user.get_labeled_name(),
         'has_phone': bool(phone),
         'message': 'Appel enregistré dans la conversation.',
     })
@@ -218,7 +222,9 @@ def get_conversations(request):
         conversations.append({
             'id': user.id,
             'username': user.username,
-            'name': user.get_full_name() or user.username,
+            'name': user.get_labeled_name(),
+            'short_name': user.get_display_name(),
+            'title': user.get_title_label(),
             'email': user.email,
             'branch': user.get_org_group_display(),
             'department': user.get_org_group_display(),

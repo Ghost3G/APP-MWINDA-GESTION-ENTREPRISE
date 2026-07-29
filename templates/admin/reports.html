@@ -9,7 +9,7 @@
         <select name="user_id" style="padding: 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 13px;">
             <option value="">Tous les utilisateurs</option>
             {% for user in users %}
-            <option value="{{ user.id }}" {% if selected_user|add:"0" == user.id %}selected{% endif %}>{{ user.username }}</option>
+            <option value="{{ user.id }}" {% if selected_user|add:"0" == user.id %}selected{% endif %}>{{ user.get_labeled_name }}</option>
             {% endfor %}
         </select>
         <button type="submit" class="admin-btn admin-btn-primary">Filtrer</button>
@@ -20,7 +20,7 @@
 <div style="background: #f9fafb; border-left: 4px solid #fde047; padding: 16px; margin-bottom: 16px; border-radius: 8px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <div>
-            <strong style="font-size: 15px; color: #111827;">{{ report.user.username }}</strong>
+            <strong style="font-size: 15px; color: #111827;">{{ report.user.get_labeled_name }}</strong>
             <span style="color: #6b7280; font-size: 13px; margin-left: 8px;">{{ report.date }}</span>
         </div>
         <span style="color: #9ca3af; font-size: 12px;">{{ report.created_at|date:"d/m/Y H:i" }}</span>

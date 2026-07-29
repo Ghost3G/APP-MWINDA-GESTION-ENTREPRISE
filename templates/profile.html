@@ -32,12 +32,9 @@
                     <section class="profile-preview-card">
                         {% include "partials/user_avatar.html" with user_obj=profile_user size="xl" extra_class="profile-preview-avatar" %}
                         <h2>{{ profile_user.get_display_name }}</h2>
-                        <p>@{{ profile_user.username }}</p>
+                        <p>{{ profile_user.get_title_label }} · @{{ profile_user.username }}</p>
                         <div class="profile-badges">
                             <span class="profile-role-badge">{{ profile_user.get_role_display }}</span>
-                            {% if profile_user.grade or profile_user.job_title %}
-                            <span class="profile-branch-badge">{{ profile_user.grade|default:profile_user.job_title }}</span>
-                            {% endif %}
                             {% if profile_user.role != 'directeur' and not profile_user.is_superuser %}
                             <span class="profile-branch-badge">{{ profile_user.get_direction_display }}</span>
                             {% endif %}

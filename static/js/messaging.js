@@ -174,8 +174,9 @@ function updateChatHeader(contact) {
         avatar.textContent = (contact.name || contact.username || '?').charAt(0).toUpperCase();
     }
     avatar.classList.add('visible');
-    title.textContent = contact.name || contact.username;
-    subtitle.textContent = `${contact.branch || ''} · ${contact.role || ''}${contact.phone ? ' · ' + contact.phone : ''}`;
+    title.textContent = contact.short_name || contact.name || contact.username;
+    const titleBits = [contact.title || contact.role, contact.branch].filter(Boolean);
+    subtitle.textContent = `${titleBits.join(' · ')}${contact.phone ? ' · ' + contact.phone : ''}`;
     callBtn.disabled = false;
 }
 
@@ -213,8 +214,8 @@ function renderConversations(conversations) {
         <div class="user-item" data-user-id="${conversation.id}" onclick="openUserChat(${conversation.id}, event)">
             ${renderAvatar(conversation)}
             <div class="user-info">
-                <h3>${escapeHtml(conversation.name)}</h3>
-                <p class="user-meta">${escapeHtml(conversation.branch)}</p>
+                <h3>${escapeHtml(conversation.short_name || conversation.name)}</h3>
+                <p class="user-meta">${escapeHtml(conversation.title || conversation.branch || '')}</p>
                 <p class="user-preview">${escapeHtml(conversation.last_message)}</p>
             </div>
             <div class="unread-badge ${conversation.unread_count > 0 ? 'visible' : ''}">

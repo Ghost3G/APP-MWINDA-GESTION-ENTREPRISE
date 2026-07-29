@@ -9,7 +9,7 @@
         <select name="user_id" style="padding: 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 13px;">
             <option value="">Tous les utilisateurs</option>
             {% for user in users %}
-            <option value="{{ user.id }}" {% if selected_user|add:"0" == user.id %}selected{% endif %}>{{ user.username }}</option>
+            <option value="{{ user.id }}" {% if selected_user|add:"0" == user.id %}selected{% endif %}>{{ user.get_labeled_name }}</option>
             {% endfor %}
         </select>
         <button type="submit" class="admin-btn admin-btn-primary">Filtrer</button>
@@ -28,8 +28,8 @@
     <tbody>
         {% for message in messages %}
         <tr>
-            <td><strong>{{ message.sender.username }}</strong></td>
-            <td><strong>{{ message.receiver.username }}</strong></td>
+            <td><strong>{{ message.sender.get_labeled_name }}</strong></td>
+            <td><strong>{{ message.receiver.get_labeled_name }}</strong></td>
             <td>{{ message.content|truncatewords:20 }}</td>
             <td>{{ message.created_at|date:"d/m/Y H:i" }}</td>
         </tr>

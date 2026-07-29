@@ -346,6 +346,129 @@ body {
     box-shadow: var(--mw-shadow) !important;
 }
 
+.current-project-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: left !important;
+    padding: 0 !important;
+    overflow: hidden;
+    min-height: 420px;
+}
+
+.current-project-cover {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: #1f2937;
+    overflow: hidden;
+}
+
+.current-project-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.current-project-cover.is-empty {
+    display: grid;
+    place-items: center;
+    background: linear-gradient(145deg, #111827, #374151);
+}
+
+.current-project-cover-fallback {
+    display: grid;
+    gap: 10px;
+    place-items: center;
+    color: #fde047;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.current-project-cover-fallback img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+}
+
+.current-project-status {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #fde047;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.current-project-body {
+    display: grid;
+    gap: 10px;
+    padding: 18px 20px 22px;
+    justify-items: start;
+}
+
+.current-project-kicker {
+    margin: 0 !important;
+    font-size: 12px !important;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mw-muted) !important;
+    text-align: left !important;
+    max-width: none !important;
+}
+
+.current-project-card h2 {
+    margin: 0 !important;
+    text-align: left !important;
+    font-size: 18px !important;
+    line-height: 1.35 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    color: var(--mw-text) !important;
+}
+
+.current-project-desc {
+    margin: 0 !important;
+    text-align: left !important;
+    max-width: none !important;
+    color: #d4d4d8 !important;
+    line-height: 1.55 !important;
+}
+
+.current-project-meta {
+    list-style: none;
+    margin: 4px 0 8px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+    width: 100%;
+}
+
+.current-project-meta li {
+    font-size: 13px;
+    color: #e4e4e7 !important;
+    line-height: 1.45;
+}
+
+.current-project-meta strong {
+    display: inline-block;
+    min-width: 72px;
+    margin-right: 6px;
+    color: var(--mw-yellow) !important;
+    font-weight: 800;
+}
+
+.current-project-card .btn-open {
+    margin-top: 4px;
+}
+
 .tasks-card {
     background: linear-gradient(160deg, #fde047 0%, #f5d020 55%, #eab308 100%) !important;
     border: 0 !important;
@@ -451,19 +574,33 @@ body {
 .task-tab-count {
     min-width: 22px;
     height: 22px;
+    padding: 0 6px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 11px;
     font-weight: 800;
-    background: rgba(17, 24, 39, 0.1);
-    color: inherit;
+    background: #111827 !important;
+    color: #fde047 !important;
 }
 
 .task-tab.active .task-tab-count {
-    background: #111827;
-    color: #fde047;
+    background: #fff !important;
+    color: #111827 !important;
+    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.18);
+}
+
+/* Contre .tasks-card * { color:#111827 !important } qui rendait le badge illisible */
+.tasks-card .task-tab-count,
+.tasks-card .task-tab .task-tab-count {
+    background: #111827 !important;
+    color: #fde047 !important;
+}
+
+.tasks-card .task-tab.active .task-tab-count {
+    background: #fff !important;
+    color: #111827 !important;
 }
 
 .task-list-panel {
@@ -1234,6 +1371,73 @@ body.login-page {
 
 .profile-card-avatar {
     flex-shrink: 0;
+}
+
+/* ——— Contraste thème sombre : textes gris foncé → lisibles ——— */
+.current-project-card .current-project-kicker {
+    color: #a1a1aa !important;
+}
+
+.current-project-card h2 {
+    color: #f4f4f5 !important;
+}
+
+.current-project-card .current-project-desc {
+    color: #d4d4d8 !important;
+}
+
+.current-project-card .current-project-meta li {
+    color: #e4e4e7 !important;
+}
+
+.current-project-card .current-project-meta strong {
+    color: #fde047 !important;
+}
+
+.project-detail-page .meta-label,
+.project-detail-page .muted,
+.project-detail-page [style*="color:#6b7280"],
+.project-detail-page [style*="color: #6b7280"],
+.project-detail-page [style*="color:#374151"],
+.project-detail-page [style*="color: #374151"] {
+    color: #a1a1aa !important;
+}
+
+.project-detail-page .meta-value {
+    color: #f4f4f5 !important;
+}
+
+.project-detail-page .meta-item {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.management-page .header p,
+.management-page .stat-card h3,
+.management-page .projects-table th {
+    color: #a1a1aa !important;
+}
+
+.management-page .header h1,
+.management-page .section-title,
+.management-page .stat-card .value,
+.management-page .projects-table td {
+    color: #f4f4f5 !important;
+}
+
+.management-page .stat-card,
+.management-page .panel {
+    background: #141416 !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    box-shadow: none !important;
+}
+
+.page-header p,
+.form-hint,
+.projects-page .muted,
+.users-page .muted,
+.empty-hint {
+    color: #a1a1aa !important;
 }
 
 @media (max-width: 768px) {

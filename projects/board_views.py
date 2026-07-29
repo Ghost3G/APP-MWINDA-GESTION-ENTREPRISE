@@ -97,7 +97,7 @@ def task_board(request):
         'members_json': json.dumps([
             {
                 'id': user.id,
-                'name': user.get_display_name(),
+                'name': user.get_labeled_name(),
                 'initial': user.get_avatar_initial(),
                 'avatar_url': user.avatar_url,
             }

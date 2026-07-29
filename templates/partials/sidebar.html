@@ -4,8 +4,8 @@
         <a href="{% url 'profile' %}" class="sidebar-user-card">
             {% include "partials/user_avatar.html" with user_obj=request.user size="md" %}
             <div class="sidebar-user-card__text">
-                <strong>{{ current_user_profile.display_name }}</strong>
-                <span>{{ current_user_profile.grade|default:current_user_profile.job_title|default:current_user_profile.branch_display }}</span>
+                <strong>{{ current_user_profile.short_name|default:current_user_profile.display_name }}</strong>
+                <span>{{ current_user_profile.title_label|default:current_user_profile.role_display }}</span>
             </div>
         </a>
     {% endif %}

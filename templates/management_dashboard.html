@@ -147,17 +147,7 @@
                 </div>
 
                 <div class="center-column">
-                    <div class="project-card">
-                        <div class="project-icon project-icon-main icon-tile">
-                            <img src="{% static 'images/icone_projet.png' %}" alt="">
-                        </div>
-                        <h2>{{ current_project.title }}</h2>
-                        <p>{{ current_project.description }}</p>
-                        {% if current_project.status_display %}
-                        <p><strong>Statut :</strong> {{ current_project.status_display }}</p>
-                        {% endif %}
-                        <a href="{% url 'projects_list' %}" class="btn-open">{{ current_project.button_text }}</a>
-                    </div>
+                    {% include "partials/current_project_card.html" %}
                 </div>
 
                 <div class="right-column">
@@ -246,7 +236,7 @@
                             {% for project in recent_projects %}
                             <tr>
                                 <td>{{ project.name }}</td>
-                                <td>{{ project.manager.username }}</td>
+                                <td>{{ project.manager.get_labeled_name }}</td>
                                 <td>{{ project.start_date }}</td>
                                 <td>{{ project.end_date }}</td>
                                 <td>{{ project.get_status_display }}</td>
@@ -300,7 +290,7 @@
                             <tbody>
                                 {% for worker in worker_stats %}
                                 <tr>
-                                    <td>{{ worker.user.get_full_name|default:worker.user.username }}</td>
+                                    <td>{{ worker.user.get_labeled_name }}</td>
                                     <td>{{ worker.direction }}</td>
                                     <td>
                                         {{ worker.done }}/{{ worker.total }} ({{ worker.progress }}%)
@@ -333,7 +323,7 @@
                             {% for task in active_tasks %}
                             <tr>
                                 <td>{{ task.title }}</td>
-                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                <td>{{ task.assigned_to.get_labeled_name }}</td>
                                 <td>{{ task.get_department_display_label }}</td>
                                 <td>{{ task.project.name }}</td>
                                 <td><span class="task-badge task-in_progress">En cours</span></td>
@@ -361,7 +351,7 @@
                             {% for task in unfinished_tasks %}
                             <tr>
                                 <td>{{ task.title }}</td>
-                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                <td>{{ task.assigned_to.get_labeled_name }}</td>
                                 <td>{{ task.get_department_display_label }}</td>
                                 <td>{{ task.project.name }}</td>
                                 <td><span class="task-badge task-{{ task.status }}">{{ task.get_status_display }}</span></td>

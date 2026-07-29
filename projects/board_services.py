@@ -32,7 +32,9 @@ def seed_task_labels():
 def _user_brief(user):
     return {
         'id': user.id,
-        'name': user.get_display_name(),
+        'name': user.get_labeled_name(),
+        'short_name': user.get_display_name(),
+        'title': user.get_title_label(),
         'initial': user.get_avatar_initial(),
         'avatar_url': user.avatar_url,
         'username': user.username,

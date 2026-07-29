@@ -430,7 +430,7 @@ def users_directory(request):
         user.task_total = user_tasks.count()
         user.current_task = user_tasks.filter(status='in_progress').order_by('-updated_at').first()
 
-    full_name = request.user.get_full_name() or request.user.username
+    full_name = request.user.get_display_name()
     profile_progress = 75
     current_project = {
         'title': 'Conception logo 3D',

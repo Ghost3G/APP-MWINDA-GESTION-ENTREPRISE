@@ -106,7 +106,7 @@
                     <label>Assigné à</label>
                     <select name="assigned_to_id" required>
                         {% for member in project_members %}
-                            <option value="{{ member.id }}">{{ member.get_display_name }}</option>
+                            <option value="{{ member.id }}">{{ member.get_labeled_name }}</option>
                         {% endfor %}
                     </select>
                 </div>

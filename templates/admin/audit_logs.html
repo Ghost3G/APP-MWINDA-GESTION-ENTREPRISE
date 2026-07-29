@@ -31,7 +31,7 @@
         {% for log in logs %}
         <tr>
             <td>{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
-            <td>{% if log.user %}{{ log.user.username }}{% else %}anonyme{% endif %}</td>
+            <td>{% if log.user %}{{ log.user.get_labeled_name }}{% else %}anonyme{% endif %}</td>
             <td><span class="admin-badge admin-badge-info">{{ log.action }}</span></td>
             <td>{{ log.path|default:"-" }}</td>
             <td>{{ log.method|default:"-" }}</td>

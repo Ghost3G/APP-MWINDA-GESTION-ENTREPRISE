@@ -227,7 +227,7 @@
                             <select name="assigned_to_id" onchange="this.form.submit()">
                                 <option value="">Tous</option>
                                 {% for agent in agents %}
-                                    <option value="{{ agent.id }}" {% if selected_assigned_to_id == agent.id|stringformat:"s" %}selected{% endif %}>{{ agent.get_full_name|default:agent.username }}</option>
+                                    <option value="{{ agent.id }}" {% if selected_assigned_to_id == agent.id|stringformat:"s" %}selected{% endif %}>{{ agent.get_labeled_name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -280,7 +280,7 @@
                                         <p class="task-name">{{ task.title }}</p>
                                         <p class="task-sub">{{ task.get_department_display_label }}</p>
                                     </td>
-                                    <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                    <td>{{ task.assigned_to.get_labeled_name }}</td>
                                     <td><span class="status-badge status-{{ task.status }}">{{ task.get_status_display }}</span></td>
                                     <td>
                                         {% if task.due_date %}
@@ -328,7 +328,7 @@
                                                     <label>Agent</label>
                                                     <select name="assigned_to_id">
                                                         {% for agent in agents %}
-                                                            <option value="{{ agent.id }}" {% if agent.id == task.assigned_to_id %}selected{% endif %}>{{ agent.get_full_name|default:agent.username }}</option>
+                                                            <option value="{{ agent.id }}" {% if agent.id == task.assigned_to_id %}selected{% endif %}>{{ agent.get_labeled_name }}</option>
                                                         {% endfor %}
                                                     </select>
                                                 </div>
@@ -396,7 +396,7 @@
                                 <select name="assigned_to_id" required>
                                     <option value="">— Choisir —</option>
                                     {% for agent in agents %}
-                                        <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+                                        <option value="{{ agent.id }}">{{ agent.get_labeled_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -450,7 +450,7 @@
                                 <label>Agent</label>
                                 <select name="assigned_to_id" required>
                                     {% for agent in agents %}
-                                        <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+                                        <option value="{{ agent.id }}">{{ agent.get_labeled_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

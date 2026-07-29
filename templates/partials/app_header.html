@@ -26,8 +26,8 @@
             <a href="{% url 'profile' %}" class="header-user-chip" title="Mon profil">
                 {% include "partials/user_avatar.html" with user_obj=request.user size="sm" %}
                 <span class="header-user-chip__text">
-                    <strong>{{ current_user_profile.display_name }}</strong>
-                    <small>{{ current_user_profile.role_display }}</small>
+                    <strong>{{ current_user_profile.short_name|default:current_user_profile.display_name }}</strong>
+                    <small>{{ current_user_profile.title_label|default:current_user_profile.role_display }}</small>
                 </span>
             </a>
         {% endif %}

@@ -627,8 +627,8 @@
                                                 <div class="user-info">
                                                     {% include "partials/user_avatar.html" with user_obj=user size="sm" %}
                                                     <div class="user-info-text">
-                                                        <h3>{{ user.first_name }} {{ user.last_name }}</h3>
-                                                        <p>{% if user.job_title %}{{ user.job_title }} · {% endif %}@{{ user.username }}</p>
+                                                        <h3>{{ user.get_labeled_name }}</h3>
+                                                        <p>@{{ user.username }}</p>
                                                     </div>
                                                 </div>
                                             </td>

@@ -1,0 +1,43 @@
+{% load static %}
+<div class="project-card current-project-card">
+    <div class="current-project-cover {% if not current_project.cover_url %}is-empty{% endif %}">
+        {% if current_project.cover_url %}
+            <img src="{{ current_project.cover_url }}" alt="{{ current_project.title }}" loading="lazy" decoding="async">
+        {% else %}
+            <div class="current-project-cover-fallback">
+                <img src="{% static 'images/icone_projet.png' %}" alt="">
+                <span>Photo du projet</span>
+            </div>
+        {% endif %}
+        {% if current_project.status_display %}
+            <span class="current-project-status">{{ current_project.status_display }}</span>
+        {% endif %}
+    </div>
+
+    <div class="current-project-body">
+        <p class="current-project-kicker">Projet en cours</p>
+        <h2>{{ current_project.title }}</h2>
+        <p class="current-project-desc">{{ current_project.description }}</p>
+
+        <ul class="current-project-meta">
+            {% if current_project.branch %}
+            <li><strong>Branche</strong> {{ current_project.branch }}</li>
+            {% endif %}
+            {% if current_project.start_date or current_project.end_date %}
+            <li><strong>Période</strong> {{ current_project.start_date }}{% if current_project.end_date %} → {{ current_project.end_date }}{% endif %}</li>
+            {% endif %}
+            {% if current_project.manager_name %}
+            <li><strong>Suivi</strong> {{ current_project.manager_name }}</li>
+            {% endif %}
+            {% if current_project.members_count %}
+            <li><strong>Équipe</strong> {{ current_project.members_count }} membre{{ current_project.members_count|pluralize }}</li>
+            {% endif %}
+        </ul>
+
+        {% if current_project.id %}
+            <a href="{% url 'project_detail' current_project.id %}" class="btn-open">{{ current_project.button_text }}</a>
+        {% else %}
+            <a href="{% url 'projects_list' %}" class="btn-open">{{ current_project.button_text }}</a>
+        {% endif %}
+    </div>
+</div>

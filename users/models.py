@@ -46,6 +46,52 @@ class User(AbstractUser):
         full_name = self.get_full_name().strip()
         return full_name or self.username
 
+    def get_title_label(self):
+        """Titre métier affiché à côté du nom (Directeur Technique, Agent Commercial…)."""
+        raw = (self.job_title or self.grade or '').strip()
+        if raw:
+            if raw.isupper() and len(raw) > 2:
+                titled = raw.replace('_', ' ').title()
+                # Petites particules en minuscules
+                for particle in (' Et ', ' De ', ' Du ', ' Des ', ' La ', ' Le ', ' Les '):
+                    titled = titled.replace(particle, particle.lower())
+                return titled
+            return raw
+
+        if self.role == 'admin':
+            return 'Administrateur'
+
+        if self.role == 'directeur':
+            director_titles = {
+                'technique': 'Directeur Technique',
+                'commercial': 'Directeur Commercial',
+                'finance': 'Directeur Finance',
+                'logistique': 'Directeur Logistique',
+                'design_communication': 'Directeur Design',
+                'rd': 'Directeur R&D',
+                'direction': 'Directeur',
+            }
+            return director_titles.get(self.org_group, 'Directeur')
+
+        org_titles = {
+            'commercial': 'Agent Commercial',
+            'finance': 'Agent Finance',
+            'logistique': 'Agent Logistique',
+            'design_communication': 'Agent Design',
+            'rd': 'Agent R&D',
+            'technique': 'Agent Technique',
+            'direction': 'Direction',
+        }
+        return org_titles.get(self.org_group, 'Agent')
+
+    def get_labeled_name(self):
+        """Ex: Japhete Kuta / Directeur Technique"""
+        name = self.get_display_name()
+        title = self.get_title_label()
+        if not title:
+            return name
+        return f'{name} / {title}'
+
     def get_avatar_initial(self):
         if self.first_name:
             return self.first_name[0].upper()

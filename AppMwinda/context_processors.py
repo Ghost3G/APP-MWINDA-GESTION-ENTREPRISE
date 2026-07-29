@@ -56,7 +56,9 @@ def app_notifications(request):
         'is_admin': is_admin,
         'is_finance': is_finance,
         'current_user_profile': {
-            'display_name': user.get_display_name(),
+            'display_name': user.get_labeled_name(),
+            'short_name': user.get_display_name(),
+            'title_label': user.get_title_label(),
             'initial': user.get_avatar_initial(),
             'avatar_url': user.avatar_url,
             'role_display': user.get_role_display(),

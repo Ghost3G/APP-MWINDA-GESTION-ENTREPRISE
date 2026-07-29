@@ -179,7 +179,7 @@
                             <option value="">Tous les agents</option>
                             {% for agent in agents %}
                                 <option value="{{ agent.id }}" {% if selected_user|add:"0" == agent.id %}selected{% endif %}>
-                                    {{ agent.get_full_name|default:agent.username }}
+                                    {{ agent.get_labeled_name }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -216,7 +216,7 @@
                             </div>
                             <div>
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Équipe / Agent :</label>
-                                <input type="text" name="team_agent" value="{{ request.user.get_full_name|default:request.user.username }}">
+                                <input type="text" name="team_agent" value="{{ request.user.get_labeled_name }}">
                             </div>
                         </div>
 
@@ -339,7 +339,7 @@
                                 <div class="report-card">
                                     <h4>{{ report.project }} - {{ report.date }}</h4>
                                     <div class="report-meta">
-                                        <span>👤 {{ report.user.username }}</span>
+                                        <span>👤 {{ report.user.get_labeled_name }}</span>
                                         {% if report.department %}<span>📍 {{ report.get_department_display }}</span>{% endif %}
                                         {% if report.team_agent %}<span>👥 {{ report.team_agent }}</span>{% endif %}
                                     </div>

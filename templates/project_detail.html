@@ -23,19 +23,20 @@
             margin: 18px 0;
         }
         .meta-item {
-            background: #f9fafb;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 10px;
             padding: 10px 12px;
         }
         .meta-label {
             font-size: 12px;
-            color: #6b7280;
+            color: #a1a1aa;
             margin-bottom: 4px;
             text-transform: uppercase;
             font-weight: 600;
         }
         .meta-value {
-            color: #111827;
+            color: #f4f4f5;
             font-weight: 600;
         }
         .members-wrap {
@@ -107,15 +108,17 @@
             display: block;
             font-size: 12px;
             font-weight: 600;
-            color: #374151;
+            color: #a1a1aa;
             margin-bottom: 4px;
         }
         .mgmt-form input, .mgmt-form select {
             width: 100%;
             padding: 8px 10px;
-            border: 1px solid #d1d5db;
+            border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 8px;
             font-size: 14px;
+            background: #1e1e22;
+            color: #f4f4f5;
         }
         .btn-yellow {
             background: #fde047;
@@ -182,7 +185,7 @@
                             <div class="meta-label">Directeur Technique</div>
                             <div class="meta-value">
                                 {% if project.technical_director %}
-                                    {{ project.technical_director.get_full_name|default:project.technical_director.username }}
+                                    {{ project.technical_director.get_labeled_name }}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -190,13 +193,13 @@
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Responsable suivi</div>
-                            <div class="meta-value">{{ project.manager.get_full_name|default:project.manager.username }}</div>
+                            <div class="meta-value">{{ project.manager.get_labeled_name }}</div>
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Agent commercial</div>
                             <div class="meta-value">
                                 {% if project.commercial_agent %}
-                                    {{ project.commercial_agent.get_full_name|default:project.commercial_agent.username }}
+                                    {{ project.commercial_agent.get_labeled_name }}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -213,21 +216,21 @@
                     </div>
 
                     <h3 style="margin: 0 0 8px 0;">Description</h3>
-                    <p style="line-height:1.6; color:#374151;">{{ project.description }}</p>
+                    <p style="line-height:1.6; color:#d4d4d8;">{{ project.description }}</p>
 
                     <h3 style="margin: 18px 0 6px 0;">Membres assignés</h3>
                     <div class="members-wrap">
                         {% for member in project.members.all %}
-                            <span class="member-chip">{{ member.get_full_name|default:member.username }}</span>
+                            <span class="member-chip">{{ member.get_labeled_name }}</span>
                         {% empty %}
-                            <span style="color:#6b7280;">Aucun membre assigné.</span>
+                            <span style="color:#a1a1aa;">Aucun membre assigné.</span>
                         {% endfor %}
                     </div>
 
                     {% if is_management %}
                     <div class="mgmt-panel">
                         <h3 style="margin:0 0 6px;">Assigner une tâche sur ce projet</h3>
-                        <p style="margin:0; color:#6b7280; font-size:14px;">Ajoutez une tâche personnalisée ou appliquez le modèle du département.</p>
+                        <p style="margin:0; color:#a1a1aa; font-size:14px;">Ajoutez une tâche personnalisée ou appliquez le modèle du département.</p>
 
                         <form method="POST" class="mgmt-form">
                             {% csrf_token %}
@@ -238,7 +241,7 @@
                                 <select name="assigned_to_id" required>
                                     <option value="">— Choisir —</option>
                                     {% for member in project_members %}
-                                        <option value="{{ member.id }}">{{ member.get_full_name|default:member.username }} ({{ member.get_direction_display }})</option>
+                                        <option value="{{ member.id }}">{{ member.get_labeled_name }} ({{ member.get_direction_display }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -275,7 +278,7 @@
                                 <label>Agent (modèle)</label>
                                 <select name="assigned_to_id" required>
                                     {% for member in project_members %}
-                                        <option value="{{ member.id }}">{{ member.get_full_name|default:member.username }}</option>
+                                        <option value="{{ member.id }}">{{ member.get_labeled_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -304,8 +307,8 @@
                     {% for group in tasks_by_member %}
                     <div class="member-task-block">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                            <strong>{{ group.member.get_full_name|default:group.member.username }}</strong>
-                            <span style="color:#6b7280; font-size:13px;">
+                            <strong>{{ group.member.get_labeled_name }}</strong>
+                            <span style="color:#a1a1aa; font-size:13px;">
                                 {{ group.done }}/{{ group.tasks|length }} terminées
                                 · {{ group.in_progress }} en cours · {{ group.pending }} à faire
                             </span>
@@ -341,7 +344,7 @@
                         {% endfor %}
                     </div>
                     {% empty %}
-                    <p style="color:#6b7280;">Aucune tâche générée pour ce projet.</p>
+                    <p style="color:#a1a1aa;">Aucune tâche générée pour ce projet.</p>
                     {% endfor %}
                 </div>
             </div>

@@ -44,7 +44,7 @@ def build_notification_feed(user, limit=30):
         items.append({
             'id': f'message-{msg.id}',
             'kind': 'message',
-            'title': f'Message de {msg.sender.get_display_name()}',
+            'title': f'Message de {msg.sender.get_labeled_name()}',
             'body': preview,
             'url': '/messaging/',
             'is_read': msg.is_read,

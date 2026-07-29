@@ -57,18 +57,7 @@
 
                 <!-- Colonne centrale : carte projet -->
                 <div class="center-column">
-                    <!-- Carte projet au centre -->
-                    <div class="project-card">
-                        <div class="project-icon project-icon-main icon-tile">
-                            <img src="{% static 'images/icone_projet.png' %}" alt="">
-                        </div>
-                        <h2>{{ current_project.title }}</h2>
-                        <p>{{ current_project.description }}</p>
-                        {% if current_project.status_display %}
-                        <p><strong>Statut :</strong> {{ current_project.status_display }}</p>
-                        {% endif %}
-                        <a href="{% url 'projects_list' %}" class="btn-open">{{ current_project.button_text }}</a>
-                    </div>
+                    {% include "partials/current_project_card.html" %}
                 </div>
 
                 <!-- Colonne droite : timers puis tâches -->

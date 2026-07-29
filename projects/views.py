@@ -40,6 +40,44 @@ def _format_seconds(total_seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
+def _build_current_project_card(project, empty_title='Aucun projet en cours', empty_description=''):
+    """Payload Accueil : aperçu + photo du projet en cours."""
+    if not project:
+        return {
+            'id': None,
+            'title': empty_title,
+            'description': empty_description or 'Aucun projet actif pour le moment.',
+            'button_text': 'VOIR LES PROJETS',
+            'status_display': '',
+            'cover_url': '',
+            'branch': '',
+            'start_date': '',
+            'end_date': '',
+            'manager_name': '',
+            'members_count': 0,
+            'detail_url': '',
+        }
+
+    description = (project.description or '').strip()
+    if len(description) > 160:
+        description = description[:157].rstrip() + '…'
+
+    return {
+        'id': project.id,
+        'title': project.name,
+        'description': description or 'Aucune description.',
+        'button_text': 'OUVRIR',
+        'status_display': project.get_status_display(),
+        'cover_url': project.cover_url,
+        'branch': project.get_branch_display_label(),
+        'start_date': project.start_date.strftime('%d/%m/%Y') if project.start_date else '',
+        'end_date': project.end_date.strftime('%d/%m/%Y') if project.end_date else '',
+        'manager_name': project.manager.get_labeled_name() if project.manager_id else '',
+        'members_count': project.members.count(),
+        'detail_url': f'/projects/{project.id}/',
+    }
+
+
 def _entry_elapsed_seconds(entry, now):
     elapsed = int((now - entry.started_at).total_seconds())
     return entry.duration_seconds + max(elapsed, 0)
@@ -152,7 +190,7 @@ def _handle_task_management_post(request, default_project_id=None):
         )
         if status != 'pending':
             set_task_status(task, status)
-        messages.success(request, f"Tâche « {task.title} » assignée à {assignee.username}.")
+        messages.success(request, f"Tâche « {task.title} » assignée à {assignee.get_labeled_name()}.")
         return
 
     if action == 'quick_status':
@@ -333,8 +371,8 @@ def dashboard(request):
             for entry in today_entries.filter(entry_type='pause')
         )
 
-        full_name = request.user.get_full_name() or request.user.username
-        user_role_display = dict(request.user.ROLE_CHOICES).get(request.user.role, request.user.role)
+        full_name = request.user.get_display_name()
+        user_role_display = request.user.get_title_label()
         assigned_projects = Project.objects.filter(
             Q(members=request.user)
             | Q(manager=request.user)
@@ -347,17 +385,10 @@ def dashboard(request):
             or projects_qs.filter(status='progress').first()
             or projects_qs.order_by('created_at', 'id').first()
         )
-        current_project = {
-            'title': current_project_obj.name if current_project_obj else 'Aucun projet en cours',
-            'description': (
-                current_project_obj.description[:140]
-                if current_project_obj and current_project_obj.description
-                else 'Vue d’ensemble direction — ouvrez les projets pour le détail.'
-            ),
-            'button_text': 'OUVRIR',
-            'status_display': current_project_obj.get_status_display() if current_project_obj else '',
-            'id': current_project_obj.id if current_project_obj else None,
-        }
+        current_project = _build_current_project_card(
+            current_project_obj,
+            empty_description='Vue d’ensemble direction — ouvrez les projets pour le détail.',
+        )
 
         context = {
             'is_admin': request.user.is_superuser or request.user.role == 'admin',
@@ -410,9 +441,9 @@ def dashboard(request):
     unread_messages_count = Message.objects.filter(receiver=request.user, is_read=False).count()
     new_project_assignments = Project.objects.filter(members=request.user).count()
 
-    full_name = request.user.get_full_name() or request.user.username
+    full_name = request.user.get_display_name()
     user_first_letter = (request.user.first_name or request.user.username)[0].upper()
-    user_role_display = dict(request.user.ROLE_CHOICES).get(request.user.role, request.user.role)
+    user_role_display = request.user.get_title_label()
 
     assigned_projects = Project.objects.filter(members=request.user).order_by('created_at', 'id')
     current_project_obj = (
@@ -420,17 +451,11 @@ def dashboard(request):
         or assigned_projects.first()
     )
 
-    current_project = {
-        'title': current_project_obj.name if current_project_obj else 'Aucun projet assigné',
-        'description': (
-            current_project_obj.description[:140]
-            if current_project_obj and current_project_obj.description
-            else "Aucune assignation active pour le moment."
-        ),
-        'button_text': 'OUVRIR',
-        'status_display': current_project_obj.get_status_display() if current_project_obj else '',
-        'id': current_project_obj.id if current_project_obj else None,
-    }
+    current_project = _build_current_project_card(
+        current_project_obj,
+        empty_title='Aucun projet assigné',
+        empty_description='Aucune assignation active pour le moment.',
+    )
 
     now = timezone.now()
     today = timezone.localdate()
