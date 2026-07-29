@@ -1,16 +1,34 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
 from django.db.models import Count, Q
 from django.contrib import messages
 from django.utils import timezone
+from datetime import timedelta
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
+from .board_services import accessible_projects, can_access_project
 from .models import Project
-from .models import AgentTimeEntry, ProjectAssignmentNotification
+from .models import AgentTimeEntry, ProjectAssignmentNotification, ProjectTask, TaskAssignmentNotification
+from .branches import TECH_BRANCH_CHOICES, TECH_DEPARTMENT_LABEL, normalize_branch, is_valid_branch
+from .task_services import (
+    DEPARTMENT_TASK_TEMPLATES,
+    ensure_project_tasks,
+    get_task_for_user,
+    set_task_status,
+    build_dashboard_tasks,
+    create_project_task,
+    apply_department_template,
+    update_project_task,
+    notify_task_assignment,
+)
 from reports.models import DailyReport
 from messaging.models import Message
 from django.contrib.auth import get_user_model
+from users.models import AuditLog
+from users.notifications import get_due_soon_tasks, get_overdue_tasks
 
 User = get_user_model()
 
@@ -65,6 +83,155 @@ def admin_required(view_func):
     return wrapper
 
 
+def management_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not (request.user.is_superuser or request.user.role in ['admin', 'directeur']):
+            return HttpResponseForbidden("Vous n'avez pas la permission de gérer les tâches.")
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def _is_management_user(user):
+    return user.is_superuser or user.role in ['admin', 'directeur']
+
+
+def _commercial_agents_qs():
+    return User.objects.filter(
+        Q(org_group='commercial') | Q(grade__icontains='commercial') | Q(job_title__icontains='commercial')
+    ).exclude(role='admin').distinct().order_by('first_name', 'username')
+
+
+def _default_technical_director():
+    return User.objects.filter(username='ibrahim.japhete').first()
+
+
+def _default_project_manager():
+    return User.objects.filter(username='emmanuel.maki').first()
+
+
+def _project_stakeholders(project):
+    return project.get_stakeholders()
+
+
+def _handle_task_management_post(request, default_project_id=None):
+    action = request.POST.get('action', '').strip()
+
+    if action == 'create':
+        project_id = request.POST.get('project_id', '').strip() or (str(default_project_id) if default_project_id else '')
+        assigned_to_id = request.POST.get('assigned_to_id', '').strip()
+        title = request.POST.get('title', '').strip()
+        department = request.POST.get('department', '').strip()
+        status = request.POST.get('status', 'pending').strip() or 'pending'
+        due_date = request.POST.get('due_date', '').strip() or None
+
+        if not all([project_id, assigned_to_id, title]):
+            messages.error(request, "Projet, agent et titre de tâche sont requis.")
+            return
+
+        project = get_object_or_404(Project, id=project_id)
+        assignee = get_object_or_404(User, id=assigned_to_id)
+
+        if not project.members.filter(id=assignee.id).exists():
+            messages.error(request, "L'agent doit être membre du projet sélectionné.")
+            return
+
+        valid_statuses = [value for value, _ in ProjectTask.STATUS_CHOICES]
+        if status not in valid_statuses:
+            status = 'pending'
+
+        task = create_project_task(
+            project,
+            assignee,
+            title,
+            department=department or assignee.direction,
+            status='pending',
+            actor=request.user,
+            due_date=due_date,
+        )
+        if status != 'pending':
+            set_task_status(task, status)
+        messages.success(request, f"Tâche « {task.title} » assignée à {assignee.username}.")
+        return
+
+    if action == 'quick_status':
+        task_id = request.POST.get('task_id', '').strip()
+        status = request.POST.get('status', '').strip()
+        task = get_object_or_404(ProjectTask, id=task_id)
+        valid_statuses = [value for value, _ in ProjectTask.STATUS_CHOICES]
+        if status not in valid_statuses:
+            messages.error(request, "Statut invalide.")
+            return
+        set_task_status(task, status)
+        messages.success(request, f"« {task.title} » → {task.get_status_display()}.")
+        return
+
+    if action == 'update':
+        task_id = request.POST.get('task_id', '').strip()
+        title = request.POST.get('title', '').strip()
+        assigned_to_id = request.POST.get('assigned_to_id', '').strip()
+        department = request.POST.get('department', '').strip()
+        status = request.POST.get('status', '').strip()
+        due_date_raw = request.POST.get('due_date', None)
+        due_date = due_date_raw.strip() if isinstance(due_date_raw, str) else due_date_raw
+
+        task = get_object_or_404(ProjectTask.objects.select_related('project'), id=task_id)
+        assignee = task.assigned_to
+        if assigned_to_id:
+            assignee = get_object_or_404(User, id=assigned_to_id)
+            if not task.project.members.filter(id=assignee.id).exists():
+                messages.error(request, "Le nouvel agent doit être membre du projet.")
+                return
+
+        update_kwargs = {
+            'title': title or task.title,
+            'assigned_to': assignee,
+            'department': department or task.department,
+            'status': status or None,
+            'actor': request.user,
+        }
+        if due_date_raw is not None:
+            update_kwargs['due_date'] = due_date or None
+
+        update_project_task(task, **update_kwargs)
+        messages.success(request, "Tâche mise à jour.")
+        return
+
+    if action == 'delete':
+        task_id = request.POST.get('task_id', '').strip()
+        task = get_object_or_404(ProjectTask, id=task_id)
+        title = task.title
+        task.delete()
+        messages.success(request, f"Tâche « {title} » supprimée.")
+        return
+
+    if action == 'apply_template':
+        project_id = request.POST.get('project_id', '').strip() or (str(default_project_id) if default_project_id else '')
+        assigned_to_id = request.POST.get('assigned_to_id', '').strip()
+        department = request.POST.get('department', '').strip()
+
+        project = get_object_or_404(Project, id=project_id)
+        assignee = get_object_or_404(User, id=assigned_to_id)
+        if not project.members.filter(id=assignee.id).exists():
+            messages.error(request, "L'agent doit être membre du projet.")
+            return
+
+        created = apply_department_template(
+            project,
+            assignee,
+            department=department or assignee.direction,
+            actor=request.user,
+        )
+        if created:
+            messages.success(request, f"{created} tâche(s) ajoutée(s) depuis le modèle département.")
+        else:
+            messages.info(request, "Toutes les tâches du modèle existent déjà pour cet agent.")
+        return
+
+    messages.error(request, "Action non reconnue.")
+
+
 # Create your views here.
 
 @login_required(login_url='login')
@@ -72,6 +239,24 @@ def admin_required(view_func):
 def dashboard(request):
     _ensure_work_session(request.user)
     is_management = request.user.is_superuser or request.user.role in ['admin', 'directeur']
+
+    selected_task_project = request.GET.get('task_project', '').strip()
+    personal_tasks = build_dashboard_tasks(
+        request.user,
+        project_id=selected_task_project or None,
+    )
+    open_tasks = personal_tasks['open_tasks']
+    done_tasks = personal_tasks['done_tasks']
+    profile_progress = personal_tasks['profile_progress']
+    due_soon_tasks = get_due_soon_tasks(request.user)
+    overdue_tasks = get_overdue_tasks(request.user)
+    show_guide = not getattr(request.user, 'has_seen_guide', True)
+
+    # Marquer les notifications comme lues après construction (le badge "Nouveau" reste visible cette fois)
+    TaskAssignmentNotification.objects.filter(
+        user=request.user,
+        is_read=False,
+    ).update(is_read=True)
 
     if is_management:
         projects_qs = Project.objects.select_related('manager').prefetch_related('members')
@@ -83,32 +268,153 @@ def dashboard(request):
         total_projects = sum(project_status_counts.values())
         progress_ratio = round((project_status_counts['done'] / total_projects) * 100) if total_projects else 0
 
+        tasks_qs = ProjectTask.objects.select_related('assigned_to', 'project')
+        task_status_counts = {
+            'pending': tasks_qs.filter(status='pending').count(),
+            'in_progress': tasks_qs.filter(status='in_progress').count(),
+            'done': tasks_qs.filter(status='done').count(),
+        }
+        total_tasks = sum(task_status_counts.values())
+        task_completion_ratio = round((task_status_counts['done'] / total_tasks) * 100) if total_tasks else 0
+
+        direction_labels = dict(TECH_BRANCH_CHOICES)
+        department_stats = []
+        for branch_value, branch_label in TECH_BRANCH_CHOICES:
+            dept_tasks = tasks_qs.filter(department=branch_value)
+            branch_projects = projects_qs.filter(branch=branch_value).count()
+            dept_total = dept_tasks.count()
+            department_stats.append({
+                'label': branch_label,
+                'value': branch_value,
+                'projects': branch_projects,
+                'pending': dept_tasks.filter(status='pending').count(),
+                'in_progress': dept_tasks.filter(status='in_progress').count(),
+                'done': dept_tasks.filter(status='done').count(),
+                'total': dept_total,
+            })
+
+        worker_stats = []
+        agents = User.objects.filter(role='agent').order_by('username')
+        for agent in agents:
+            agent_tasks = tasks_qs.filter(assigned_to=agent)
+            agent_total = agent_tasks.count()
+            if not agent_total:
+                continue
+            worker_stats.append({
+                'user': agent,
+                'direction': direction_labels.get(agent.direction, agent.direction),
+                'pending': agent_tasks.filter(status='pending').count(),
+                'in_progress': agent_tasks.filter(status='in_progress').count(),
+                'done': agent_tasks.filter(status='done').count(),
+                'total': agent_total,
+                'progress': round((agent_tasks.filter(status='done').count() / agent_total) * 100),
+            })
+
+        active_tasks = tasks_qs.filter(status='in_progress').order_by('-updated_at')[:12]
+        unfinished_tasks = tasks_qs.exclude(status='done').order_by('department', 'assigned_to__username', 'order')[:20]
+
+        now = timezone.now()
+        today = timezone.localdate()
+        try:
+            today_entries = AgentTimeEntry.objects.filter(user=request.user, started_at__date=today)
+        except Exception:
+            today_entries = AgentTimeEntry.objects.none()
+
+        active_task_entry = _open_entry_for_user(request.user, 'task')
+        open_pause_entry = _open_entry_for_user(request.user, 'pause')
+        open_work_entry = _open_entry_for_user(request.user, 'work')
+        task_elapsed_seconds = _entry_elapsed_seconds(active_task_entry, now) if active_task_entry else 0
+        total_work_seconds = sum(
+            _entry_elapsed_seconds(entry, now) if entry.ended_at is None else entry.duration_seconds
+            for entry in today_entries.filter(entry_type='work')
+        )
+        total_pause_seconds = sum(
+            _entry_elapsed_seconds(entry, now) if entry.ended_at is None else entry.duration_seconds
+            for entry in today_entries.filter(entry_type='pause')
+        )
+
+        full_name = request.user.get_full_name() or request.user.username
+        user_role_display = dict(request.user.ROLE_CHOICES).get(request.user.role, request.user.role)
+        assigned_projects = Project.objects.filter(
+            Q(members=request.user)
+            | Q(manager=request.user)
+            | Q(technical_director=request.user)
+            | Q(commercial_agent=request.user)
+        ).distinct().order_by('created_at', 'id')
+        current_project_obj = (
+            assigned_projects.filter(status='progress').first()
+            or assigned_projects.first()
+            or projects_qs.filter(status='progress').first()
+            or projects_qs.order_by('created_at', 'id').first()
+        )
+        current_project = {
+            'title': current_project_obj.name if current_project_obj else 'Aucun projet en cours',
+            'description': (
+                current_project_obj.description[:140]
+                if current_project_obj and current_project_obj.description
+                else 'Vue d’ensemble direction — ouvrez les projets pour le détail.'
+            ),
+            'button_text': 'OUVRIR',
+            'status_display': current_project_obj.get_status_display() if current_project_obj else '',
+            'id': current_project_obj.id if current_project_obj else None,
+        }
+
         context = {
             'is_admin': request.user.is_superuser or request.user.role == 'admin',
             'is_management': True,
+            'full_name': full_name,
+            'user_role_display': user_role_display,
+            'current_project': current_project,
             'project_status_counts': project_status_counts,
             'total_projects': total_projects,
             'progress_ratio': progress_ratio,
-            'recent_projects': projects_qs.order_by('-start_date')[:8],
+            'recent_projects': projects_qs.order_by('-created_at', '-id')[:8],
+            'task_status_counts': task_status_counts,
+            'total_tasks': total_tasks,
+            'task_completion_ratio': task_completion_ratio,
+            'department_stats': department_stats,
+            'worker_stats': worker_stats,
+            'active_tasks': active_tasks,
+            'unfinished_tasks': unfinished_tasks,
+            'direction_labels': direction_labels,
+            'tech_department_label': TECH_DEPARTMENT_LABEL,
+            'branch_choices': TECH_BRANCH_CHOICES,
+            'open_tasks': open_tasks,
+            'done_tasks': done_tasks,
+            'tasks': open_tasks,
+            'profile_progress': profile_progress,
+            'due_soon_tasks': due_soon_tasks,
+            'overdue_tasks': overdue_tasks,
+            'show_guide': show_guide,
+            'task_project_choices': Project.objects.order_by('created_at', 'id')[:50],
+            'selected_task_project': selected_task_project,
+            'time_stats': [
+                {'label': 'T. sur une tâche', 'value': _format_seconds(task_elapsed_seconds), 'highlight': True},
+                {'label': 'Temps de travail', 'value': _format_seconds(total_work_seconds)},
+                {'label': 'Temps de pause', 'value': _format_seconds(total_pause_seconds)},
+            ],
+            'timer_state': {
+                'active_task_label': active_task_entry.task_label if active_task_entry else '',
+                'active_task_started_at': active_task_entry.started_at.isoformat() if active_task_entry else '',
+                'active_pause_started_at': open_pause_entry.started_at.isoformat() if open_pause_entry else '',
+                'active_work_started_at': open_work_entry.started_at.isoformat() if open_work_entry else '',
+                'is_pause_running': open_pause_entry is not None,
+                'is_work_running': open_work_entry is not None,
+            },
         }
         return render(request, "management_dashboard.html", context)
 
     projects = Project.objects.all()
     reports = DailyReport.objects.select_related('user').order_by('-date', '-created_at')[:5]
 
-    # Compter les messages non lus
     unread_messages_count = Message.objects.filter(receiver=request.user, is_read=False).count()
-
-    # Compter les nouvelles assignations de projets (projets où l'utilisateur a été récemment assigné)
     new_project_assignments = Project.objects.filter(members=request.user).count()
 
-    # Contexte utilisateur
     full_name = request.user.get_full_name() or request.user.username
     user_first_letter = (request.user.first_name or request.user.username)[0].upper()
     user_role_display = dict(request.user.ROLE_CHOICES).get(request.user.role, request.user.role)
 
-    # Projet courant basé sur les vraies assignations
-    assigned_projects = Project.objects.filter(members=request.user).order_by('-start_date')
+    assigned_projects = Project.objects.filter(members=request.user).order_by('created_at', 'id')
     current_project_obj = (
         assigned_projects.filter(status='progress').first()
         or assigned_projects.first()
@@ -123,6 +429,7 @@ def dashboard(request):
         ),
         'button_text': 'OUVRIR',
         'status_display': current_project_obj.get_status_display() if current_project_obj else '',
+        'id': current_project_obj.id if current_project_obj else None,
     }
 
     now = timezone.now()
@@ -130,26 +437,7 @@ def dashboard(request):
     try:
         today_entries = AgentTimeEntry.objects.filter(user=request.user, started_at__date=today)
     except Exception:
-        today_entries = []
-
-    # Toujours démarrer avec des tâches non cochées lors d'une nouvelle connexion.
-    task_definitions = [
-        'Réception du brief',
-        'Analyse des besoins',
-        'Croquis initial',
-        'Validation du croquis',
-        'Modélisation 2D/3D',
-        'Préparation du fichier final',
-        'Contrôle qualité',
-        'Corrections finales',
-        'Validation client',
-        'Clôture de la tâche',
-    ]
-    profile_progress = 0
-    tasks = [
-        {'label': label, 'active': False, 'visible': index < 3}
-        for index, label in enumerate(task_definitions)
-    ]
+        today_entries = AgentTimeEntry.objects.none()
 
     total_work_seconds = sum(
         _entry_elapsed_seconds(entry, now) if entry.ended_at is None else entry.duration_seconds
@@ -163,14 +451,12 @@ def dashboard(request):
     active_task_entry = _open_entry_for_user(request.user, 'task')
     task_elapsed_seconds = _entry_elapsed_seconds(active_task_entry, now) if active_task_entry else 0
 
-    # Stats basées sur les minuteurs réels
     time_stats = [
         {'label': 'T. sur une tâche', 'value': _format_seconds(task_elapsed_seconds), 'highlight': True},
         {'label': 'Temps de travail', 'value': _format_seconds(total_work_seconds)},
         {'label': 'Temps de pause', 'value': _format_seconds(total_pause_seconds)},
     ]
 
-    # Vérifier si l'utilisateur est admin pour afficher le bouton Users
     is_admin = request.user.is_superuser or request.user.role == 'admin'
 
     open_pause_entry = _open_entry_for_user(request.user, 'pause')
@@ -184,11 +470,18 @@ def dashboard(request):
         "user_role_display": user_role_display,
         "profile_progress": profile_progress,
         "current_project": current_project,
-        "tasks": tasks,
+        "open_tasks": open_tasks,
+        "done_tasks": done_tasks,
+        "tasks": open_tasks,
         "time_stats": time_stats,
         "is_admin": is_admin,
         "unread_messages_count": unread_messages_count,
         "new_project_assignments": new_project_assignments,
+        "due_soon_tasks": due_soon_tasks,
+        "overdue_tasks": overdue_tasks,
+        "show_guide": show_guide,
+        "task_project_choices": assigned_projects,
+        "selected_task_project": selected_task_project,
         "timer_state": {
             "active_task_label": active_task_entry.task_label if active_task_entry else "",
             "active_task_started_at": active_task_entry.started_at.isoformat() if active_task_entry else "",
@@ -197,7 +490,7 @@ def dashboard(request):
             "is_pause_running": open_pause_entry is not None,
             "is_work_running": open_work_entry is not None,
         },
-        "task_labels": task_definitions,
+        "task_labels": [task['label'] for task in open_tasks],
     }
 
     return render(request, "dashboard.html", context)
@@ -207,8 +500,20 @@ def dashboard(request):
 @require_POST
 def start_task_timer(request):
     task_label = request.POST.get('task_label', '').strip()
-    if not task_label:
-        return JsonResponse({'error': 'task_label requis'}, status=400)
+    task_id = request.POST.get('task_id', '').strip()
+    if not task_label and not task_id:
+        return JsonResponse({'error': 'task_label ou task_id requis'}, status=400)
+
+    project_task = get_task_for_user(request.user, task_id=task_id or None, task_label=task_label or None)
+    if project_task:
+        task_label = project_task.title
+        ProjectTask.objects.filter(
+            assigned_to=request.user,
+            status='in_progress',
+        ).exclude(id=project_task.id).update(status='pending')
+        set_task_status(project_task, 'in_progress')
+    elif not task_label:
+        return JsonResponse({'error': 'Tâche introuvable'}, status=404)
 
     now = timezone.now()
     open_pause = _open_entry_for_user(request.user, 'pause')
@@ -227,24 +532,43 @@ def start_task_timer(request):
             started_at=now,
         )
 
-    return JsonResponse({'ok': True, 'task_label': task_label})
+    return JsonResponse({
+        'ok': True,
+        'task_label': task_label,
+        'task_id': project_task.id if project_task else None,
+        'status': project_task.status if project_task else 'in_progress',
+    })
 
 
 @login_required(login_url='login')
 @require_POST
 def complete_task_timer(request):
     task_label = request.POST.get('task_label', '').strip()
+    task_id = request.POST.get('task_id', '').strip()
     now = timezone.now()
+
+    project_task = get_task_for_user(request.user, task_id=task_id or None, task_label=task_label or None)
 
     open_task = _open_entry_for_user(request.user, 'task')
     if not open_task:
-        return JsonResponse({'ok': True, 'duration_seconds': 0})
+        if project_task and project_task.status != 'done':
+            set_task_status(project_task, 'done')
+        return JsonResponse({'ok': True, 'duration_seconds': 0, 'status': 'done'})
 
     if task_label and open_task.task_label != task_label:
         return JsonResponse({'error': 'Cette tâche n’est pas active'}, status=409)
 
     _close_entry(open_task, now)
-    return JsonResponse({'ok': True, 'duration_seconds': open_task.duration_seconds})
+
+    if project_task:
+        set_task_status(project_task, 'done')
+
+    return JsonResponse({
+        'ok': True,
+        'duration_seconds': open_task.duration_seconds,
+        'status': 'done',
+        'task_id': project_task.id if project_task else None,
+    })
 
 
 @login_required(login_url='login')
@@ -267,28 +591,99 @@ def toggle_pause_timer(request):
 
 @login_required(login_url='login')
 def projects_list(request):
-    projects = Project.objects.select_related('manager').prefetch_related('members').order_by('-start_date')
+    projects = accessible_projects(request.user).select_related(
+        'manager', 'technical_director', 'commercial_agent'
+    ).prefetch_related('members')
 
     status = request.GET.get('status', '').strip()
+    branch = request.GET.get('branch', '').strip()
     if status:
         projects = projects.filter(status=status)
+    if branch:
+        projects = projects.filter(branch=normalize_branch(branch))
 
     is_manager = request.user.role in ['admin', 'directeur'] or request.user.is_superuser
 
     if request.method == 'POST':
         if not is_manager:
-            return HttpResponseForbidden("Vous n'avez pas la permission de créer un projet.")
+            return HttpResponseForbidden("Vous n'avez pas la permission de gérer un projet.")
 
+        action = request.POST.get('action', 'create').strip() or 'create'
         name = request.POST.get('name', '').strip()
         description = request.POST.get('description', '').strip()
         start_date = request.POST.get('start_date', '').strip()
         end_date = request.POST.get('end_date', '').strip()
         project_status = request.POST.get('status', 'pending').strip() or 'pending'
+        branch = normalize_branch(request.POST.get('branch', 'metal_design').strip())
         member_ids = request.POST.getlist('members')
+        commercial_agent_id = request.POST.get('commercial_agent', '').strip()
+
+        if action == 'update':
+            project_id = request.POST.get('project_id', '').strip()
+            project = get_object_or_404(Project, id=project_id)
+            if not all([name, description, start_date, end_date]):
+                messages.error(request, "Tous les champs du projet sont requis.")
+                return redirect('projects_list')
+
+            commercial_agent = User.objects.filter(id=commercial_agent_id).first() if commercial_agent_id else None
+            if not commercial_agent:
+                messages.error(request, "Veuillez choisir un agent commercial pour ce projet.")
+                return redirect('projects_list')
+
+            project.name = name
+            project.description = description
+            project.start_date = start_date
+            project.end_date = end_date
+            project.status = project_status
+            project.branch = branch
+            project.commercial_agent = commercial_agent
+
+            cover = request.FILES.get('cover_image')
+            if cover:
+                if cover.size > 5 * 1024 * 1024:
+                    messages.error(request, "La photo du projet ne doit pas dépasser 5 Mo.")
+                    return redirect('projects_list')
+                if not (cover.content_type or '').startswith('image/'):
+                    messages.error(request, "Le fichier doit être une image.")
+                    return redirect('projects_list')
+                if project.cover_image:
+                    project.cover_image.delete(save=False)
+                project.cover_image = cover
+
+            if request.POST.get('remove_cover') == '1' and project.cover_image:
+                project.cover_image.delete(save=False)
+                project.cover_image = None
+
+            project.save()
+
+            members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
+            for stakeholder in (project.technical_director, project.manager, commercial_agent):
+                if stakeholder and stakeholder not in members:
+                    members.append(stakeholder)
+            project.members.set(members)
+            messages.success(request, "Projet mis à jour.")
+            return redirect('projects_list')
 
         if not all([name, description, start_date, end_date]):
             messages.error(request, "Tous les champs du projet sont requis.")
             return redirect('projects_list')
+
+        technical_director = _default_technical_director()
+        manager = _default_project_manager() or request.user
+        commercial_agent = User.objects.filter(id=commercial_agent_id).first() if commercial_agent_id else None
+
+        if not commercial_agent:
+            messages.error(request, "Veuillez choisir un agent commercial pour ce projet.")
+            return redirect('projects_list')
+
+        cover = request.FILES.get('cover_image')
+        if cover:
+            if cover.size > 5 * 1024 * 1024:
+                messages.error(request, "La photo du projet ne doit pas dépasser 5 Mo.")
+                return redirect('projects_list')
+            if not (cover.content_type or '').startswith('image/'):
+                messages.error(request, "Le fichier doit être une image.")
+                return redirect('projects_list')
 
         project = Project.objects.create(
             name=name,
@@ -296,18 +691,25 @@ def projects_list(request):
             start_date=start_date,
             end_date=end_date,
             status=project_status,
-            manager=request.user,
+            branch=branch,
+            manager=manager,
+            technical_director=technical_director,
+            commercial_agent=commercial_agent,
+            cover_image=cover if cover else None,
         )
 
-        if member_ids:
-            members = User.objects.filter(id__in=member_ids)
-            project.members.set(members)
-            for member in members:
-                if member.id != request.user.id:
-                    ProjectAssignmentNotification.objects.get_or_create(
-                        user=member,
-                        project=project,
-                    )
+        members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
+        for stakeholder in (technical_director, manager, commercial_agent):
+            if stakeholder and stakeholder not in members:
+                members.append(stakeholder)
+        project.members.set(members)
+        ensure_project_tasks(project)
+        for member in members:
+            if member.id != request.user.id:
+                ProjectAssignmentNotification.objects.get_or_create(
+                    user=member,
+                    project=project,
+                )
 
         messages.success(request, "Projet créé avec succès.")
         return redirect('projects_list')
@@ -320,9 +722,15 @@ def projects_list(request):
     context = {
         'projects': projects,
         'status_choices': Project.STATUS_CHOICES,
+        'branch_choices': TECH_BRANCH_CHOICES,
+        'tech_department_label': TECH_DEPARTMENT_LABEL,
         'selected_status': status,
+        'selected_branch': branch,
         'can_create_project': is_manager,
-        'available_users': User.objects.all().order_by('username'),
+        'available_users': User.objects.filter(role='agent').order_by('username'),
+        'commercial_agents': _commercial_agents_qs(),
+        'default_technical_director': _default_technical_director(),
+        'default_project_manager': _default_project_manager(),
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
         'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
     }
@@ -332,23 +740,165 @@ def projects_list(request):
 @login_required(login_url='login')
 def project_detail(request, project_id):
     project = get_object_or_404(
-        Project.objects.select_related('manager').prefetch_related('members'),
+        Project.objects.select_related('manager', 'technical_director', 'commercial_agent').prefetch_related('members'),
         id=project_id,
     )
 
-    is_manager_role = request.user.role in ['admin', 'directeur'] or request.user.is_superuser
-    is_member = project.members.filter(id=request.user.id).exists()
-    is_owner = project.manager_id == request.user.id
-
-    if not (is_manager_role or is_member or is_owner):
+    is_manager_role = _is_management_user(request.user)
+    if not can_access_project(request.user, project):
         return HttpResponseForbidden("Vous n'avez pas la permission d'accéder à ce projet.")
+
+    if request.method == 'POST' and is_manager_role:
+        _handle_task_management_post(request, default_project_id=project.id)
+        return redirect('project_detail', project_id=project.id)
+
+    ensure_project_tasks(project)
+
+    project_tasks = ProjectTask.objects.filter(project=project).select_related('assigned_to').order_by('assigned_to__username', 'order')
+    tasks_by_member = {}
+    for task in project_tasks:
+        member_key = task.assigned_to_id
+        if member_key not in tasks_by_member:
+            tasks_by_member[member_key] = {
+                'member': task.assigned_to,
+                'tasks': [],
+                'pending': 0,
+                'in_progress': 0,
+                'done': 0,
+            }
+        tasks_by_member[member_key]['tasks'].append(task)
+        tasks_by_member[member_key][task.status] += 1
 
     context = {
         'project': project,
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
-        'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
+        'is_management': is_manager_role,
+        'tasks_by_member': list(tasks_by_member.values()),
+        'direction_labels': dict(TECH_BRANCH_CHOICES),
+        'direction_choices': TECH_BRANCH_CHOICES,
+        'branch_choices': TECH_BRANCH_CHOICES,
+        'tech_department_label': TECH_DEPARTMENT_LABEL,
+        'status_choices': ProjectTask.STATUS_CHOICES,
+        'department_templates': DEPARTMENT_TASK_TEMPLATES,
+        'project_members': _project_stakeholders(project),
     }
     return render(request, 'project_detail.html', context)
+
+
+@login_required(login_url='login')
+@management_required
+def manage_tasks(request):
+    if request.method == 'POST':
+        _handle_task_management_post(request)
+        redirect_params = request.GET.urlencode()
+        if redirect_params:
+            return redirect(f"{request.path}?{redirect_params}")
+        return redirect('manage_tasks')
+
+    today = timezone.localdate()
+    # Ordre stable : projet (date d'ajout) → agent → séquence métier (order) → id
+    tasks = ProjectTask.objects.select_related('project', 'assigned_to').order_by(
+        'project__created_at',
+        'project_id',
+        'assigned_to__first_name',
+        'assigned_to__username',
+        'order',
+        'id',
+    )
+
+    project_id = request.GET.get('project_id', '').strip()
+    assigned_to_id = request.GET.get('assigned_to_id', '').strip()
+    department = request.GET.get('department', '').strip()
+    status = request.GET.get('status', '').strip()
+    focus = request.GET.get('focus', 'open').strip() or 'open'
+
+    if project_id:
+        tasks = tasks.filter(project_id=project_id)
+    if assigned_to_id:
+        tasks = tasks.filter(assigned_to_id=assigned_to_id)
+    if department:
+        tasks = tasks.filter(department=department)
+    if status:
+        tasks = tasks.filter(status=status)
+    elif focus == 'open':
+        tasks = tasks.exclude(status='done')
+    elif focus == 'overdue':
+        tasks = tasks.exclude(status='done').filter(due_date__lt=today).order_by(
+            'due_date',
+            'project__created_at',
+            'project_id',
+            'order',
+            'id',
+        )
+    elif focus == 'due_soon':
+        tasks = tasks.exclude(status='done').filter(
+            due_date__gte=today,
+            due_date__lte=today + timedelta(days=3),
+        ).order_by(
+            'due_date',
+            'project__created_at',
+            'project_id',
+            'order',
+            'id',
+        )
+
+    base_qs = ProjectTask.objects.all()
+    if project_id:
+        base_qs = base_qs.filter(project_id=project_id)
+    if assigned_to_id:
+        base_qs = base_qs.filter(assigned_to_id=assigned_to_id)
+    if department:
+        base_qs = base_qs.filter(department=department)
+
+    stats = {
+        'pending': base_qs.filter(status='pending').count(),
+        'in_progress': base_qs.filter(status='in_progress').count(),
+        'done': base_qs.filter(status='done').count(),
+        'overdue': base_qs.exclude(status='done').filter(due_date__lt=today).count(),
+        'due_soon': base_qs.exclude(status='done').filter(
+            due_date__gte=today,
+            due_date__lte=today + timedelta(days=3),
+        ).count(),
+    }
+
+    task_rows = []
+    current_project_id = None
+    for task in tasks[:120]:
+        due_state = ''
+        if task.due_date and task.status != 'done':
+            if task.due_date < today:
+                due_state = 'overdue'
+            elif task.due_date <= today + timedelta(days=3):
+                due_state = 'soon'
+        show_project_header = task.project_id != current_project_id
+        current_project_id = task.project_id
+        task_rows.append({
+            'task': task,
+            'due_state': due_state,
+            'show_project_header': show_project_header,
+        })
+
+    context = {
+        'task_rows': task_rows,
+        'tasks_count': len(task_rows),
+        'stats': stats,
+        'today': today,
+        'focus': focus,
+        'projects': Project.objects.select_related('manager').order_by('created_at', 'id'),
+        'agents': User.objects.filter(role='agent').order_by('username'),
+        'direction_choices': TECH_BRANCH_CHOICES,
+        'branch_choices': TECH_BRANCH_CHOICES,
+        'tech_department_label': TECH_DEPARTMENT_LABEL,
+        'status_choices': ProjectTask.STATUS_CHOICES,
+        'department_templates': DEPARTMENT_TASK_TEMPLATES,
+        'selected_project_id': project_id,
+        'selected_assigned_to_id': assigned_to_id,
+        'selected_department': department,
+        'selected_status': status,
+        'is_admin': request.user.is_superuser or request.user.role == 'admin',
+        'is_management': True,
+    }
+    return render(request, 'manage_tasks.html', context)
 
 
 # ===== VUES ADMIN =====
@@ -398,6 +948,13 @@ def admin_users(request):
             user = User.objects.get(id=user_id)
             
             if action == 'delete':
+                delete_confirm = request.POST.get('delete_confirm', '').strip().upper()
+                if delete_confirm != 'SUPPRIMER':
+                    messages.error(request, "Confirmation invalide. Tapez SUPPRIMER.")
+                    return redirect('admin_users')
+                if user.id == request.user.id:
+                    messages.error(request, "Vous ne pouvez pas supprimer votre propre compte.")
+                    return redirect('admin_users')
                 user.delete()
             elif action == 'make_admin':
                 user.is_superuser = True
@@ -451,8 +1008,14 @@ def admin_create_user(request):
         
         if not password:
             errors.append('Le mot de passe est requis')
-        elif len(password) < 6:
-            errors.append('Le mot de passe doit contenir au moins 6 caractères')
+        elif len(password) < 10:
+            errors.append('Le mot de passe doit contenir au moins 10 caractères')
+        else:
+            try:
+                pseudo_user = User(username=username, email=email, first_name=first_name, last_name=last_name)
+                validate_password(password, pseudo_user)
+            except ValidationError as exc:
+                errors.extend(exc.messages)
         
         if password != password_confirm:
             errors.append('Les mots de passe ne correspondent pas')
@@ -480,12 +1043,16 @@ def admin_create_user(request):
             'errors': errors,
             'form_data': request.POST,
             'role_choices': User.ROLE_CHOICES,
-            'direction_choices': User.DIRECTION_CHOICES,
+            'direction_choices': TECH_BRANCH_CHOICES,
+        'branch_choices': TECH_BRANCH_CHOICES,
+        'tech_department_label': TECH_DEPARTMENT_LABEL,
         }
     else:
         context = {
             'role_choices': User.ROLE_CHOICES,
-            'direction_choices': User.DIRECTION_CHOICES,
+            'direction_choices': TECH_BRANCH_CHOICES,
+        'branch_choices': TECH_BRANCH_CHOICES,
+        'tech_department_label': TECH_DEPARTMENT_LABEL,
         }
     
     return render(request, 'admin/create_user.html', context)
@@ -495,7 +1062,7 @@ def admin_create_user(request):
 def admin_projects(request):
     """Gestion des projets"""
     
-    projects = Project.objects.select_related('manager').prefetch_related('members').order_by('-start_date')
+    projects = Project.objects.select_related('manager').prefetch_related('members').order_by('created_at', 'id')
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -505,6 +1072,10 @@ def admin_projects(request):
             project = Project.objects.get(id=project_id)
             
             if action == 'delete':
+                delete_confirm = request.POST.get('delete_confirm', '').strip().upper()
+                if delete_confirm != 'SUPPRIMER':
+                    messages.error(request, "Confirmation invalide. Tapez SUPPRIMER.")
+                    return redirect('admin_projects')
                 project.delete()
             elif action == 'status':
                 new_status = request.POST.get('status')
@@ -565,3 +1136,18 @@ def admin_reports(request):
     }
     
     return render(request, 'admin/reports.html', context)
+
+
+@admin_required
+def admin_audit_logs(request):
+    logs = AuditLog.objects.select_related('user').order_by('-created_at')
+    action = request.GET.get('action', '').strip()
+    if action:
+        logs = logs.filter(action=action)
+
+    context = {
+        'logs': logs[:400],
+        'actions': AuditLog.objects.values_list('action', flat=True).distinct().order_by('action'),
+        'selected_action': action,
+    }
+    return render(request, 'admin/audit_logs.html', context)

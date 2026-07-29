@@ -1,0 +1,11 @@
+{% comment %}
+Affiche l'avatar d'un utilisateur (photo ou initiale).
+Variables: user_obj (obligatoire), size (sm|md|lg|xl), extra_class (optionnel)
+{% endcomment %}
+<div class="user-avatar-chip user-avatar-chip--{{ size|default:'md' }} {{ extra_class|default:'' }}">
+    {% if user_obj.avatar %}
+        <img src="{{ user_obj.avatar.url }}" alt="{{ user_obj.get_display_name }}" class="user-avatar-chip__img" loading="lazy" decoding="async">
+    {% else %}
+        <span class="user-avatar-chip__initial">{{ user_obj.get_avatar_initial }}</span>
+    {% endif %}
+</div>

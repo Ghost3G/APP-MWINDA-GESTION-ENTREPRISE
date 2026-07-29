@@ -4,16 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Dashboard - AppMwinda</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <title>Tableau de bord - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
 </head>
 <body>
-    <header class="app-header">
-        <button class="menu-toggle" aria-label="Ouvrir le menu">☰</button>
-        <div class="brand-mark">
-            <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda Logo" class="logo-image">
-        </div>
-    </header>
+    {% include "partials/app_header.html" %}
 
     <div class="app-shell">
         <!-- Sidebar a gauche -->
@@ -26,7 +21,7 @@
                 <!-- Colonne gauche : profil et progression -->
                 <div class="left-column">
                     <div class="profile-card">
-                        <div class="avatar">{{ user_first_letter }}</div>
+                        {% include "partials/user_avatar.html" with user_obj=request.user size="lg" extra_class="profile-card-avatar" %}
                         <div class="profile-info">
                             <h1>{{ full_name }}</h1>
                             <p>{{ user_role_display }}</p>
@@ -35,52 +30,50 @@
 
                     <div class="progress-card">
                         <div class="progress-inner">
-                            <div class="progress-circle" style="--progress:0;"></div>
+                            <div class="progress-circle" style="--progress:{{ profile_progress }};"></div>
                             <div class="progress-value">{{ profile_progress }}%</div>
                         </div>
                         <p class="progress-label">Évolution du projet en cours</p>
                     </div>
+
+                    <a href="{% url 'reports_list' %}" class="report-shortcut-card">
+                        Mon rapport du jour
+                    </a>
+
+                    {% if overdue_tasks or due_soon_tasks %}
+                    <div class="due-alert-card">
+                        <h3>Rappels d'échéances</h3>
+                        <ul>
+                            {% for task in overdue_tasks %}
+                            <li>En retard — {{ task.title }} ({{ task.project.name }}) · {{ task.due_date }}</li>
+                            {% endfor %}
+                            {% for task in due_soon_tasks %}
+                            <li>Bientôt — {{ task.title }} ({{ task.project.name }}) · {{ task.due_date }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Colonne centrale : carte projet -->
                 <div class="center-column">
                     <!-- Carte projet au centre -->
                     <div class="project-card">
-                        <div class="project-icon project-icon-main">
+                        <div class="project-icon project-icon-main icon-tile">
                             <img src="{% static 'images/icone_projet.png' %}" alt="">
                         </div>
                         <h2>{{ current_project.title }}</h2>
                         <p>{{ current_project.description }}</p>
                         {% if current_project.status_display %}
-                        <p><strong>Statut:</strong> {{ current_project.status_display }}</p>
+                        <p><strong>Statut :</strong> {{ current_project.status_display }}</p>
                         {% endif %}
                         <a href="{% url 'projects_list' %}" class="btn-open">{{ current_project.button_text }}</a>
                     </div>
                 </div>
 
-                <!-- Colonne droite : taches et timer -->
+                <!-- Colonne droite : timers puis tâches -->
                 <div class="right-column">
-                    <!-- Bloc taches et timer a droite -->
-                    <div class="tasks-card">
-                        <div class="task-card-header">
-                            <div class="task-card-icon">
-                                <img src="{% static 'images/icone_rapport.png' %}" alt="">
-                            </div>
-                            <h2>TÂCHES DU JOUR</h2>
-                        </div>
-                        <div class="task-list">
-                            {% for task in tasks %}
-                            <div class="task-item {% if task.active %}active{% endif %} {% if not task.visible %}hidden-task{% endif %}" data-task-label="{{ task.label }}">
-                                <span>{{ task.label }}</span>
-                                <span class="toggle-switch {% if task.active %}active{% endif %}"></span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <button class="pause-button">PAUSE</button>
-                    </div>
-
                     <div class="timer-card">
-                        <!-- Bloc timer / statistiques temps -->
                         {% for stat in time_stats %}
                         <div class="timer-row {% if stat.highlight %}green{% endif %}" {% if forloop.counter == 1 %}id="task-timer-row"{% elif forloop.counter == 2 %}id="work-timer-row"{% elif forloop.counter == 3 %}id="pause-timer-row"{% endif %}>
                             <span>{{ stat.label }}</span>
@@ -88,10 +81,33 @@
                         </div>
                         {% endfor %}
                     </div>
+
+                    <div class="tasks-card-wrap">
+                        {% include "partials/my_tasks_panel.html" with open_tasks=open_tasks done_tasks=done_tasks show_pause_button=True %}
+                    </div>
                 </div>
             </section>
         </main>
     </div>
+
+    {% if show_guide %}
+    <div class="guide-modal" id="agentGuideModal">
+        <div class="guide-modal-card">
+            <h2>Bienvenue sur AppMwinda</h2>
+            <p>Voici les essentiels pour démarrer :</p>
+            <ol>
+                <li><strong>Accueil</strong> — vos timers et vos tâches</li>
+                <li><strong>Projets</strong> — les missions où vous êtes membre</li>
+                <li><strong>Tableau</strong> — le suivi Kanban des cartes</li>
+                <li><strong>Messages</strong> — échangez avec l’équipe</li>
+            </ol>
+            <form method="POST" action="{% url 'dismiss_onboarding' %}">
+                {% csrf_token %}
+                <button type="submit">J’ai compris</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <script>
         // Initialize notification badges from Django context
@@ -109,6 +125,6 @@
         };
     </script>
 
-    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}?v=20260729d"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@
     <thead>
         <tr>
             <th>Nom du projet</th>
-            <th>Manager</th>
+            <th>Responsable</th>
             <th>Date de début</th>
             <th>Date de fin</th>
             <th>Statut</th>
@@ -35,9 +35,10 @@
             </td>
             <td>{{ project.members.count }} membre{{ project.members.count|pluralize }}</td>
             <td>
-                <form method="POST" style="display: inline;">
+                <form method="POST" style="display: inline;" onsubmit="return adminConfirmDeleteProject(this, '{{ project.name|escapejs }}', event);">
                     {% csrf_token %}
                     <input type="hidden" name="project_id" value="{{ project.id }}">
+                    <input type="hidden" name="delete_confirm" value="">
                     
                     <select name="status" style="padding: 8px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 13px;">
                         <option value="">Changer statut...</option>
@@ -47,7 +48,7 @@
                     </select>
                         <button type="submit" name="action" value="status" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Appliquer</button>
                         
-                        <button type="submit" name="action" value="delete" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="return confirm('Êtes-vous sûr?')">Supprimer</button>
+                        <button type="submit" name="action" value="delete" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Supprimer</button>
                     </form>
                 </td>
             </tr>
@@ -59,4 +60,14 @@
         </tbody>
     </table>
 </div>
+<script>
+function adminConfirmDeleteProject(form, projectName, event) {
+    const clicked = event && event.submitter ? event.submitter.value : "";
+    if (clicked !== "delete") return true;
+    const text = prompt("Pour supprimer le projet \"" + projectName + "\", tapez SUPPRIMER");
+    if (!text) return false;
+    form.querySelector('input[name="delete_confirm"]').value = text.trim();
+    return true;
+}
+</script>
 {% endblock %}

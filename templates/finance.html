@@ -1,0 +1,496 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Finance - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/finance.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="finance-page">
+                <div class="page-header">
+                    <h1>Caisse du jour</h1>
+                    <p>Enregistrez ce que vous percevez et ce que vous dépensez. L'application calcule automatiquement le solde.</p>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="GET" class="panel" style="margin-bottom:16px;">
+                    <h3>{% if is_today %}Aujourd'hui{% else %}Journée sélectionnée{% endif %}</h3>
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="date" value="{{ selected_date }}">
+                        </div>
+                        <button type="submit" class="btn-primary btn-filter" style="width:auto; margin-top:0;">Voir cette journée</button>
+                    </div>
+                </form>
+
+                <div class="formula-box">
+                    <strong>Solde du jour</strong> = Total des entrées − Total des sorties
+                    {% if daily_totals.is_gain %}
+                        → il reste <strong class="positive">{{ daily_totals.solde }} $</strong> (gain)
+                    {% else %}
+                        → il manque <strong class="negative">{{ daily_totals.solde_abs }} $</strong> (perte)
+                    {% endif %}
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-item income">
+                        <small>Total entrées</small>
+                        <strong>{{ daily_totals.entrees }} $</strong>
+                    </div>
+                    <div class="summary-item expense">
+                        <small>Total sorties</small>
+                        <strong>{{ daily_totals.sorties }} $</strong>
+                    </div>
+                    <div class="summary-item balance {% if daily_totals.is_gain %}gain{% else %}loss{% endif %}">
+                        <small>{% if daily_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
+                        <strong>{{ daily_totals.solde }} $</strong>
+                        <span class="balance-label {% if daily_totals.is_gain %}gain{% else %}loss{% endif %}">
+                            {% if daily_totals.is_gain %}Excédent{% else %}Déficit{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="period-grid">
+                    <div class="period-card">
+                        <h4>Mois en cours</h4>
+                        <div class="period-stats">
+                            <div>
+                                <small>Entrées</small>
+                                <strong class="positive">{{ monthly_totals.entrees }} $</strong>
+                            </div>
+                            <div>
+                                <small>Sorties</small>
+                                <strong class="negative">{{ monthly_totals.sorties }} $</strong>
+                            </div>
+                            <div>
+                                <small>{% if monthly_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
+                                <strong class="{% if monthly_totals.is_gain %}positive{% else %}negative{% endif %}">{{ monthly_totals.solde }} $</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="period-card">
+                        <h4>Année en cours</h4>
+                        <div class="period-stats">
+                            <div>
+                                <small>Entrées</small>
+                                <strong class="positive">{{ annual_totals.entrees }} $</strong>
+                            </div>
+                            <div>
+                                <small>Sorties</small>
+                                <strong class="negative">{{ annual_totals.sorties }} $</strong>
+                            </div>
+                            <div>
+                                <small>{% if annual_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
+                                <strong class="{% if annual_totals.is_gain %}positive{% else %}negative{% endif %}">{{ annual_totals.solde }} $</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel chart-panel">
+                    <div class="chart-panel-header">
+                        <h3>Vue d'ensemble</h3>
+                        <div class="chart-legend-hint">
+                            <span><i class="dot-in"></i> Entrées</span>
+                            <span><i class="dot-out"></i> Sorties</span>
+                            <span><i class="dot-bal"></i> Solde</span>
+                        </div>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="finance-grid">
+                    <div class="panel income-panel">
+                        <h3>Ce que nous percevons</h3>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="record_type" value="income">
+                            <input type="hidden" name="record_date" value="{{ selected_date }}">
+                            <div class="form-grid two-cols">
+                                <div class="form-group">
+                                    <label>Commande</label>
+                                    <input type="text" name="command_reference" placeholder="Ex: CMD-2026-044" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Libellé</label>
+                                    <input type="text" name="label" placeholder="Ex: Paiement client, acompte..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Montant perçu ($)</label>
+                                    <input type="number" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Note (optionnel)</label>
+                                    <textarea name="notes" placeholder="Détail de l'encaissement..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary btn-income">Ajouter une entrée</button>
+                        </form>
+                    </div>
+
+                    <div class="panel expense-panel">
+                        <h3>Ce que nous dépensons</h3>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="record_type" value="expense">
+                            <input type="hidden" name="record_date" value="{{ selected_date }}">
+                            <div class="form-grid two-cols">
+                                <div class="form-group">
+                                    <label>Commande</label>
+                                    <input type="text" name="command_reference" placeholder="Ex: CMD-2026-044" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Libellé</label>
+                                    <input type="text" name="label" placeholder="Ex: Achat matériaux, transport..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Montant dépensé ($)</label>
+                                    <input type="number" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Note (optionnel)</label>
+                                    <textarea name="notes" placeholder="Détail de la dépense..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary btn-expense">Ajouter une sortie</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="finance-grid">
+                    <div class="panel">
+                        <h3>Entrées par commande ({{ selected_date }})</h3>
+                        {% if by_command_incomes %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Commande</th>
+                                        <th>Opérations</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in by_command_incomes %}
+                                        <tr>
+                                            <td>{{ item.command_reference }}</td>
+                                            <td>{{ item.count }}</td>
+                                            <td class="positive">{{ item.total }} $</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="muted">Aucune entrée par commande pour cette date.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="panel">
+                        <h3>Sorties par commande ({{ selected_date }})</h3>
+                        {% if by_command_expenses %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Commande</th>
+                                        <th>Opérations</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in by_command_expenses %}
+                                        <tr>
+                                            <td>{{ item.command_reference }}</td>
+                                            <td>{{ item.count }}</td>
+                                            <td class="negative">{{ item.total }} $</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="muted">Aucune sortie par commande pour cette date.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="finance-grid">
+                    <div class="panel">
+                        <h3>Entrées du {{ selected_date }}</h3>
+                        {% if daily_incomes %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Heure</th>
+                                        <th>Commande</th>
+                                        <th>Libellé</th>
+                                        <th>Montant</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for income in daily_incomes %}
+                                        <tr>
+                                            <td>{{ income.created_at|date:"H:i" }}</td>
+                                            <td colspan="3">
+                                                <form method="POST" class="finance-inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="update">
+                                                    <input type="hidden" name="record_type" value="income">
+                                                    <input type="hidden" name="record_id" value="{{ income.id }}">
+                                                    <div class="finance-inline-grid">
+                                                        <input type="date" name="record_date" value="{{ income.income_date|date:'Y-m-d' }}" required>
+                                                        <input type="text" name="command_reference" value="{{ income.command_reference }}" required>
+                                                        <input type="text" name="label" value="{{ income.label }}" required>
+                                                        <input type="number" step="0.01" min="0.01" name="amount" value="{{ income.amount }}" required>
+                                                        <input type="text" name="notes" value="{{ income.notes }}" placeholder="Notes">
+                                                        <button type="submit" class="btn-mini">Modifier</button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                            <td>
+                                                <form method="POST" onsubmit="return confirm('Annuler cette entrée ?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="record_type" value="income">
+                                                    <input type="hidden" name="record_id" value="{{ income.id }}">
+                                                    <input type="hidden" name="record_date" value="{{ income.income_date|date:'Y-m-d' }}">
+                                                    <button type="submit" class="btn-mini danger">Annuler</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="muted">Aucun encaissement pour cette journée.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="panel">
+                        <h3>Sorties du {{ selected_date }}</h3>
+                        {% if daily_expenses %}
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Heure</th>
+                                        <th>Commande</th>
+                                        <th>Libellé</th>
+                                        <th>Montant</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in daily_expenses %}
+                                        <tr>
+                                            <td>{{ expense.created_at|date:"H:i" }}</td>
+                                            <td colspan="3">
+                                                <form method="POST" class="finance-inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="update">
+                                                    <input type="hidden" name="record_type" value="expense">
+                                                    <input type="hidden" name="record_id" value="{{ expense.id }}">
+                                                    <div class="finance-inline-grid">
+                                                        <input type="date" name="record_date" value="{{ expense.expense_date|date:'Y-m-d' }}" required>
+                                                        <input type="text" name="command_reference" value="{{ expense.command_reference }}" required>
+                                                        <input type="text" name="label" value="{{ expense.label }}" required>
+                                                        <input type="number" step="0.01" min="0.01" name="amount" value="{{ expense.amount }}" required>
+                                                        <input type="text" name="notes" value="{{ expense.notes }}" placeholder="Notes">
+                                                        <button type="submit" class="btn-mini">Modifier</button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                            <td>
+                                                <form method="POST" onsubmit="return confirm('Annuler cette sortie ?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="record_type" value="expense">
+                                                    <input type="hidden" name="record_id" value="{{ expense.id }}">
+                                                    <input type="hidden" name="record_date" value="{{ expense.expense_date|date:'Y-m-d' }}">
+                                                    <button type="submit" class="btn-mini danger">Annuler</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="muted">Aucune dépense pour cette journée.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Récapitulatif des derniers jours</h3>
+                    {% if recent_daily_totals %}
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Entrées</th>
+                                    <th>Sorties</th>
+                                    <th>Solde</th>
+                                    <th>Résultat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in recent_daily_totals %}
+                                    <tr>
+                                        <td>
+                                            <a href="?date={{ day.date|date:'Y-m-d' }}">{{ day.date }}</a>
+                                        </td>
+                                        <td>{{ day.entrees }} $</td>
+                                        <td>{{ day.sorties }} $</td>
+                                        <td class="{% if day.is_gain %}positive{% else %}negative{% endif %}">{{ day.solde }} $</td>
+                                        <td>{% if day.is_gain %}Gain{% else %}Perte{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="muted">Pas encore de mouvements enregistrés.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    {{ chart_data|json_script:"finance-chart-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script>
+        (function () {
+            const dataEl = document.getElementById('finance-chart-data');
+            if (!dataEl || typeof Chart === 'undefined') return;
+
+            const chartData = JSON.parse(dataEl.textContent);
+            const canvas = document.getElementById('financeChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+
+            function barGradient(top, bottom) {
+                const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+                gradient.addColorStop(0, top);
+                gradient.addColorStop(1, bottom);
+                return gradient;
+            }
+
+            const colors = {
+                entrees: barGradient('rgba(74, 222, 128, 0.95)', 'rgba(22, 163, 74, 0.55)'),
+                sorties: barGradient('rgba(248, 113, 113, 0.95)', 'rgba(220, 38, 38, 0.55)'),
+                solde: barGradient('rgba(253, 224, 71, 0.95)', 'rgba(202, 138, 4, 0.55)'),
+            };
+
+            Chart.defaults.color = '#a1a1aa';
+            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+            Chart.defaults.font.family = '"Plus Jakarta Sans", sans-serif';
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: 'Entrées',
+                            data: chartData.entrees,
+                            backgroundColor: colors.entrees,
+                            borderColor: 'rgba(74, 222, 128, 0.5)',
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            borderSkipped: false,
+                            maxBarThickness: 42,
+                        },
+                        {
+                            label: 'Sorties',
+                            data: chartData.sorties,
+                            backgroundColor: colors.sorties,
+                            borderColor: 'rgba(248, 113, 113, 0.5)',
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            borderSkipped: false,
+                            maxBarThickness: 42,
+                        },
+                        {
+                            label: 'Solde',
+                            data: chartData.soldes,
+                            backgroundColor: colors.solde,
+                            borderColor: 'rgba(253, 224, 71, 0.5)',
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            borderSkipped: false,
+                            maxBarThickness: 42,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 8, right: 4, bottom: 0, left: 4 },
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 22, 0.95)',
+                            borderColor: 'rgba(253, 224, 71, 0.25)',
+                            borderWidth: 1,
+                            titleColor: '#f4f4f5',
+                            bodyColor: '#d4d4d8',
+                            padding: 12,
+                            cornerRadius: 10,
+                            callbacks: {
+                                label: function (context) {
+                                    return ' ' + context.dataset.label + ' : ' + context.parsed.y.toFixed(2) + ' $';
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#d4d4d8',
+                                font: { weight: '600', size: 12 },
+                            },
+                            border: { display: false },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.06)',
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#71717a',
+                                padding: 8,
+                                callback: function (value) {
+                                    return value + ' $';
+                                },
+                            },
+                            border: { display: false },
+                        },
+                    },
+                },
+            });
+        })();
+    </script>
+</body>
+</html>

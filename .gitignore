@@ -27,3 +27,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.swp
+
+# Local media / backups / credentials (ne pas pousser)
+media/avatars/*
+!media/avatars/.gitkeep
+media/project_covers/*
+!media/project_covers/.gitkeep
+backups/
+*.sqlite3.gz
+Liste_comptes_MWINDA.pdf

@@ -4,8 +4,11 @@ Accessible only if no superusers exist.
 """
 from django.shortcuts import render, redirect
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from django.conf import settings
 
 User = get_user_model()
 
@@ -30,24 +33,30 @@ def setup_view(request):
         
         # Validation
         if not username:
-            errors.append('Username is required')
+            errors.append("Le nom d'utilisateur est requis")
         elif len(username) < 3:
-            errors.append('Username must be at least 3 characters')
+            errors.append("Le nom d'utilisateur doit contenir au moins 3 caractères")
         elif User.objects.filter(username=username).exists():
-            errors.append('Username already exists')
-        
+            errors.append("Ce nom d'utilisateur existe déjà")
+
         if not email:
-            errors.append('Email is required')
+            errors.append("Le courriel est requis")
         elif '@' not in email:
-            errors.append('Invalid email format')
-        
+            errors.append("Format de courriel invalide")
+
         if not password:
-            errors.append('Password is required')
-        elif len(password) < 6:
-            errors.append('Password must be at least 6 characters')
-        
+            errors.append("Le mot de passe est requis")
+        elif len(password) < 10:
+            errors.append("Le mot de passe doit contenir au moins 10 caractères")
+        else:
+            try:
+                pseudo_user = User(username=username, email=email)
+                validate_password(password, pseudo_user)
+            except ValidationError as exc:
+                errors.extend(exc.messages)
+
         if password != password_confirm:
-            errors.append('Passwords do not match')
+            errors.append("Les mots de passe ne correspondent pas")
         
         if not errors:
             # Create admin user
@@ -56,7 +65,8 @@ def setup_view(request):
                 email=email,
                 password=password,
                 role='admin',
-                direction='design',
+                org_group='direction',
+                direction='metal_design',
             )
             user.is_superuser = True
             user.is_staff = True
@@ -82,12 +92,15 @@ def quick_admin_create(request):
     POST with: username, email, password
     """
     if request.method != 'POST':
-        return JsonResponse({'error': 'POST only'}, status=400)
+        return JsonResponse({'error': 'Méthode POST uniquement'}, status=400)
+
+    if not settings.DEBUG:
+        return JsonResponse({'error': 'Endpoint indisponible en production'}, status=403)
     
     # Check if admin already exists
     if User.objects.filter(is_superuser=True).exists():
         return JsonResponse({
-            'error': 'Admin user already exists',
+            'error': 'Un compte administrateur existe déjà',
             'admin_count': User.objects.filter(is_superuser=True).count()
         }, status=400)
     
@@ -97,13 +110,13 @@ def quick_admin_create(request):
     
     # Basic validation
     if not all([username, email, password]):
-        return JsonResponse({'error': 'Missing username, email, or password'}, status=400)
-    
+        return JsonResponse({'error': 'Nom d\'utilisateur, courriel ou mot de passe manquant'}, status=400)
+
     if len(username) < 3:
-        return JsonResponse({'error': 'Username too short (min 3 chars)'}, status=400)
-    
-    if len(password) < 6:
-        return JsonResponse({'error': 'Password too short (min 6 chars)'}, status=400)
+        return JsonResponse({'error': 'Nom d\'utilisateur trop court (min. 3 caractères)'}, status=400)
+
+    if len(password) < 10:
+        return JsonResponse({'error': 'Mot de passe trop court (min. 10 caractères)'}, status=400)
     
     try:
         # Create the admin user
@@ -112,7 +125,8 @@ def quick_admin_create(request):
             email=email,
             password=password,
             role='admin',
-            direction='design',
+            org_group='direction',
+            direction='metal_design',
         )
         user.is_superuser = True
         user.is_staff = True
@@ -120,10 +134,10 @@ def quick_admin_create(request):
         
         return JsonResponse({
             'success': True,
-            'message': f'Admin user "{username}" created successfully',
+            'message': f'Compte administrateur « {username} » créé avec succès',
             'username': username,
             'email': email,
             'redirect': '/login/'
         })
     except Exception as e:
-        return JsonResponse({'error': f'Creation failed: {str(e)}'}, status=500)
+        return JsonResponse({'error': f'Échec de la création : {str(e)}'}, status=500)

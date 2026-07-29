@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup - Create Admin User</title>
+    <title>Configuration - Création du compte administrateur</title>
     <style>
         * {
             margin: 0;
@@ -153,8 +153,8 @@
 <body>
     <div class="setup-container">
         <div class="setup-header">
-            <h1>🚀 Initial Setup</h1>
-            <p>Create your first admin account</p>
+            <h1>🚀 Configuration initiale</h1>
+            <p>Créez votre premier compte administrateur</p>
         </div>
 
         {% if errors %}
@@ -168,33 +168,33 @@
         {% endif %}
 
         <div class="info-box">
-            <strong>First time setup:</strong> Create your admin account to access the application and manage users.
+            <strong>Première configuration :</strong> créez votre compte administrateur pour accéder à l'application et gérer les utilisateurs.
         </div>
 
         <form method="POST">
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" value="{{ form_data.username }}" placeholder="e.g. admin" required>
+                <label for="username">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" value="{{ form_data.username }}" placeholder="ex. admin" required>
             </div>
 
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email">Courriel</label>
                 <input type="email" id="email" name="email" value="{{ form_data.email }}" placeholder="admin@example.com" required>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Min. 6 characters" required>
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" placeholder="Min. 6 caractères" required>
             </div>
 
             <div class="form-group">
-                <label for="password_confirm">Confirm Password</label>
-                <input type="password" id="password_confirm" name="password_confirm" placeholder="Repeat password" required>
+                <label for="password_confirm">Confirmer le mot de passe</label>
+                <input type="password" id="password_confirm" name="password_confirm" placeholder="Répéter le mot de passe" required>
             </div>
 
-            <button type="submit" class="submit-btn">Create Admin Account</button>
+            <button type="submit" class="submit-btn">Créer le compte administrateur</button>
         </form>
     </div>
 </body>

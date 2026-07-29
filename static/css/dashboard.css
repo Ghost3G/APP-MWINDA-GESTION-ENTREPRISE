@@ -327,7 +327,31 @@ body {
 /* Carte tâches du jour */
 .right-column {
     display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
 }
+
+.right-column .timer-card {
+    order: 0;
+    width: 100%;
+    margin: 0;
+}
+
+.right-column .tasks-card-wrap {
+    order: 1;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+}
+
+.right-column .tasks-card,
+.right-column .my-tasks-panel {
+    min-height: 0;
+    width: 100%;
+    align-items: stretch;
+}
+
 .task-card, .tasks-card {
     background:#fde047;
     color:#111827;
@@ -1968,7 +1992,6 @@ details > div {
 .project-card p,
 .project-desc,
 .report-content p,
-.message-bubble,
 .task-item span:first-child {
     overflow-wrap: anywhere;
     word-break: normal;

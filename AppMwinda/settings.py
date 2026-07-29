@@ -79,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.AuditLogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -133,7 +134,10 @@ if DATABASE_URL:
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 10},
+    },
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -142,8 +146,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # INTERNATIONALISATION
 # ========================
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'fr-fr'
+TIME_ZONE = 'Africa/Kinshasa'
 USE_I18N = True
 USE_TZ = True
 
@@ -161,6 +165,27 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Médias durables sur Render via Cloudinary si CLOUDINARY_URL est défini
+if os.environ.get('CLOUDINARY_URL'):
+    INSTALLED_APPS = [
+        *INSTALLED_APPS[:INSTALLED_APPS.index('django.contrib.staticfiles') + 1],
+        'cloudinary',
+        'cloudinary_storage',
+        *INSTALLED_APPS[INSTALLED_APPS.index('django.contrib.staticfiles') + 1:],
+    ]
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
@@ -173,3 +198,11 @@ if not DEBUG:
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 AUTH_USER_MODEL = 'users.User'
+
+# Session security defaults for enterprise usage
+SESSION_COOKIE_AGE = 60 * 60 * 8  # 8 hours
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True
+# Doit rester lisible en JS pour les appels fetch (messages, tableau, notifs)
+CSRF_COOKIE_HTTPONLY = False

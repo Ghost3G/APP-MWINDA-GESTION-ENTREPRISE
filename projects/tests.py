@@ -28,6 +28,15 @@ class ProjectsFeatureTests(TestCase):
         )
 
     def test_directeur_can_create_project(self):
+        commercial = User.objects.create_user(
+            username='commercial1',
+            password='testpass123',
+            email='commercial1@example.com',
+            role='agent',
+            direction='branding',
+            org_group='commercial',
+            grade='Agent Commercial',
+        )
         self.client.login(username='boss', password='testpass123')
         response = self.client.post(
             reverse('projects_list'),
@@ -37,7 +46,9 @@ class ProjectsFeatureTests(TestCase):
                 'start_date': '2026-04-01',
                 'end_date': '2026-04-30',
                 'status': 'pending',
+                'branch': 'metal_design',
                 'members': [self.agent.id],
+                'commercial_agent': commercial.id,
             },
         )
         self.assertEqual(response.status_code, 302)

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debug Status - AppMwinda</title>
+    <title>État de diagnostic - AppMwinda</title>
     <style>
         body {
             font-family: monospace;
@@ -73,29 +73,29 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔍 AppMwinda Debug Status</h1>
+        <h1>🔍 Diagnostic AppMwinda</h1>
 
-        <h2>Database Configuration</h2>
+        <h2>Configuration de la base de données</h2>
         <div class="info-box info">
-            <div><strong>Engine:</strong> <span class="code">{{ db_info.engine }}</span></div>
-            <div><strong>Database:</strong> <span class="code">{{ db_info.name }}</span></div>
-            <div><strong>User Table Exists:</strong> 
+            <div><strong>Moteur :</strong> <span class="code">{{ db_info.engine }}</span></div>
+            <div><strong>Base de données :</strong> <span class="code">{{ db_info.name }}</span></div>
+            <div><strong>Table utilisateurs existante :</strong>
                 <span class="{% if user_table_exists %}status-ok{% else %}status-error{% endif %}">
-                    {% if user_table_exists %}YES{% else %}NO{% endif %}
+                    {% if user_table_exists %}OUI{% else %}NON{% endif %}
                 </span>
             </div>
-            <div><strong>AUTH_USER_MODEL:</strong> <span class="code">{{ auth_user_model }}</span></div>
+            <div><strong>AUTH_USER_MODEL :</strong> <span class="code">{{ auth_user_model }}</span></div>
         </div>
 
-        <h2>Admin Users</h2>
+        <h2>Comptes administrateurs</h2>
         {% if admin_count > 0 %}
             <div class="info-box success">
-                <strong>Status:</strong> <span class="status-ok">FOUND {{ admin_count }} ADMIN(S)</span>
+                <strong>État :</strong> <span class="status-ok">{{ admin_count }} ADMINISTRATEUR(S) TROUVÉ(S)</span>
             </div>
             <table>
                 <tr>
-                    <th>Username</th>
-                    <th>Email</th>
+                    <th>Nom d'utilisateur</th>
+                    <th>Courriel</th>
                 </tr>
                 {% for admin in admin_users %}
                     <tr>
@@ -106,20 +106,20 @@
             </table>
         {% else %}
             <div class="info-box error">
-                <strong>Status:</strong> <span class="status-error">NO ADMIN USERS FOUND</span>
-                <p style="margin: 10px 0 0 0;">Go to <a href="{% url 'setup' %}" style="color: #4ec9b0;">/setup/</a> to create an admin account.</p>
+                <strong>État :</strong> <span class="status-error">AUCUN ADMINISTRATEUR TROUVÉ</span>
+                <p style="margin: 10px 0 0 0;">Allez sur <a href="{% url 'setup' %}" style="color: #4ec9b0;">/setup/</a> pour créer un compte administrateur.</p>
             </div>
         {% endif %}
 
-        <h2>All Users ({{ total_user_count }} total)</h2>
+        <h2>Tous les utilisateurs ({{ total_user_count }} au total)</h2>
         {% if all_users %}
             <table>
                 <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Superuser</th>
-                    <th>Staff</th>
-                    <th>Role</th>
+                    <th>Nom d'utilisateur</th>
+                    <th>Courriel</th>
+                    <th>Superutilisateur</th>
+                    <th>Personnel</th>
+                    <th>Rôle</th>
                 </tr>
                 {% for user in all_users %}
                     <tr>
@@ -133,14 +133,14 @@
             </table>
         {% else %}
             <div class="info-box error">
-                No users found in database!
+                Aucun utilisateur trouvé dans la base de données.
             </div>
         {% endif %}
 
-        <h2>Quick Actions</h2>
+        <h2>Actions rapides</h2>
         <div style="margin-top: 10px;">
-            <a href="{% url 'setup' %}" style="display: inline-block; padding: 10px 20px; background: #007acc; color: white; text-decoration: none; border-radius: 3px; margin-right: 10px;">Go to Setup Page</a>
-            <a href="{% url 'login' %}" style="display: inline-block; padding: 10px 20px; background: #007acc; color: white; text-decoration: none; border-radius: 3px;">Go to Login</a>
+            <a href="{% url 'setup' %}" style="display: inline-block; padding: 10px 20px; background: #007acc; color: white; text-decoration: none; border-radius: 3px; margin-right: 10px;">Page de configuration</a>
+            <a href="{% url 'login' %}" style="display: inline-block; padding: 10px 20px; background: #007acc; color: white; text-decoration: none; border-radius: 3px;">Connexion</a>
         </div>
     </div>
 </body>

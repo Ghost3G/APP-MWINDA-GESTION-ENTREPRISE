@@ -16,9 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
-from projects.views import dashboard, admin_dashboard, admin_users, admin_projects, admin_messages, admin_reports, admin_create_user
-from users.views import login_view, logout_view
+from projects.views import (
+    dashboard,
+    admin_dashboard,
+    admin_users,
+    admin_projects,
+    admin_messages,
+    admin_reports,
+    admin_audit_logs,
+    admin_create_user,
+    manage_tasks,
+)
+from users.views import login_view, logout_view, profile_view
+from users.notifications import notifications_feed, notifications_mark_read, dismiss_onboarding
 from users.setup import setup_view, quick_admin_create
 from users.debug import debug_status
 
@@ -29,11 +42,16 @@ urlpatterns = [
     path('setup/', setup_view, name='setup'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
+    path('profile/', profile_view, name='profile'),
+    path('api/notifications/', notifications_feed, name='notifications_feed'),
+    path('api/notifications/mark-read/', notifications_mark_read, name='notifications_mark_read'),
+    path('api/onboarding/dismiss/', dismiss_onboarding, name='dismiss_onboarding'),
     path('', dashboard, name='dashboard'),
     path('messaging/', include('messaging.urls')),
     path('projects/', include('projects.urls')),
     path('reports/', include('reports.urls')),
     path('users/', include('users.urls')),
+    path('tasks/', manage_tasks, name='manage_tasks'),
     
     # Admin panel
     path('admin/', admin_dashboard, name='admin_dashboard'),
@@ -42,4 +60,8 @@ urlpatterns = [
     path('admin/projects/', admin_projects, name='admin_projects'),
     path('admin/messages/', admin_messages, name='admin_messages'),
     path('admin/reports/', admin_reports, name='admin_reports'),
+    path('admin/audit-logs/', admin_audit_logs, name='admin_audit_logs'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

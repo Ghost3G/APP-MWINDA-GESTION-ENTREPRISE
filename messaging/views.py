@@ -1,132 +1,236 @@
-from django.shortcuts import render, redirect
-from .models import Message
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
-from django.http import Http404, JsonResponse
+from django.http import JsonResponse
 from django.db.models import Q
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+
+from .models import Message
 
 User = get_user_model()
 
-# Create your views here.
+
+def _is_management(user):
+    return user.is_superuser or user.role in ['admin', 'directeur']
+
+
+def _conversation_messages(user, other_user):
+    return Message.objects.filter(
+        Q(sender=user, receiver=other_user) |
+        Q(sender=other_user, receiver=user)
+    ).order_by('created_at')
+
+
+def _serialize_message(msg, current_user):
+    return {
+        'id': msg.id,
+        'sender_id': msg.sender.id,
+        'content': msg.content,
+        'created_at': msg.created_at.strftime('%d/%m %H:%M'),
+        'time_short': msg.created_at.strftime('%H:%M'),
+        'is_sent': msg.sender.id == current_user.id,
+        'is_read': msg.is_read,
+        'message_type': msg.message_type,
+    }
+
+
+def _last_message_preview(user, other_user):
+    last = _conversation_messages(user, other_user).last()
+    if not last:
+        return 'Aucun message'
+    if last.message_type == 'call':
+        prefix = '📞 Appel'
+    else:
+        prefix = last.content[:40]
+    return prefix + ('…' if last.message_type == 'text' and len(last.content) > 40 else '')
 
 
 @login_required
+@ensure_csrf_cookie
+def csrf_token_view(request):
+    """Renvoie un token CSRF frais pour les appels AJAX."""
+    return JsonResponse({'ok': True, 'csrfToken': get_token(request)})
+
+
+@login_required
+@ensure_csrf_cookie
 def messaging_view(request):
+    users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
+    initial_conversations = []
 
-    users = User.objects.exclude(id=request.user.id)
-    messages = Message.objects.filter(receiver=request.user).order_by('-created_at')[:50]
+    for user in users:
+        unread_count = Message.objects.filter(
+            sender=user,
+            receiver=request.user,
+            is_read=False,
+            message_type='text',
+        ).count()
+        initial_conversations.append({
+            'id': user.id,
+            'username': user.username,
+            'name': user.get_full_name() or user.username,
+            'email': user.email,
+            'branch': user.get_org_group_display(),
+            'department': user.get_org_group_display(),
+            'role': user.get_role_display(),
+            'phone': user.phone or '',
+            'has_phone': bool(user.phone),
+            'unread_count': unread_count,
+            'last_message': _last_message_preview(request.user, user),
+            'initial': user.get_avatar_initial(),
+            'avatar_url': user.avatar_url,
+        })
 
-    if request.method == "POST":
-        receiver_id = request.POST.get("receiver")
-        content = request.POST.get("content")
+    initial_conversations.sort(key=lambda item: (-item['unread_count'], item['name'].lower()))
+
+    if request.method == 'POST':
+        receiver_id = request.POST.get('receiver')
+        content = request.POST.get('content', '').strip()
 
         try:
             receiver = User.objects.get(id=receiver_id)
         except User.DoesNotExist:
-            return render(request, 'messaging.html', {
-                'users': users,
-                'messages': messages,
-                'error': 'Utilisateur destinataire introuvable',
-                'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
-            })
+            return JsonResponse({'error': 'Utilisateur introuvable'}, status=404)
 
-        if not content.strip():
-            return render(request, 'messaging.html', {
-                'users': users,
-                'messages': messages,
-                'error': 'Le message ne peut pas être vide',
-                'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
-            })
+        if not content:
+            return JsonResponse({'error': 'Le message ne peut pas être vide'}, status=400)
 
-        Message.objects.create(
+        msg = Message.objects.create(
             sender=request.user,
             receiver=receiver,
-            content=content
+            content=content,
+            message_type='text',
         )
-
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': True, 'message': _serialize_message(msg, request.user)})
         return redirect('messaging')
 
     return render(request, 'messaging.html', {
         'users': users,
-        'messages': messages,
-        'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
+        'initial_conversations': initial_conversations,
+        'is_management': _is_management(request.user),
     })
 
 
 @login_required
 def get_messages(request, user_id):
-    """API pour récupérer les messages d'une conversation"""
-    try:
-        other_user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'User not found'}, status=404)
-    
-    # Récupérer tous les messages de la conversation (envoyés et reçus)
-    messages = Message.objects.filter(
-        Q(sender=request.user, receiver=other_user) |
-        Q(sender=other_user, receiver=request.user)
-    ).order_by('created_at')
-    
-    # Marquer tous les messages reçus comme lus
+    other_user = get_object_or_404(User, id=user_id)
+
+    messages = _conversation_messages(request.user, other_user)
     Message.objects.filter(
-        sender=other_user, 
+        sender=other_user,
         receiver=request.user,
-        is_read=False
+        is_read=False,
     ).update(is_read=True)
-    
-    messages_data = []
-    for msg in messages:
-        messages_data.append({
-            'id': msg.id,
-            'sender_id': msg.sender.id,
-            'content': msg.content,
-            'created_at': msg.created_at.strftime("%H:%M"),
-            'is_sent': msg.sender.id == request.user.id,
-            'is_read': msg.is_read
-        })
-    
-    return JsonResponse({'messages': messages_data})
+
+    return JsonResponse({
+        'messages': [_serialize_message(msg, request.user) for msg in messages],
+        'contact': {
+            'id': other_user.id,
+            'name': other_user.get_display_name(),
+            'username': other_user.username,
+            'branch': other_user.get_org_group_display(),
+            'role': other_user.get_role_display(),
+            'phone': other_user.phone or '',
+            'email': other_user.email,
+            'initial': other_user.get_avatar_initial(),
+            'avatar_url': other_user.avatar_url,
+        },
+    })
+
+
+@login_required
+@require_POST
+def send_message_api(request, user_id):
+    other_user = get_object_or_404(User, id=user_id)
+    content = request.POST.get('content', '').strip()
+    if not content:
+        return JsonResponse({'error': 'Message vide'}, status=400)
+
+    msg = Message.objects.create(
+        sender=request.user,
+        receiver=other_user,
+        content=content,
+        message_type='text',
+    )
+    return JsonResponse({'ok': True, 'message': _serialize_message(msg, request.user)})
+
+
+@login_required
+@require_POST
+def initiate_call(request, user_id):
+    other_user = get_object_or_404(User, id=user_id)
+    now_label = timezone.localtime().strftime('%H:%M')
+
+    Message.objects.create(
+        sender=request.user,
+        receiver=other_user,
+        content=f"📞 Appel vers {other_user.get_full_name() or other_user.username} à {now_label}",
+        message_type='call',
+    )
+
+    phone = (other_user.phone or '').strip()
+    tel_url = f'tel:{phone.replace(" ", "")}' if phone else ''
+
+    return JsonResponse({
+        'ok': True,
+        'phone': phone,
+        'tel_url': tel_url,
+        'contact_name': other_user.get_full_name() or other_user.username,
+        'has_phone': bool(phone),
+        'message': 'Appel enregistré dans la conversation.',
+    })
 
 
 @login_required
 def get_unread_count(request):
-    """API pour récupérer le nombre de messages non lus"""
     unread_count = Message.objects.filter(
         receiver=request.user,
-        is_read=False
+        is_read=False,
+        message_type='text',
     ).count()
-    
-    # Récupérer aussi les conversations avec messages non lus
     unread_conversations = Message.objects.filter(
         receiver=request.user,
-        is_read=False
+        is_read=False,
     ).values('sender').distinct().count()
-    
+
     return JsonResponse({
         'unread_count': unread_count,
-        'unread_conversations': unread_conversations
+        'unread_conversations': unread_conversations,
     })
 
 
 @login_required
 def get_conversations(request):
-    """API pour récupérer tous les contacts avec leurs messages non lus"""
-    users = User.objects.exclude(id=request.user.id)
-    
+    users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
     conversations = []
+
     for user in users:
         unread_count = Message.objects.filter(
             sender=user,
             receiver=request.user,
-            is_read=False
+            is_read=False,
+            message_type='text',
         ).count()
-        
         conversations.append({
             'id': user.id,
             'username': user.username,
+            'name': user.get_full_name() or user.username,
             'email': user.email,
-            'first_name': user.first_name,
-            'unread_count': unread_count
+            'branch': user.get_org_group_display(),
+            'department': user.get_org_group_display(),
+            'role': user.get_role_display(),
+            'phone': user.phone or '',
+            'has_phone': bool(user.phone),
+            'unread_count': unread_count,
+            'last_message': _last_message_preview(request.user, user),
+            'initial': user.get_avatar_initial(),
+            'avatar_url': user.avatar_url,
         })
-    
+
+    conversations.sort(key=lambda item: (-item['unread_count'], item['name'].lower()))
+
     return JsonResponse({'conversations': conversations})

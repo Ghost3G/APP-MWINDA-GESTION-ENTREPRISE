@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groupe Agence Mwinda</title>
+    {% include "partials/head_styles.html" %}
     <style>
         * {
             margin: 0;
@@ -47,7 +48,6 @@
         .logo-container img {
             height: 48px;
             width: auto;
-            filter: invert(1);
         }
 
         .login-header h1 {
@@ -157,15 +157,15 @@
         }
     </style>
 </head>
-<body>
+<body class="login-page">
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-header">
                 <div class="logo-container">
                     <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda">
                 </div>
-                
-                <p>Gère tes projets et ton équipe</p>
+                <h1>Bienvenue</h1>
+                <p>Gérez vos projets et votre équipe</p>
             </div>
 
             {% if error %}
@@ -181,7 +181,7 @@
                         type="text" 
                         id="username" 
                         name="username" 
-                        placeholder="Ton nom d'utilisateur"
+                        placeholder="Votre nom d'utilisateur"
                         required
                         autofocus
                     >
@@ -193,7 +193,7 @@
                         type="password" 
                         id="password" 
                         name="password" 
-                        placeholder="Ton mot de passe"
+                        placeholder="Votre mot de passe"
                         required
                     >
                 </div>
@@ -202,7 +202,7 @@
             </form>
 
             <div class="forgot-password">
-                <a href="#">Mot de passe oublié?</a>
+                <a href="#">Mot de passe oublié ?</a>
             </div>
         </div>
     </div>

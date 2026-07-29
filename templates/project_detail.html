@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>{{ project.name }} - Détails projet</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    {% include "partials/head_styles.html" %}
     <style>
         .project-detail-page {
             padding: 24px 28px;
@@ -68,15 +68,92 @@
         .status-pending { background: #fef3c7; color: #92400e; }
         .status-progress { background: #dbeafe; color: #1e40af; }
         .status-done { background: #dcfce7; color: #166534; }
+        .task-status-pending { background: #fef3c7; color: #92400e; }
+        .task-status-in_progress { background: #dbeafe; color: #1e40af; }
+        .task-status-done { background: #dcfce7; color: #166534; }
+        .member-task-block {
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .task-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 14px;
+        }
+        .task-status-badge {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .mgmt-panel {
+            margin-top: 24px;
+            padding: 18px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+        }
+        .mgmt-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .mgmt-form label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        .mgmt-form input, .mgmt-form select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .btn-yellow {
+            background: #fde047;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #111827;
+        }
+        .btn-gray {
+            background: #e5e7eb;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .flash {
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+        .flash.success { background: #dcfce7; color: #166534; }
+        .flash.error { background: #fee2e2; color: #991b1b; }
+        .flash.info { background: #dbeafe; color: #1e40af; }
     </style>
 </head>
 <body>
-    <header class="app-header">
-        <button class="menu-toggle" aria-label="Ouvrir le menu">☰</button>
-        <div class="brand-mark">
-            <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda Logo" class="logo-image">
-        </div>
-    </header>
+    {% include "partials/app_header.html" %}
 
     <div class="app-shell">
         {% include "partials/sidebar.html" %}
@@ -84,14 +161,46 @@
         <main class="dashboard-content">
             <div class="project-detail-page">
                 <a href="{% url 'projects_list' %}" class="back-link">← Retour aux projets</a>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
                 <div class="project-detail-card">
                     <h1 style="margin:0 0 8px 0;">{{ project.name }}</h1>
                     <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
+                    <span class="status-badge" style="background:#fde047;color:#111827;margin-left:8px;">{{ project.get_branch_display }}</span>
 
                     <div class="project-meta-grid">
                         <div class="meta-item">
-                            <div class="meta-label">Manager</div>
+                            <div class="meta-label">Branche</div>
+                            <div class="meta-value">{{ project.get_branch_display }}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Directeur Technique</div>
+                            <div class="meta-value">
+                                {% if project.technical_director %}
+                                    {{ project.technical_director.get_full_name|default:project.technical_director.username }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Responsable suivi</div>
                             <div class="meta-value">{{ project.manager.get_full_name|default:project.manager.username }}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Agent commercial</div>
+                            <div class="meta-value">
+                                {% if project.commercial_agent %}
+                                    {{ project.commercial_agent.get_full_name|default:project.commercial_agent.username }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Début</div>
@@ -114,6 +223,126 @@
                             <span style="color:#6b7280;">Aucun membre assigné.</span>
                         {% endfor %}
                     </div>
+
+                    {% if is_management %}
+                    <div class="mgmt-panel">
+                        <h3 style="margin:0 0 6px;">Assigner une tâche sur ce projet</h3>
+                        <p style="margin:0; color:#6b7280; font-size:14px;">Ajoutez une tâche personnalisée ou appliquez le modèle du département.</p>
+
+                        <form method="POST" class="mgmt-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="create">
+                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                            <div>
+                                <label>Agent</label>
+                                <select name="assigned_to_id" required>
+                                    <option value="">— Choisir —</option>
+                                    {% for member in project_members %}
+                                        <option value="{{ member.id }}">{{ member.get_full_name|default:member.username }} ({{ member.get_direction_display }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Titre de la tâche</label>
+                                <input type="text" name="title" placeholder="Ex: Préparer maquette 3D" required>
+                            </div>
+                            <div>
+                                <label>Département</label>
+                                <select name="department">
+                                    {% for value, label in branch_choices %}
+                                        <option value="{{ value }}" {% if value == project.branch %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:end;">
+                                <button type="submit" class="btn-yellow">+ Assigner</button>
+                            </div>
+                        </form>
+
+                        <form method="POST" class="mgmt-form" style="margin-top:14px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="apply_template">
+                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                            <div>
+                                <label>Agent (modèle)</label>
+                                <select name="assigned_to_id" required>
+                                    {% for member in project_members %}
+                                        <option value="{{ member.id }}">{{ member.get_full_name|default:member.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Modèle département</label>
+                                <select name="department">
+                                    {% for value, label in branch_choices %}
+                                        <option value="{{ value }}" {% if value == project.branch %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:end;">
+                                <button type="submit" class="btn-yellow">Appliquer le modèle</button>
+                            </div>
+                        </form>
+
+                        <p style="margin:12px 0 0; font-size:13px;">
+                            <a href="{% url 'task_board' %}?project_id={{ project.id }}" style="color:#111827; font-weight:600;">→ Tableau des tâches</a>
+                            &nbsp;·&nbsp;
+                            <a href="{% url 'manage_tasks' %}?project_id={{ project.id }}" style="color:#111827; font-weight:600;">Gestion complète</a>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <h3 style="margin: 24px 0 6px 0;">Suivi des tâches par travailleur</h3>
+                    {% for group in tasks_by_member %}
+                    <div class="member-task-block">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <strong>{{ group.member.get_full_name|default:group.member.username }}</strong>
+                            <span style="color:#6b7280; font-size:13px;">
+                                {{ group.done }}/{{ group.tasks|length }} terminées
+                                · {{ group.in_progress }} en cours · {{ group.pending }} à faire
+                            </span>
+                        </div>
+                        {% for task in group.tasks %}
+                        <div class="task-row">
+                            <span>{{ task.title }}</span>
+                            <div class="task-actions">
+                                <span class="task-status-badge task-status-{{ task.status }}">{{ task.get_status_display }}</span>
+                                {% if is_management %}
+                                <form method="POST" class="inline-form" style="display:inline-flex; gap:4px;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="task_id" value="{{ task.id }}">
+                                    <input type="hidden" name="title" value="{{ task.title }}">
+                                    <input type="hidden" name="assigned_to_id" value="{{ task.assigned_to_id }}">
+                                    <input type="hidden" name="department" value="{{ task.department }}">
+                                    <select name="status" onchange="this.form.submit()" style="font-size:12px; padding:4px;">
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if value == task.status %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="task_id" value="{{ task.id }}">
+                                    <button type="submit" class="btn-gray">Supprimer</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% empty %}
+                    <p style="color:#6b7280;">Aucune tâche générée pour ce projet.</p>
+                    {% endfor %}
                 </div>
             </div>
         </main>

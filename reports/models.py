@@ -1,15 +1,12 @@
 from django.db import models
 from django.conf import settings
 
+from projects.branches import TECH_BRANCH_CHOICES
+
 # Create your models here.
 
 class DailyReport(models.Model):
-    DEPARTMENT_CHOICES = (
-        ('wood_design', 'Wood Design'),
-        ('metal_design', 'Metal Design'),
-        ('branding', 'Branding'),
-        ('signalétique', 'Signalétique'),
-    )
+    DEPARTMENT_CHOICES = TECH_BRANCH_CHOICES
 
     ASSEMBLY_METHOD_CHOICES = (
         ('colle', 'Colle'),
@@ -26,7 +23,7 @@ class DailyReport(models.Model):
     date = models.DateField()
 
     # Nouveaux champs selon la fiche
-    department = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, blank=True)
+    department = models.CharField(max_length=50, choices=TECH_BRANCH_CHOICES, blank=True)
     project = models.CharField(max_length=100, blank=True)
     team_agent = models.CharField(max_length=100, blank=True)
 
@@ -87,3 +84,43 @@ class DailyReport(models.Model):
 
     def __str__(self):
         return f"Rapport de {self.user} - {self.date}"
+
+
+class FinanceExpense(models.Model):
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='finance_expenses',
+    )
+    expense_date = models.DateField()
+    command_reference = models.CharField(max_length=120)
+    label = models.CharField(max_length=180)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-expense_date', '-created_at')
+
+    def __str__(self):
+        return f"{self.command_reference} - {self.amount} ({self.expense_date})"
+
+
+class FinanceIncome(models.Model):
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='finance_incomes',
+    )
+    income_date = models.DateField()
+    command_reference = models.CharField(max_length=120)
+    label = models.CharField(max_length=180)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-income_date', '-created_at')
+
+    def __str__(self):
+        return f"{self.command_reference} - {self.amount} ({self.income_date})"

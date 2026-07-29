@@ -1,0 +1,155 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Mon profil - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content profile-page">
+            <div class="profile-page-inner">
+                <div class="page-header">
+                    <h1>Mon profil</h1>
+                    <p>Personnalisez votre avatar et le nom affiché dans l'application</p>
+                </div>
+
+                {% if messages %}
+                    <div class="profile-alerts">
+                        {% for message in messages %}
+                            <div class="profile-alert profile-alert--{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="profile-layout">
+                    <section class="profile-preview-card">
+                        {% include "partials/user_avatar.html" with user_obj=profile_user size="xl" extra_class="profile-preview-avatar" %}
+                        <h2>{{ profile_user.get_display_name }}</h2>
+                        <p>@{{ profile_user.username }}</p>
+                        <div class="profile-badges">
+                            <span class="profile-role-badge">{{ profile_user.get_role_display }}</span>
+                            {% if profile_user.grade or profile_user.job_title %}
+                            <span class="profile-branch-badge">{{ profile_user.grade|default:profile_user.job_title }}</span>
+                            {% endif %}
+                            {% if profile_user.role != 'directeur' and not profile_user.is_superuser %}
+                            <span class="profile-branch-badge">{{ profile_user.get_direction_display }}</span>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="profile-form-card">
+                        <h3>Modifier mon profil</h3>
+                        <form method="POST" enctype="multipart/form-data" class="profile-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update">
+
+                            <div class="profile-form-group">
+                                <label>Photo de profil</label>
+                                <div class="avatar-upload-row">
+                                    {% include "partials/user_avatar.html" with user_obj=profile_user size="lg" extra_class="avatar-upload-preview" id="avatarPreview" %}
+                                    <div class="avatar-upload-actions">
+                                        <label class="btn-upload-avatar">
+                                            Choisir une photo
+                                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" id="avatarInput" hidden>
+                                        </label>
+                                        <p class="avatar-upload-hint">JPG, PNG, WEBP ou GIF · max 3 Mo</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="profile-form-row">
+                                <div class="profile-form-group">
+                                    <label for="first_name">Prénom</label>
+                                    <input type="text" id="first_name" name="first_name" value="{{ profile_user.first_name }}" placeholder="Votre prénom">
+                                </div>
+                                <div class="profile-form-group">
+                                    <label for="last_name">Nom</label>
+                                    <input type="text" id="last_name" name="last_name" value="{{ profile_user.last_name }}" placeholder="Votre nom">
+                                </div>
+                            </div>
+
+                            <div class="profile-form-group">
+                                <label for="phone">Téléphone</label>
+                                <input type="text" id="phone" name="phone" value="{{ profile_user.phone }}" placeholder="+243 800 000 000">
+                            </div>
+
+                            <div class="profile-form-group">
+                                <label>Email</label>
+                                <input type="email" value="{{ profile_user.email }}" disabled>
+                            </div>
+
+                            <div class="profile-form-actions">
+                                <button type="submit" class="btn-profile-save">Enregistrer</button>
+                                {% if profile_user.avatar %}
+                                    <button type="submit" formaction="{% url 'profile' %}" name="action" value="remove_avatar" class="btn-profile-remove" onclick="return confirm('Supprimer votre photo de profil ?');">
+                                        Supprimer la photo
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </form>
+
+                        <h3 style="margin-top:28px;">Changer mon mot de passe</h3>
+                        <form method="POST" class="profile-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="change_password">
+                            <div class="profile-form-group">
+                                <label for="current_password">Mot de passe actuel</label>
+                                <input type="password" id="current_password" name="current_password" required>
+                            </div>
+                            <div class="profile-form-row">
+                                <div class="profile-form-group">
+                                    <label for="new_password">Nouveau mot de passe</label>
+                                    <input type="password" id="new_password" name="new_password" required minlength="10">
+                                </div>
+                                <div class="profile-form-group">
+                                    <label for="confirm_password">Confirmer</label>
+                                    <input type="password" id="confirm_password" name="confirm_password" required minlength="10">
+                                </div>
+                            </div>
+                            <p class="avatar-upload-hint">Minimum 10 caractères.</p>
+                            <div class="profile-form-actions">
+                                <button type="submit" class="btn-profile-save">Mettre à jour le mot de passe</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script>
+        const avatarInput = document.getElementById('avatarInput');
+        const avatarPreview = document.querySelector('.avatar-upload-preview');
+        if (avatarInput && avatarPreview) {
+            avatarInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const existingImg = avatarPreview.querySelector('.user-avatar-chip__img');
+                    const existingInitial = avatarPreview.querySelector('.user-avatar-chip__initial');
+                    if (existingImg) {
+                        existingImg.src = e.target.result;
+                    } else {
+                        if (existingInitial) existingInitial.remove();
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = 'Aperçu';
+                        img.className = 'user-avatar-chip__img';
+                        avatarPreview.appendChild(img);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

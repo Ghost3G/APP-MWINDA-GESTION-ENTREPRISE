@@ -1,0 +1,103 @@
+{% load static %}
+<header class="app-header">
+    <button class="menu-toggle" aria-label="Ouvrir le menu">☰</button>
+    <div class="brand-mark">
+        <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda Logo" class="logo-image">
+    </div>
+    <div class="header-actions">
+        {% if request.user.is_authenticated %}
+        <div class="notif-center" id="notifCenter">
+            <button type="button" class="notif-bell" id="notifBell" aria-label="Notifications" aria-expanded="false">
+                <span class="notif-bell-icon">🔔</span>
+                <span class="notif-bell-badge {% if unread_notifications_total %}visible{% endif %}" id="notifBadge">{{ unread_notifications_total }}</span>
+            </button>
+            <div class="notif-panel" id="notifPanel" hidden>
+                <div class="notif-panel-head">
+                    <strong>Notifications</strong>
+                    <button type="button" class="notif-mark-read" id="notifMarkRead">Tout lu</button>
+                </div>
+                <div class="notif-panel-list" id="notifList">
+                    <p class="notif-empty">Chargement…</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if current_user_profile %}
+            <a href="{% url 'profile' %}" class="header-user-chip" title="Mon profil">
+                {% include "partials/user_avatar.html" with user_obj=request.user size="sm" %}
+                <span class="header-user-chip__text">
+                    <strong>{{ current_user_profile.display_name }}</strong>
+                    <small>{{ current_user_profile.role_display }}</small>
+                </span>
+            </a>
+        {% endif %}
+    </div>
+</header>
+<script>
+(() => {
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    const list = document.getElementById('notifList');
+    const badge = document.getElementById('notifBadge');
+    const markBtn = document.getElementById('notifMarkRead');
+    if (!bell || !panel || !list) return;
+
+    const csrfToken = '{{ csrf_token }}';
+
+    function kindLabel(kind) {
+        if (kind === 'task') return 'Tâche';
+        if (kind === 'project') return 'Projet';
+        return 'Message';
+    }
+
+    async function loadFeed() {
+        try {
+            const res = await fetch('{% url "notifications_feed" %}');
+            const data = await res.json();
+            if (!data.ok) return;
+            if (badge) {
+                badge.textContent = data.unread || 0;
+                badge.classList.toggle('visible', !!data.unread);
+            }
+            if (!data.items.length) {
+                list.innerHTML = '<p class="notif-empty">Aucune notification.</p>';
+                return;
+            }
+            list.innerHTML = data.items.map(item => `
+                <a class="notif-item ${item.is_read ? '' : 'unread'}" href="${item.url}">
+                    <span class="notif-kind">${kindLabel(item.kind)}</span>
+                    <strong>${item.title}</strong>
+                    <span>${item.body}</span>
+                    <small>${item.created_at}</small>
+                </a>
+            `).join('');
+        } catch (e) {
+            list.innerHTML = '<p class="notif-empty">Impossible de charger.</p>';
+        }
+    }
+
+    bell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = panel.hasAttribute('hidden');
+        panel.hidden = !open;
+        bell.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) loadFeed();
+    });
+
+    document.addEventListener('click', () => {
+        panel.hidden = true;
+        bell.setAttribute('aria-expanded', 'false');
+    });
+    panel.addEventListener('click', (e) => e.stopPropagation());
+
+    if (markBtn) {
+        markBtn.addEventListener('click', async () => {
+            await fetch('{% url "notifications_mark_read" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            loadFeed();
+        });
+    }
+})();
+</script>

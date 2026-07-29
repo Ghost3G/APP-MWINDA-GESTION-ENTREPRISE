@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Dashboard Management - AppMwinda</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <title>Tableau de bord de gestion - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
     <style>
         .management-page { padding: 24px 28px; }
         .header { margin-bottom: 22px; }
@@ -62,24 +62,143 @@
             font-size: 14px;
         }
         .projects-table th { color: #6b7280; font-size: 12px; text-transform: uppercase; }
-    </style>
+        .task-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .task-pending { background: #fef3c7; color: #92400e; }
+        .task-in_progress { background: #dbeafe; color: #1e40af; }
+        .task-done { background: #dcfce7; color: #166534; }
+        .section-title { margin: 24px 0 12px; color: #111827; }
+        .two-panels {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .mini-bar {
+            height: 8px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .mini-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #22c55e); }
+                .management-my-tasks {
+                    margin-bottom: 20px;
+                    max-width: 420px;
+                    display: grid;
+                    gap: 14px;
+                }
+                .management-my-tasks .tasks-card {
+                    margin-bottom: 0;
+                    min-height: auto;
+                }
+                .management-my-tasks .timer-card {
+                    margin: 0;
+                }
+            </style>
 </head>
 <body>
-    <header class="app-header">
-        <button class="menu-toggle" aria-label="Ouvrir le menu">☰</button>
-        <div class="brand-mark">
-            <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda Logo" class="logo-image">
-        </div>
-    </header>
+    {% include "partials/app_header.html" %}
 
     <div class="app-shell">
         {% include "partials/sidebar.html" %}
 
         <main class="dashboard-content">
+            <section class="content-grid">
+                <div class="left-column">
+                    <div class="profile-card">
+                        {% include "partials/user_avatar.html" with user_obj=request.user size="lg" extra_class="profile-card-avatar" %}
+                        <div class="profile-info">
+                            <h1>{{ full_name }}</h1>
+                            <p>{{ user_role_display }}</p>
+                        </div>
+                    </div>
+
+                    <div class="progress-card">
+                        <div class="progress-inner">
+                            <div class="progress-circle" style="--progress:{{ profile_progress }};"></div>
+                            <div class="progress-value">{{ profile_progress }}%</div>
+                        </div>
+                        <p class="progress-label">Évolution du projet en cours</p>
+                    </div>
+
+                    <a href="{% url 'reports_list' %}" class="report-shortcut-card">
+                        Mon rapport du jour
+                    </a>
+
+                    {% if overdue_tasks or due_soon_tasks %}
+                    <div class="due-alert-card">
+                        <h3>Rappels d'échéances</h3>
+                        <ul>
+                            {% for task in overdue_tasks %}
+                            <li>En retard — {{ task.title }} ({{ task.project.name }}) · {{ task.due_date }}</li>
+                            {% endfor %}
+                            {% for task in due_soon_tasks %}
+                            <li>Bientôt — {{ task.title }} ({{ task.project.name }}) · {{ task.due_date }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="center-column">
+                    <div class="project-card">
+                        <div class="project-icon project-icon-main icon-tile">
+                            <img src="{% static 'images/icone_projet.png' %}" alt="">
+                        </div>
+                        <h2>{{ current_project.title }}</h2>
+                        <p>{{ current_project.description }}</p>
+                        {% if current_project.status_display %}
+                        <p><strong>Statut :</strong> {{ current_project.status_display }}</p>
+                        {% endif %}
+                        <a href="{% url 'projects_list' %}" class="btn-open">{{ current_project.button_text }}</a>
+                    </div>
+                </div>
+
+                <div class="right-column">
+                    <div class="timer-card">
+                        {% for stat in time_stats %}
+                        <div class="timer-row {% if stat.highlight %}green{% endif %}" {% if forloop.counter == 1 %}id="task-timer-row"{% elif forloop.counter == 2 %}id="work-timer-row"{% elif forloop.counter == 3 %}id="pause-timer-row"{% endif %}>
+                            <span>{{ stat.label }}</span>
+                            <span class="timer-value">{{ stat.value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="tasks-card-wrap">
+                        {% include "partials/my_tasks_panel.html" with open_tasks=open_tasks done_tasks=done_tasks show_pause_button=True %}
+                    </div>
+                </div>
+            </section>
+
             <div class="management-page">
                 <div class="header">
-                    <h1>Dashboard Direction</h1>
-                    <p>Suivi global de l'évolution des projets</p>
+                    <h1>Vue Direction</h1>
+                    <p>{{ tech_department_label }} — suivi par branche et par projet</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Tâches à faire</h3>
+                        <div class="value pending">{{ task_status_counts.pending }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tâches en cours</h3>
+                        <div class="value progress">{{ task_status_counts.in_progress }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tâches terminées</h3>
+                        <div class="value done">{{ task_status_counts.done }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avancement tâches</h3>
+                        <div class="value">{{ task_completion_ratio }}%</div>
+                    </div>
                 </div>
 
                 <div class="stats-grid">
@@ -117,7 +236,7 @@
                         <thead>
                             <tr>
                                 <th>Projet</th>
-                                <th>Manager</th>
+                                <th>Responsable</th>
                                 <th>Début</th>
                                 <th>Fin</th>
                                 <th>Statut</th>
@@ -138,10 +257,158 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="two-panels">
+                    <div class="panel">
+                        <h3 class="section-title">Suivi par branche</h3>
+                        <table class="projects-table">
+                            <thead>
+                                <tr>
+                                    <th>Branche</th>
+                                    <th>Projets</th>
+                                    <th>À faire</th>
+                                    <th>En cours</th>
+                                    <th>Terminé</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in department_stats %}
+                                <tr>
+                                    <td>{{ dept.label }}</td>
+                                    <td>{{ dept.projects }}</td>
+                                    <td>{{ dept.pending }}</td>
+                                    <td>{{ dept.in_progress }}</td>
+                                    <td>{{ dept.done }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4">Aucune tâche enregistrée.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel">
+                        <h3 class="section-title">Suivi par travailleur</h3>
+                        <table class="projects-table">
+                            <thead>
+                                <tr>
+                                    <th>Agent</th>
+                                    <th>Branche</th>
+                                    <th>Progression</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for worker in worker_stats %}
+                                <tr>
+                                    <td>{{ worker.user.get_full_name|default:worker.user.username }}</td>
+                                    <td>{{ worker.direction }}</td>
+                                    <td>
+                                        {{ worker.done }}/{{ worker.total }} ({{ worker.progress }}%)
+                                        <div class="mini-bar">
+                                            <div class="mini-bar-fill" style="width: {{ worker.progress }}%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3">Aucun agent avec des tâches assignées.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <h3 class="section-title">Tâches en cours d'exécution</h3>
+                    <table class="projects-table">
+                        <thead>
+                            <tr>
+                                <th>Tâche</th>
+                                <th>Agent</th>
+                                <th>Département</th>
+                                <th>Projet</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in active_tasks %}
+                            <tr>
+                                <td>{{ task.title }}</td>
+                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                <td>{{ task.get_department_display_label }}</td>
+                                <td>{{ task.project.name }}</td>
+                                <td><span class="task-badge task-in_progress">En cours</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5">Aucune tâche en cours pour le moment.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <h3 class="section-title">Travaux non terminés (priorité)</h3>
+                    <table class="projects-table">
+                        <thead>
+                            <tr>
+                                <th>Tâche</th>
+                                <th>Agent</th>
+                                <th>Département</th>
+                                <th>Projet</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in unfinished_tasks %}
+                            <tr>
+                                <td>{{ task.title }}</td>
+                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                <td>{{ task.get_department_display_label }}</td>
+                                <td>{{ task.project.name }}</td>
+                                <td><span class="task-badge task-{{ task.status }}">{{ task.get_status_display }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5">Toutes les tâches sont terminées.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
 
-    <script src="{% static 'js/dashboard.js' %}"></script>
+    {% if show_guide %}
+    <div class="guide-modal" id="agentGuideModal">
+        <div class="guide-modal-card">
+            <h2>Bienvenue sur AppMwinda</h2>
+            <p>Voici les essentiels pour démarrer :</p>
+            <ol>
+                <li><strong>Accueil</strong> — vue direction, timers et tâches</li>
+                <li><strong>Projets</strong> — créer et suivre les missions</li>
+                <li><strong>Tableau</strong> — Kanban des cartes</li>
+                <li><strong>Messages</strong> — échangez avec l’équipe</li>
+            </ol>
+            <form method="POST" action="{% url 'dismiss_onboarding' %}">
+                {% csrf_token %}
+                <button type="submit">J’ai compris</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        window.dashboardTimerConfig = {
+            startTaskUrl: "{% url 'start_task_timer' %}",
+            completeTaskUrl: "{% url 'complete_task_timer' %}",
+            togglePauseUrl: "{% url 'toggle_pause_timer' %}",
+            csrfToken: "{{ csrf_token }}",
+            activeTaskLabel: "{{ timer_state.active_task_label|escapejs }}",
+            activeTaskStartedAt: "{{ timer_state.active_task_started_at }}",
+            activePauseStartedAt: "{{ timer_state.active_pause_started_at }}",
+            activeWorkStartedAt: "{{ timer_state.active_work_started_at }}",
+            isPauseRunning: "{{ timer_state.is_pause_running|yesno:'true,false' }}",
+            isWorkRunning: "{{ timer_state.is_work_running|yesno:'true,false' }}"
+        };
+    </script>
+    <script src="{% static 'js/dashboard.js' %}?v=20260729e"></script>
 </body>
 </html>

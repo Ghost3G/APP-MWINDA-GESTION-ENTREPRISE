@@ -1,13 +1,26 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
-from projects.models import AgentTimeEntry
+from projects.models import AgentTimeEntry, ProjectTask
+from .security import (
+    clear_failed_attempts,
+    get_client_ip,
+    is_login_locked,
+    record_login_attempt,
+    write_audit_log,
+)
+from .permissions import is_admin_user, is_management_user
 
 User = get_user_model()
+
+MAX_AVATAR_SIZE = 3 * 1024 * 1024
+ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 
 
 def _format_seconds(total_seconds):
@@ -18,14 +31,28 @@ def _format_seconds(total_seconds):
 
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
         password = request.POST.get("password", "").strip()
-        
+        client_ip = get_client_ip(request)
+
+        if is_login_locked(username, client_ip):
+            return render(
+                request,
+                'login.html',
+                {'error': "Compte temporairement bloqué. Réessayez dans 15 minutes."}
+            )
+
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
+            record_login_attempt(username, client_ip, True)
+            clear_failed_attempts(username, client_ip)
             login(request, user)
+            write_audit_log(user, "login_success", path=request.path, method="POST")
             try:
                 has_open_work = AgentTimeEntry.objects.filter(
                     user=user,
@@ -43,6 +70,7 @@ def login_view(request):
                 pass
             return redirect('dashboard')
         else:
+            record_login_attempt(username, client_ip, False)
             return render(request, 'login.html', {'error': 'Identifiants invalides'})
     
     return render(request, 'login.html')
@@ -62,27 +90,205 @@ def logout_view(request):
             entry.ended_at = now
             entry.save(update_fields=['duration_seconds', 'ended_at'])
 
+    write_audit_log(request.user, "logout", path=request.path, method="GET")
     logout(request)
     return redirect('login')
 
 
 @login_required(login_url='login')
+def profile_view(request):
+    user = request.user
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'update')
+
+        if action == 'remove_avatar':
+            if user.avatar:
+                user.avatar.delete(save=False)
+                user.avatar = None
+                user.save(update_fields=['avatar'])
+            messages.success(request, 'Photo de profil supprimée.')
+            return redirect('profile')
+
+        if action == 'change_password':
+            current_password = request.POST.get('current_password', '')
+            new_password = request.POST.get('new_password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+
+            if not user.check_password(current_password):
+                messages.error(request, 'Mot de passe actuel incorrect.')
+                return redirect('profile')
+            if len(new_password) < 10:
+                messages.error(request, 'Le nouveau mot de passe doit contenir au moins 10 caractères.')
+                return redirect('profile')
+            if new_password != confirm_password:
+                messages.error(request, 'La confirmation ne correspond pas.')
+                return redirect('profile')
+            try:
+                validate_password(new_password, user)
+            except ValidationError as exc:
+                for error in exc.messages:
+                    messages.error(request, error)
+                return redirect('profile')
+
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Mot de passe mis à jour.')
+            return redirect('profile')
+
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        avatar_file = request.FILES.get('avatar')
+
+        user.first_name = first_name
+        user.last_name = last_name
+        user.phone = phone
+
+        if avatar_file:
+            if avatar_file.size > MAX_AVATAR_SIZE:
+                messages.error(request, 'Image trop volumineuse (max 3 Mo).')
+                return redirect('profile')
+            if avatar_file.content_type not in ALLOWED_AVATAR_TYPES:
+                messages.error(request, 'Format non supporté. Utilisez JPG, PNG, WEBP ou GIF.')
+                return redirect('profile')
+            if user.avatar:
+                user.avatar.delete(save=False)
+            user.avatar = avatar_file
+
+        user.save()
+        messages.success(request, 'Profil mis à jour avec succès.')
+        return redirect('profile')
+
+    return render(request, 'profile.html', {
+        'profile_user': user,
+    })
+
+
+@login_required(login_url='login')
 def users_directory(request):
-    is_management = request.user.is_superuser or request.user.role in ['admin', 'directeur']
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    is_management = is_management_user(request.user)
+    is_admin = is_admin_user(request.user)
 
     if request.method == 'POST':
         if not is_admin:
-            messages.error(request, "Vous n'avez pas la permission de créer un utilisateur.")
+            messages.error(request, "Vous n'avez pas la permission de gérer les utilisateurs.")
             return redirect('users_list')
 
+        action = request.POST.get('action', 'create').strip()
+
+        if action == 'delete':
+            user_id = request.POST.get('user_id', '').strip()
+            delete_confirm = request.POST.get('delete_confirm', '').strip().upper()
+
+            if delete_confirm != 'SUPPRIMER':
+                messages.error(request, "Confirmation invalide. Tapez SUPPRIMER pour confirmer.")
+                return redirect('users_list')
+
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                messages.error(request, "Utilisateur introuvable.")
+                return redirect('users_list')
+
+            if user.id == request.user.id:
+                messages.error(request, "Vous ne pouvez pas supprimer votre propre compte.")
+                return redirect('users_list')
+
+            if user.is_superuser and User.objects.filter(is_superuser=True).count() <= 1:
+                messages.error(request, "Impossible de supprimer le dernier administrateur.")
+                return redirect('users_list')
+
+            username = user.username
+            user.delete()
+            messages.success(request, f"Utilisateur « {username} » supprimé.")
+            return redirect('users_list')
+
+        if action == 'update':
+            user_id = request.POST.get('user_id', '').strip()
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                messages.error(request, "Utilisateur introuvable.")
+                return redirect('users_list')
+
+            email = request.POST.get('email', '').strip()
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            role = request.POST.get('role', user.role).strip() or user.role
+            org_group = (
+                request.POST.get('department', '').strip()
+                or request.POST.get('org_group', user.org_group).strip()
+                or user.org_group
+            )
+            direction = request.POST.get('direction', user.direction).strip() or user.direction
+            password = request.POST.get('password', '')
+            is_active = request.POST.get('is_active') == 'on'
+
+            errors = []
+            if not email:
+                errors.append("L'email est requis.")
+            elif User.objects.filter(email=email).exclude(id=user.id).exists():
+                errors.append("Cet email est déjà utilisé.")
+
+            valid_roles = [value for value, _ in User.ROLE_CHOICES]
+            valid_departments = [value for value, _ in User.DEPARTMENT_CHOICES]
+            valid_directions = [value for value, _ in User.DIRECTION_CHOICES]
+            if role not in valid_roles:
+                errors.append("Le rôle sélectionné est invalide.")
+            if org_group not in valid_departments:
+                errors.append("Le département sélectionné est invalide.")
+            if direction not in valid_directions:
+                errors.append("La branche sélectionnée est invalide.")
+
+            if user.id == request.user.id and role != 'admin':
+                errors.append("Vous ne pouvez pas retirer votre propre rôle administrateur.")
+
+            if password and len(password) < 10:
+                errors.append("Le mot de passe doit contenir au moins 10 caractères.")
+
+            if password:
+                try:
+                    validate_password(password, user)
+                except ValidationError as exc:
+                    errors.extend(exc.messages)
+
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+                return redirect('users_list')
+
+            user.email = email
+            user.first_name = first_name
+            user.last_name = last_name
+            user.phone = phone
+            user.role = role
+            user.org_group = org_group
+            user.direction = direction
+            user.is_active = is_active
+            if password:
+                user.set_password(password)
+            user.save()
+            messages.success(request, f"Utilisateur « {user.username} » mis à jour.")
+            return redirect('users_list')
+
+        # action == 'create'
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
         first_name = request.POST.get('first_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
         password = request.POST.get('password', '')
         role = request.POST.get('role', 'agent').strip() or 'agent'
-        direction = request.POST.get('direction', 'design').strip() or 'design'
+        org_group = (
+            request.POST.get('department', '').strip()
+            or request.POST.get('org_group', 'technique').strip()
+            or 'technique'
+        )
+        direction = request.POST.get('direction', 'metal_design').strip() or 'metal_design'
 
         errors = []
         if not username:
@@ -96,15 +302,25 @@ def users_directory(request):
             errors.append("Cet email existe déjà.")
 
         valid_roles = [value for value, _ in User.ROLE_CHOICES]
+        valid_departments = [value for value, _ in User.DEPARTMENT_CHOICES]
         valid_directions = [value for value, _ in User.DIRECTION_CHOICES]
         if role not in valid_roles:
             errors.append("Le rôle sélectionné est invalide.")
+        if org_group not in valid_departments:
+            errors.append("Le département sélectionné est invalide.")
         if direction not in valid_directions:
-            errors.append("La direction sélectionnée est invalide.")
+            errors.append("La branche sélectionnée est invalide.")
         if not password:
             errors.append("Le mot de passe est requis.")
-        elif len(password) < 6:
-            errors.append("Le mot de passe doit contenir au moins 6 caractères.")
+        elif len(password) < 10:
+            errors.append("Le mot de passe doit contenir au moins 10 caractères.")
+        else:
+            try:
+                # validate against configured Django validators
+                pseudo_user = User(username=username, email=email, first_name=first_name, last_name=last_name)
+                validate_password(password, pseudo_user)
+            except ValidationError as exc:
+                errors.extend(exc.messages)
 
         if errors:
             for error in errors:
@@ -117,16 +333,22 @@ def users_directory(request):
             password=password,
             first_name=first_name,
             last_name=last_name,
+            phone=phone,
             role=role,
+            org_group=org_group,
             direction=direction,
         )
         messages.success(request, "Utilisateur créé avec succès.")
         return redirect('users_list')
 
-    users = User.objects.filter(role='agent').order_by('username') if is_management else User.objects.all().order_by('username')
+    users = User.objects.all().order_by('username')
 
     query = request.GET.get('q', '').strip()
     role = request.GET.get('role', '').strip()
+    org_group = (
+        request.GET.get('department', '').strip()
+        or request.GET.get('org_group', '').strip()
+    )
     direction = request.GET.get('direction', '').strip()
 
     if query:
@@ -140,8 +362,37 @@ def users_directory(request):
     if role:
         users = users.filter(role=role)
 
+    if org_group:
+        users = users.filter(org_group=org_group)
+
     if direction:
         users = users.filter(direction=direction)
+
+    count_qs = User.objects.all().order_by()
+    if query:
+        count_qs = count_qs.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        )
+    if role:
+        count_qs = count_qs.filter(role=role)
+    if direction:
+        count_qs = count_qs.filter(direction=direction)
+
+    department_counts = dict(
+        count_qs.values('org_group').annotate(total=Count('id')).values_list('org_group', 'total')
+    )
+    department_tabs = [
+        {
+            'value': value,
+            'label': label,
+            'count': department_counts.get(value, 0),
+        }
+        for value, label in User.DEPARTMENT_CHOICES
+    ]
+    total_agents_count = count_qs.count()
 
     now = timezone.now()
     for user in users:
@@ -172,6 +423,13 @@ def users_directory(request):
         user.work_time_total = _format_seconds(work_seconds)
         user.pause_time_total = _format_seconds(pause_seconds)
 
+        user_tasks = ProjectTask.objects.filter(assigned_to=user)
+        user.task_pending = user_tasks.filter(status='pending').count()
+        user.task_in_progress = user_tasks.filter(status='in_progress').count()
+        user.task_done = user_tasks.filter(status='done').count()
+        user.task_total = user_tasks.count()
+        user.current_task = user_tasks.filter(status='in_progress').order_by('-updated_at').first()
+
     full_name = request.user.get_full_name() or request.user.username
     profile_progress = 75
     current_project = {
@@ -194,8 +452,15 @@ def users_directory(request):
         'users': users,
         'query': query,
         'selected_role': role,
+        'selected_department': org_group,
+        'selected_org_group': org_group,
         'selected_direction': direction,
         'role_choices': User.ROLE_CHOICES,
+        'department_choices': User.DEPARTMENT_CHOICES,
+        'org_group_choices': User.DEPARTMENT_CHOICES,
+        'department_tabs': department_tabs,
+        'org_group_tabs': department_tabs,
+        'total_agents_count': total_agents_count,
         'direction_choices': User.DIRECTION_CHOICES,
         'full_name': full_name,
         'profile_progress': profile_progress,

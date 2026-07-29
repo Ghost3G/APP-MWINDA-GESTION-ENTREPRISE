@@ -1,0 +1,68 @@
+{% load static %}
+<div class="my-tasks-panel tasks-card">
+    <div class="task-card-header">
+        <div class="task-card-icon icon-tile">
+            <img src="{% static 'images/icone_taches.svg' %}" alt="">
+        </div>
+        <h2>MES TÂCHES</h2>
+    </div>
+
+    {% if task_project_choices %}
+    <form method="GET" class="task-project-filter">
+        <label for="task_project">Projet</label>
+        <select id="task_project" name="task_project" onchange="this.form.submit()">
+            <option value="">Tous les projets</option>
+            {% for project in task_project_choices %}
+                <option value="{{ project.id }}" {% if selected_task_project == project.id|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+
+    <div class="task-tabs" role="tablist" aria-label="Filtrer les tâches">
+        <button type="button" class="task-tab active" data-task-tab="open">
+            En cours
+            <span class="task-tab-count">{{ open_tasks|length }}</span>
+        </button>
+        <button type="button" class="task-tab" data-task-tab="done">
+            Terminées
+            <span class="task-tab-count">{{ done_tasks|length }}</span>
+        </button>
+    </div>
+
+    <div class="task-list task-list-panel active" data-task-panel="open">
+        {% for task in open_tasks %}
+        <div class="task-item {% if task.active %}active{% endif %} {% if task.is_new %}task-new{% endif %}" data-task-id="{{ task.id }}" data-task-label="{{ task.label }}" data-task-status="{{ task.status }}">
+            {% if task.is_new %}<span class="task-new-dot" title="Nouvelle tâche" aria-label="Nouvelle tâche"></span>{% endif %}
+            <div class="task-item-main">
+                <span class="task-item-title">
+                    {{ task.label }}
+                    {% if task.is_new %}<em class="task-new-label">nouvelle</em>{% endif %}
+                </span>
+                <span class="task-item-project">{{ task.project_name }}</span>
+            </div>
+            <span class="toggle-switch {% if task.status == 'done' %}active{% endif %}"></span>
+        </div>
+        {% empty %}
+        <p class="task-empty">Aucune tâche en cours.</p>
+        {% endfor %}
+    </div>
+
+    <div class="task-list task-list-panel" data-task-panel="done" hidden>
+        {% for task in done_tasks %}
+        <div class="task-item completed" data-task-id="{{ task.id }}" data-task-label="{{ task.label }}" data-task-status="done">
+            <div class="task-item-main">
+                <span class="task-item-title">{{ task.label }}</span>
+                <span class="task-item-project">{{ task.project_name }}</span>
+            </div>
+            <span class="toggle-switch active"></span>
+        </div>
+        {% empty %}
+        <p class="task-empty">Aucune tâche terminée pour le moment.</p>
+        {% endfor %}
+    </div>
+
+    {% if show_pause_button %}
+    <button class="pause-button">PAUSE</button>
+    {% endif %}
+</div>

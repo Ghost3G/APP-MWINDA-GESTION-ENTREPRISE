@@ -106,25 +106,69 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     function revealNextTaskBatch() {
-        const visibleTasks = taskItems.filter((item) => !item.classList.contains("hidden-task"));
-        const visibleCompleted = visibleTasks.filter((item) =>
-            item.querySelector(".toggle-switch")?.classList.contains("active")
-        ).length;
-        if (visibleTasks.length === 0 || visibleCompleted !== visibleTasks.length) {
+        // Conservé pour compatibilité — les tâches restent visibles via les onglets.
+    }
+
+    function moveTaskToDonePanel(taskItem) {
+        const donePanel = document.querySelector('.task-list-panel[data-task-panel="done"]');
+        if (!donePanel || !taskItem) {
             return;
         }
+        const empty = donePanel.querySelector('.task-empty');
+        if (empty) {
+            empty.remove();
+        }
+        taskItem.classList.add('completed');
+        taskItem.classList.remove('active', 'task-new', 'next');
+        taskItem.dataset.taskStatus = 'done';
+        const badge = taskItem.querySelector('.task-new-badge, .task-new-label, .task-new-dot');
+        if (badge) {
+            badge.remove();
+        }
+        const leftoverLabel = taskItem.querySelector('.task-new-label');
+        if (leftoverLabel) {
+            leftoverLabel.remove();
+        }
+        donePanel.appendChild(taskItem);
 
-        visibleTasks.forEach((item) => {
-            item.classList.add("hidden-task");
-            item.classList.add("archived-task");
-        });
+        const openPanel = document.querySelector('.task-list-panel[data-task-panel="open"]');
+        if (openPanel && !openPanel.querySelector('.task-item') && !openPanel.querySelector('.task-empty')) {
+            const p = document.createElement('p');
+            p.className = 'task-empty';
+            p.textContent = 'Aucune tâche en cours.';
+            openPanel.appendChild(p);
+        }
 
-        const nextHiddenTasks = taskItems
-            .filter((item) => item.classList.contains("hidden-task") && !item.classList.contains("archived-task"))
-            .slice(0, 3);
-        nextHiddenTasks.forEach((item) => item.classList.remove("hidden-task"));
-        updateTaskProgress();
+        const openTab = document.querySelector('.task-tab[data-task-tab="open"] .task-tab-count');
+        const doneTab = document.querySelector('.task-tab[data-task-tab="done"] .task-tab-count');
+        if (openTab) {
+            openTab.textContent = String(document.querySelectorAll('.task-list-panel[data-task-panel="open"] .task-item').length);
+        }
+        if (doneTab) {
+            doneTab.textContent = String(document.querySelectorAll('.task-list-panel[data-task-panel="done"] .task-item').length);
+        }
     }
+
+    function initTaskTabs() {
+        const tabs = Array.from(document.querySelectorAll('.task-tab'));
+        const panels = Array.from(document.querySelectorAll('.task-list-panel'));
+        if (!tabs.length) {
+            return;
+        }
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.taskTab;
+                tabs.forEach((item) => item.classList.toggle('active', item === tab));
+                panels.forEach((panel) => {
+                    const isActive = panel.dataset.taskPanel === target;
+                    panel.classList.toggle('active', isActive);
+                    panel.hidden = !isActive;
+                });
+            });
+        });
+    }
+
+    initTaskTabs();
 
     function elapsedSince(isoDate) {
         if (!isoDate) {
@@ -186,7 +230,8 @@ document.addEventListener("DOMContentLoaded", function () {
         taskItem.addEventListener("click", async function (event) {
             const clickedSwitch = event.target.classList.contains("toggle-switch");
             const taskLabel = taskItem.dataset.taskLabel || "";
-            if (!taskLabel) {
+            const taskId = taskItem.dataset.taskId || "";
+            if (!taskLabel && !taskId) {
                 return;
             }
 
@@ -196,13 +241,19 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 try {
-                    await postTimer(config.completeTaskUrl, { task_label: taskLabel });
+                    const payload = { task_label: taskLabel };
+                    if (taskId) {
+                        payload.task_id = taskId;
+                    }
+                    await postTimer(config.completeTaskUrl, payload);
                     switchEl.classList.add("active");
+                    taskItem.dataset.taskStatus = "done";
                     if (state.activeTaskLabel === taskLabel) {
                         state.activeTaskLabel = "";
                         state.activeTaskStartedAt = "";
                     }
                     setActiveTaskVisual("");
+                    moveTaskToDonePanel(taskItem);
                     updateTaskProgress();
                     revealNextTaskBatch();
                 } catch (error) {
@@ -211,14 +262,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            if (taskItem.querySelector(".toggle-switch")?.classList.contains("active")) {
+            if (taskItem.querySelector(".toggle-switch")?.classList.contains("active") || taskItem.dataset.taskStatus === "done") {
                 return;
             }
 
             try {
-                await postTimer(config.startTaskUrl, { task_label: taskLabel });
+                const payload = { task_label: taskLabel };
+                if (taskId) {
+                    payload.task_id = taskId;
+                }
+                await postTimer(config.startTaskUrl, payload);
                 state.activeTaskLabel = taskLabel;
                 state.activeTaskStartedAt = new Date().toISOString();
+                taskItem.dataset.taskStatus = "in_progress";
                 state.baseTaskSeconds = 0;
                 state.isPauseRunning = false;
                 state.activePauseStartedAt = "";
@@ -270,12 +326,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (state.activeTaskLabel) {
         setActiveTaskVisual(state.activeTaskLabel);
     }
-    const progressCircle = document.querySelector(".progress-circle");
-    if (progressCircle) {
-        progressCircle.style.setProperty("--progress", 0);
-    }
+    taskItems.forEach((taskItem) => {
+        if (taskItem.dataset.taskStatus === "done") {
+            taskItem.querySelector(".toggle-switch")?.classList.add("active");
+            taskItem.classList.add("completed");
+        }
+        if (taskItem.dataset.taskStatus === "in_progress") {
+            taskItem.classList.add("active");
+        }
+    });
     updateTaskProgress();
     updateNotificationBadges();
     refreshTimerRows();
-    window.setInterval(refreshTimerRows, 1000);
+    // Ne pas faire tourner un timer chaque seconde hors Accueil
+    if (taskTimerNode || workTimerNode || pauseTimerNode) {
+        window.setInterval(refreshTimerRows, 1000);
+    }
 });

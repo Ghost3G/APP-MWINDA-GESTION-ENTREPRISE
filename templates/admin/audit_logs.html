@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="admin-header-row">
+    <h2>Journal d'audit</h2>
+    <form method="GET" style="display:flex; gap:8px; align-items:center;">
+        <select name="action" style="padding:8px; border-radius:8px; border:1px solid #d1d5db;">
+            <option value="">Toutes les actions</option>
+            {% for act in actions %}
+                <option value="{{ act }}" {% if selected_action == act %}selected{% endif %}>{{ act }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="admin-btn admin-btn-primary">Filtrer</button>
+    </form>
+</div>
+
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Utilisateur</th>
+            <th>Action</th>
+            <th>Route</th>
+            <th>Méthode</th>
+            <th>Détails</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+            <td>{% if log.user %}{{ log.user.username }}{% else %}anonyme{% endif %}</td>
+            <td><span class="admin-badge admin-badge-info">{{ log.action }}</span></td>
+            <td>{{ log.path|default:"-" }}</td>
+            <td>{{ log.method|default:"-" }}</td>
+            <td style="max-width:340px; word-break:break-word;">{{ log.metadata }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center; color:#999;">Aucun log disponible</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

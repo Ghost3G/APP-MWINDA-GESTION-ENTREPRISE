@@ -66,3 +66,26 @@ Application Django pour la gestion de projets et rapports.
 - `reports/` : Génération de rapports
 - `static/` : Fichiers statiques
 - `templates/` : Templates HTML
+
+## Sécurité (Phase 1)
+
+- Verrouillage login après 5 échecs sur 15 minutes.
+- Durcissement mot de passe (minimum 10 caractères + validateurs Django).
+- Expiration de session renforcée (8h, fermeture navigateur, cookie HTTPOnly).
+- Journal d'audit minimal (`users.AuditLog`) pour actions HTTP sensibles.
+
+## Sauvegarde et restauration (SQLite)
+
+Créer un backup:
+
+```bash
+./scripts/backup_db.sh
+```
+
+Restaurer un backup:
+
+```bash
+./scripts/restore_db.sh backups/db_YYYYMMDD_HHMMSS.sqlite3.gz
+```
+
+Note: arrêter le serveur avant restauration.

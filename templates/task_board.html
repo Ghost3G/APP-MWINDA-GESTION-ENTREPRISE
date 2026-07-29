@@ -1,0 +1,156 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Tableau des tâches - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/task-board.css' %}">
+</head>
+<body class="task-board-page">
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content board-page">
+            <div class="board-toolbar">
+                <div class="board-toolbar-left">
+                    <h1>Tableau des tâches</h1>
+                    <p>Organisation par colonnes — membres, échéances, étiquettes, pièces jointes</p>
+                </div>
+                <div class="board-toolbar-right">
+                    <form method="GET" class="board-project-form" id="projectFilterForm">
+                        <input type="hidden" name="view" id="viewModeInput" value="{{ view_mode }}">
+                        <select name="project_id" id="projectSelect" onchange="this.form.submit()">
+                            {% for project in projects %}
+                                <option value="{{ project.id }}" {% if selected_project and project.id == selected_project.id %}selected{% endif %}>
+                                    {{ project.name }}
+                                </option>
+                            {% empty %}
+                                <option value="">Aucun projet</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <div class="board-view-tabs">
+                        <button type="button" class="board-view-tab {% if view_mode == 'board' %}active{% endif %}" data-view="board">Tableau</button>
+                        <button type="button" class="board-view-tab {% if view_mode == 'calendar' %}active{% endif %}" data-view="calendar">Calendrier</button>
+                        <button type="button" class="board-view-tab {% if view_mode == 'timeline' %}active{% endif %}" data-view="timeline">Chronologie</button>
+                    </div>
+                    {% if can_create and selected_project %}
+                        <button type="button" class="board-add-btn" id="openCreateCardBtn">+ Carte</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if not selected_project %}
+                <div class="board-empty-state">
+                    <div class="board-empty-icon">📋</div>
+                    <h3>Aucun projet accessible</h3>
+                    <p>Rejoignez un projet pour voir le tableau des tâches.</p>
+                </div>
+            {% else %}
+                <section class="board-view board-view-board {% if view_mode != 'board' %}hidden{% endif %}" id="boardView">
+                    <div class="kanban-board" id="kanbanBoard">
+                        {% for status, label in status_choices %}
+                            <div class="kanban-column" data-status="{{ status }}">
+                                <header class="kanban-column-header">
+                                    <h3>{{ label }}</h3>
+                                    <span class="kanban-count" id="count-{{ status }}">0</span>
+                                </header>
+                                <div class="kanban-cards" id="column-{{ status }}" data-status="{{ status }}"></div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="board-view board-view-calendar {% if view_mode != 'calendar' %}hidden{% endif %}" id="calendarView">
+                    <div class="calendar-toolbar">
+                        <button type="button" class="board-mini-btn" id="calendarPrev">‹</button>
+                        <h3 id="calendarTitle"></h3>
+                        <button type="button" class="board-mini-btn" id="calendarNext">›</button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </section>
+
+                <section class="board-view board-view-timeline {% if view_mode != 'timeline' %}hidden{% endif %}" id="timelineView">
+                    <div class="timeline-list" id="timelineList"></div>
+                </section>
+            {% endif %}
+        </main>
+    </div>
+
+    <div class="board-modal" id="cardModal">
+        <div class="board-modal-card">
+            <button type="button" class="board-modal-close" id="closeCardModal">×</button>
+            <div class="board-modal-body" id="cardModalBody">
+                <p class="board-modal-loading">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    {% if can_create and selected_project %}
+    <div class="board-modal" id="createCardModal">
+        <div class="board-modal-card board-modal-card--sm">
+            <button type="button" class="board-modal-close" id="closeCreateCardModal">×</button>
+            <h3>Nouvelle carte</h3>
+            <form id="createCardForm" class="board-form">
+                {% csrf_token %}
+                <input type="hidden" name="project_id" value="{{ selected_project.id }}">
+                <div class="board-form-group">
+                    <label>Titre</label>
+                    <input type="text" name="title" required placeholder="Ex: Validation maquette client">
+                </div>
+                <div class="board-form-group">
+                    <label>Assigné à</label>
+                    <select name="assigned_to_id" required>
+                        {% for member in project_members %}
+                            <option value="{{ member.id }}">{{ member.get_display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="board-form-group">
+                    <label>Échéance</label>
+                    <input type="date" name="due_date">
+                </div>
+                <button type="submit" class="board-primary-btn">Créer la carte</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="toast" id="boardToast"></div>
+
+    <script>
+        window.TASK_BOARD = {
+            tasks: {{ tasks_json|safe }},
+            columns: {{ columns_json|safe }},
+            labels: {{ labels_json|safe }},
+            members: {{ members_json|safe }},
+            viewMode: "{{ view_mode }}",
+            projectId: "{{ selected_project_id }}",
+            csrfToken: "{{ csrf_token }}",
+            icons: {
+                calendar: "{% static 'images/icone_calendrier.svg' %}",
+                comment: "{% static 'images/icone_commentaire.svg' %}",
+                attachment: "{% static 'images/icone_piece_jointe.svg' %}",
+                checklist: "{% static 'images/icone_checklist.svg' %}",
+            },
+            urls: {
+                detail: "{% url 'board_task_detail' 0 %}",
+                status: "{% url 'board_update_status' 0 %}",
+                update: "{% url 'board_update_task' 0 %}",
+                comment: "{% url 'board_add_comment' 0 %}",
+                checklist: "{% url 'board_add_checklist' 0 %}",
+                checklistItem: "{% url 'board_add_checklist_item' 0 %}",
+                toggleItem: "{% url 'board_toggle_checklist_item' 0 %}",
+                attachment: "{% url 'board_upload_attachment' 0 %}",
+                create: "{% url 'board_create_task' %}",
+            },
+        };
+    </script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/task-board.js' %}"></script>
+</body>
+</html>

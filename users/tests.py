@@ -32,14 +32,16 @@ class UsersDirectoryTests(TestCase):
             'email': 'bob@example.com',
             'first_name': 'Bob',
             'last_name': 'Mwinda',
-            'password': 'secret123',
+            'password': 'SecretPass123!',
             'role': 'agent',
-            'direction': 'design',
+            'department': 'technique',
+            'direction': 'metal_design',
         })
 
         self.assertRedirects(response, reverse('users_list'))
         created_user = User.objects.get(username='bob')
         self.assertEqual(created_user.email, 'bob@example.com')
         self.assertEqual(created_user.role, 'agent')
-        self.assertEqual(created_user.direction, 'design')
-        self.assertTrue(created_user.check_password('secret123'))
+        self.assertEqual(created_user.direction, 'metal_design')
+        self.assertEqual(created_user.org_group, 'technique')
+        self.assertTrue(created_user.check_password('SecretPass123!'))

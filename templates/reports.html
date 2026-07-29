@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Rapports - AppMwinda</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    {% include "partials/head_styles.html" %}
     <style>
         .reports-page {
             padding: 24px 28px;
@@ -157,12 +157,7 @@
     </style>
 </head>
 <body>
-    <header class="app-header">
-        <button class="menu-toggle" aria-label="Ouvrir le menu">☰</button>
-        <div class="brand-mark">
-            <img src="{% static 'images/logo_agence_noir.png' %}" alt="AppMwinda Logo" class="logo-image">
-        </div>
-    </header>
+    {% include "partials/app_header.html" %}
 
     <div class="app-shell">
         <!-- Sidebar navigation -->
@@ -206,10 +201,9 @@
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Département :</label>
                                 <select name="department">
                                     <option value="">Sélectionner</option>
-                                    <option value="wood_design">Wood Design</option>
-                                    <option value="metal_design">Metal Design</option>
-                                    <option value="branding">Branding</option>
-                                    <option value="signalétique">Signalétique</option>
+                                    {% for value, label in branch_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                             <div>

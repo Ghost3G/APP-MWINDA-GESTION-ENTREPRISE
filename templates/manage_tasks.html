@@ -1,0 +1,474 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des tâches - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <style>
+        /* Aligné sur le design sombre AppMwinda (Tableau / Messages) */
+        .tasks-page {
+            padding: 22px 24px 40px;
+            max-width: 1180px;
+            margin: 0 auto;
+            color: #f4f4f5;
+        }
+        body .dashboard-content:has(.tasks-page) {
+            background: #050506 !important;
+            min-height: calc(100vh - 72px);
+        }
+        .page-header { display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:end; margin-bottom:16px; }
+        .page-header h1 { margin:0 0 4px; font-size:28px; color:#f4f4f5; font-weight:800; }
+        .page-header p { margin:0; color:#a1a1aa; }
+        .header-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .stats-row { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+        @media (max-width: 900px) { .stats-row { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+        .stat-pill {
+            display:block; text-decoration:none; border-radius:14px; padding:12px 14px;
+            background: #141416;
+            border: 1px solid rgba(255,255,255,0.09);
+            color: inherit;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+        }
+        .stat-pill.active {
+            border-color: #fde047;
+            box-shadow: 0 0 0 1px rgba(253,224,71,0.35), 0 10px 28px rgba(0,0,0,0.28);
+            background: linear-gradient(180deg, rgba(253,224,71,0.12), #141416);
+        }
+        .stat-pill .label { font-size:11px; color:#a1a1aa; text-transform:uppercase; font-weight:700; letter-spacing:.03em; }
+        .stat-pill .value { font-size:24px; font-weight:800; margin-top:2px; color:#f4f4f5; }
+        .stat-pill.overdue .value { color:#fb7185; }
+        .stat-pill.soon .value { color:#fde047; }
+        .stat-pill.progress .value { color:#93c5fd; }
+        .stat-pill.done .value { color:#86efac; }
+        .panel {
+            background:#141416;
+            border:1px solid rgba(255,255,255,0.09);
+            border-radius:16px;
+            padding:14px 16px;
+            margin-bottom:14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+        }
+        .panel-head { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+        .panel-head h3 { margin:0; font-size:16px; color:#f4f4f5; }
+        .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+        .form-group { display:flex; flex-direction:column; gap:5px; min-width:150px; }
+        .form-group label { font-size:11px; font-weight:700; color:#a1a1aa; text-transform:uppercase; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding:9px 10px;
+            border:1px solid rgba(255,255,255,0.12);
+            border-radius:10px;
+            font-size:14px;
+            background:#1e1e22;
+            color:#f4f4f5;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #fde047;
+            box-shadow: 0 0 0 2px rgba(253,224,71,0.2);
+        }
+        .grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
+        .btn-primary, .btn-secondary, .btn-danger, .btn-linkish, .btn-quiet {
+            border:none; border-radius:10px; padding:8px 12px; font-weight:700; cursor:pointer; font-size:12px;
+            text-decoration:none; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap;
+        }
+        .btn-primary { background:#fde047; color:#111827; }
+        .btn-secondary { background:#1e1e22; color:#f4f4f5; border:1px solid rgba(255,255,255,0.12); }
+        .btn-danger { background:rgba(251,113,133,0.15); color:#fb7185; border:1px solid rgba(251,113,133,0.3); }
+        .btn-linkish { background:rgba(253,224,71,0.12); color:#fde047; border:1px solid rgba(253,224,71,0.25); }
+        .btn-quiet { background:transparent; color:#a1a1aa; border:1px solid rgba(255,255,255,0.12); }
+
+        .project-block {
+            margin-bottom:18px;
+            border:1px solid rgba(255,255,255,0.09);
+            border-radius:16px;
+            overflow:hidden;
+            background:#141416;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+        }
+        .project-block-head {
+            display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;
+            padding:12px 14px;
+            background: linear-gradient(90deg, #111827 0%, #1e1e22 70%, rgba(253,224,71,0.18) 100%);
+            color:#fff;
+            border-bottom: 1px solid rgba(253,224,71,0.25);
+        }
+        .project-block-head strong { font-size:15px; color:#f4f4f5; }
+        .project-block-head span { color:#a1a1aa; font-size:12px; }
+        .project-block-head a { color:#fde047; font-weight:700; text-decoration:none; font-size:12px; }
+
+        .tasks-table { width:100%; border-collapse:collapse; }
+        .tasks-table th, .tasks-table td {
+            padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.06); text-align:left; vertical-align:middle; font-size:13px;
+            color:#e4e4e7;
+        }
+        .tasks-table th {
+            background:#1a1a1e;
+            color:#a1a1aa;
+            font-size:11px;
+            text-transform:uppercase;
+            letter-spacing:.04em;
+        }
+        .tasks-table tbody tr { background: transparent; }
+        .tasks-table tbody tr:hover td { background: rgba(253,224,71,0.04); }
+        .tasks-table tr:last-child td { border-bottom:none; }
+        .tasks-table tr.overdue td { background: rgba(251,113,133,0.08); }
+        .tasks-table tr.soon td { background: rgba(253,224,71,0.07); }
+        .seq {
+            width:34px; height:34px; border-radius:10px;
+            background: rgba(253,224,71,0.14);
+            color:#fde047;
+            border: 1px solid rgba(253,224,71,0.28);
+            display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:12px;
+        }
+        .task-name { font-weight:700; color:#f4f4f5; margin:0 0 2px; }
+        .task-sub { margin:0; color:#a1a1aa; font-size:12px; }
+        .status-badge {
+            display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700;
+        }
+        .status-pending { background:rgba(253,224,71,0.16); color:#fde047; }
+        .status-in_progress { background:rgba(147,197,253,0.16); color:#93c5fd; }
+        .status-done { background:rgba(134,239,172,0.16); color:#86efac; }
+        .due-chip {
+            display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700;
+            background:#1e1e22; color:#d4d4d8; border:1px solid rgba(255,255,255,0.08);
+        }
+        .due-chip.overdue { background:rgba(251,113,133,0.15); color:#fb7185; border-color:rgba(251,113,133,0.3); }
+        .due-chip.soon { background:rgba(253,224,71,0.14); color:#fde047; border-color:rgba(253,224,71,0.3); }
+        .row-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+        .edit-block {
+            display:none; padding:12px;
+            background:#1a1a1e;
+            border-top:1px dashed rgba(255,255,255,0.1);
+        }
+        .edit-block.open { display:block; }
+        .message { padding:12px 14px; border-radius:10px; margin-bottom:12px; font-size:14px; }
+        .message.success { background:rgba(134,239,172,0.12); color:#86efac; border:1px solid rgba(134,239,172,0.25); }
+        .message.error { background:rgba(251,113,133,0.12); color:#fb7185; border:1px solid rgba(251,113,133,0.25); }
+        .empty-hint { color:#a1a1aa; padding:18px; text-align:center; }
+        details.admin-tools summary { cursor:pointer; font-weight:700; color:#f4f4f5; }
+        details.admin-tools p { color:#a1a1aa !important; }
+        .template-card { background:#1e1e22; border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.08); }
+        .template-card h4 { margin:0 0 8px; font-size:14px; color:#f4f4f5; }
+        .template-list { margin:0; padding-left:18px; color:#a1a1aa; font-size:13px; line-height:1.5; }
+        .work-meta { color:#a1a1aa !important; font-size:12px; }
+        @media (max-width: 760px) {
+            .tasks-table thead { display:none; }
+            .tasks-table, .tasks-table tbody, .tasks-table tr, .tasks-table td { display:block; width:100%; }
+            .tasks-table tr { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+            .tasks-table td { border:none; padding:4px 0; }
+            .row-actions { justify-content:flex-start; }
+        }
+    </style>
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="tasks-page">
+                <div class="page-header">
+                    <div>
+                        <h1>Tâches</h1>
+                        <p>Vue direction : une ligne claire par étape, regroupée par projet.</p>
+                    </div>
+                    <div class="header-actions">
+                        <a class="btn-linkish" href="{% url 'task_board' %}">Tableau Kanban</a>
+                        <button type="button" class="btn-primary" onclick="document.getElementById('assignPanel').scrollIntoView({behavior:'smooth'})">+ Assigner</button>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="stats-row">
+                    <a class="stat-pill {% if focus == 'open' and not selected_status %}active{% endif %}" href="?focus=open{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}">
+                        <div class="label">À traiter</div>
+                        <div class="value">{{ stats.pending|add:stats.in_progress }}</div>
+                    </a>
+                    <a class="stat-pill progress {% if selected_status == 'in_progress' %}active{% endif %}" href="?status=in_progress{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}">
+                        <div class="label">En cours</div>
+                        <div class="value">{{ stats.in_progress }}</div>
+                    </a>
+                    <a class="stat-pill overdue {% if focus == 'overdue' %}active{% endif %}" href="?focus=overdue{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}">
+                        <div class="label">En retard</div>
+                        <div class="value">{{ stats.overdue }}</div>
+                    </a>
+                    <a class="stat-pill soon {% if focus == 'due_soon' %}active{% endif %}" href="?focus=due_soon{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}">
+                        <div class="label">≤ 3 jours</div>
+                        <div class="value">{{ stats.due_soon }}</div>
+                    </a>
+                    <a class="stat-pill done {% if selected_status == 'done' %}active{% endif %}" href="?status=done{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}">
+                        <div class="label">Terminées</div>
+                        <div class="value">{{ stats.done }}</div>
+                    </a>
+                </div>
+
+                <div class="panel">
+                    <form method="GET" class="filters">
+                        <input type="hidden" name="focus" value="{{ focus }}">
+                        <div class="form-group">
+                            <label>Projet</label>
+                            <select name="project_id" onchange="this.form.submit()">
+                                <option value="">Tous</option>
+                                {% for project in projects %}
+                                    <option value="{{ project.id }}" {% if selected_project_id == project.id|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Agent</label>
+                            <select name="assigned_to_id" onchange="this.form.submit()">
+                                <option value="">Tous</option>
+                                {% for agent in agents %}
+                                    <option value="{{ agent.id }}" {% if selected_assigned_to_id == agent.id|stringformat:"s" %}selected{% endif %}>{{ agent.get_full_name|default:agent.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Branche</label>
+                            <select name="department" onchange="this.form.submit()">
+                                <option value="">Toutes</option>
+                                {% for value, label in direction_choices %}
+                                    <option value="{{ value }}" {% if selected_department == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <a class="btn-secondary" href="{% url 'manage_tasks' %}">Réinitialiser</a>
+                    </form>
+                </div>
+
+                <div class="panel-head" style="margin:4px 2px 10px;">
+                    <h3 style="margin:0;color:#f4f4f5;">File de travail ({{ tasks_count }})</h3>
+                    <span class="work-meta">Projet → agent → étape n°</span>
+                </div>
+
+                {% if task_rows %}
+                    {% regroup task_rows by task.project as project_groups %}
+                    {% for group in project_groups %}
+                    <section class="project-block">
+                        <div class="project-block-head">
+                            <div>
+                                <strong>{{ group.grouper.name }}</strong>
+                                <span> · ajouté le {{ group.grouper.created_at|date:"d/m/Y" }}</span>
+                            </div>
+                            <a href="{% url 'task_board' %}?project_id={{ group.grouper.id }}">Ouvrir le tableau →</a>
+                        </div>
+                        <table class="tasks-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:54px;">N°</th>
+                                    <th>Tâche</th>
+                                    <th>Agent</th>
+                                    <th>Statut</th>
+                                    <th>Échéance</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in group.list %}
+                                {% with task=row.task %}
+                                <tr class="{% if row.due_state == 'overdue' %}overdue{% elif row.due_state == 'soon' %}soon{% endif %}">
+                                    <td><span class="seq">{{ task.order|add:1 }}</span></td>
+                                    <td>
+                                        <p class="task-name">{{ task.title }}</p>
+                                        <p class="task-sub">{{ task.get_department_display_label }}</p>
+                                    </td>
+                                    <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                                    <td><span class="status-badge status-{{ task.status }}">{{ task.get_status_display }}</span></td>
+                                    <td>
+                                        {% if task.due_date %}
+                                            <span class="due-chip {{ row.due_state }}">{{ task.due_date|date:"d/m/Y" }}</span>
+                                        {% else %}
+                                            <span class="due-chip">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="row-actions">
+                                            {% if task.status != 'in_progress' and task.status != 'done' %}
+                                            <form method="POST">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="quick_status">
+                                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                                <input type="hidden" name="status" value="in_progress">
+                                                <button type="submit" class="btn-secondary">Démarrer</button>
+                                            </form>
+                                            {% endif %}
+                                            {% if task.status != 'done' %}
+                                            <form method="POST">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="quick_status">
+                                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                                <input type="hidden" name="status" value="done">
+                                                <button type="submit" class="btn-primary">Terminer</button>
+                                            </form>
+                                            {% endif %}
+                                            <button type="button" class="btn-quiet" onclick="document.getElementById('edit-{{ task.id }}').classList.toggle('open')">Éditer</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="padding:0; border:none;">
+                                        <div class="edit-block" id="edit-{{ task.id }}">
+                                            <form method="POST" class="grid-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update">
+                                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                                <div class="form-group" style="grid-column:1/-1;">
+                                                    <label>Titre</label>
+                                                    <input type="text" name="title" value="{{ task.title }}" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Agent</label>
+                                                    <select name="assigned_to_id">
+                                                        {% for agent in agents %}
+                                                            <option value="{{ agent.id }}" {% if agent.id == task.assigned_to_id %}selected{% endif %}>{{ agent.get_full_name|default:agent.username }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Branche</label>
+                                                    <select name="department">
+                                                        {% for value, label in direction_choices %}
+                                                            <option value="{{ value }}" {% if value == task.department %}selected{% endif %}>{{ label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Statut</label>
+                                                    <select name="status">
+                                                        {% for value, label in status_choices %}
+                                                            <option value="{{ value }}" {% if value == task.status %}selected{% endif %}>{{ label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Échéance</label>
+                                                    <input type="date" name="due_date" value="{{ task.due_date|date:'Y-m-d' }}">
+                                                </div>
+                                                <div class="form-group" style="justify-content:end;">
+                                                    <label>&nbsp;</label>
+                                                    <button type="submit" class="btn-primary">Enregistrer</button>
+                                                </div>
+                                            </form>
+                                            <form method="POST" style="margin-top:8px;" onsubmit="return confirm('Supprimer cette tâche ?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                                <button type="submit" class="btn-danger">Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </section>
+                    {% endfor %}
+                {% else %}
+                    <div class="panel"><p class="empty-hint">Aucune tâche dans cette vue. Changez le filtre ou assignez une tâche.</p></div>
+                {% endif %}
+
+                <div class="panel" id="assignPanel">
+                    <div class="panel-head"><h3>Assigner une tâche</h3></div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Projet</label>
+                                <select name="project_id" required>
+                                    <option value="">— Choisir —</option>
+                                    {% for project in projects %}
+                                        <option value="{{ project.id }}" {% if selected_project_id == project.id|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Agent</label>
+                                <select name="assigned_to_id" required>
+                                    <option value="">— Choisir —</option>
+                                    {% for agent in agents %}
+                                        <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label>Titre</label>
+                                <input type="text" name="title" placeholder="Ex: Validation croquis client" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Branche</label>
+                                <select name="department">
+                                    {% for value, label in direction_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Échéance</label>
+                                <input type="date" name="due_date">
+                            </div>
+                            <div class="form-group">
+                                <label>Statut initial</label>
+                                <select name="status">
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <button type="submit" class="btn-primary">Assigner</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <details class="admin-tools">
+                        <summary>Outils avancés — modèles par branche</summary>
+                        <p style="color:#6b7280; font-size:13px; margin:10px 0;">Ajoute les tâches types d’une branche sur un agent/projet.</p>
+                        <form method="POST" class="filters">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="apply_template">
+                            <div class="form-group">
+                                <label>Projet</label>
+                                <select name="project_id" required>
+                                    {% for project in projects %}
+                                        <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Agent</label>
+                                <select name="assigned_to_id" required>
+                                    {% for agent in agents %}
+                                        <option value="{{ agent.id }}">{{ agent.get_full_name|default:agent.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Modèle</label>
+                                <select name="department">
+                                    {% for value, label in direction_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-primary">Appliquer</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

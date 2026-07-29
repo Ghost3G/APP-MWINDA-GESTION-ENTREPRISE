@@ -37,9 +37,10 @@
             <td>{{ user.date_joined|date:"d/m/Y" }}</td>
             <td>
                 <div class="action-cell">
-                    <form method="POST" style="display: inline;">
+                    <form method="POST" style="display: inline;" onsubmit="return adminConfirmDelete(this, '{{ user.username }}', event);">
                         {% csrf_token %}
                         <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <input type="hidden" name="delete_confirm" value="">
                         
                         {% if not user.is_superuser %}
                             <button type="submit" name="action" value="make_admin" class="admin-btn admin-btn-secondary" title="Promouvoir en administrateur">Rendre Admin</button>
@@ -48,7 +49,7 @@
                         {% endif %}
                         
                         {% if user.id != request.user.id %}
-                        <button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" style="padding: 6px 12px; font-size: 12px;" onclick="return confirm('Êtes-vous sûr?')">Supprimer</button>
+                        <button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" style="padding: 6px 12px; font-size: 12px;">Supprimer</button>
                         {% endif %}
                     </form>
                 </td>
@@ -61,4 +62,14 @@
         </tbody>
     </table>
 </div>
+<script>
+function adminConfirmDelete(form, username, event) {
+    const clicked = event && event.submitter ? event.submitter.value : "";
+    if (clicked !== "delete") return true;
+    const text = prompt("Pour supprimer " + username + ", tapez SUPPRIMER");
+    if (!text) return false;
+    form.querySelector('input[name="delete_confirm"]').value = text.trim();
+    return true;
+}
+</script>
 {% endblock %}
