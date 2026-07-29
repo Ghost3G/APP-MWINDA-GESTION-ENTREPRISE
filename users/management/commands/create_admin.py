@@ -1,67 +1,97 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+import os
 
 User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Create or update admin user for AppMwinda'
+    help = (
+        "Assure qu'un compte admin existe. "
+        "Ne réécrit PAS le mot de passe d'un admin déjà présent "
+        "(sauf avec --force), pour ne pas casser les mises à jour Render."
+    )
 
     def add_arguments(self, parser):
-        parser.add_argument('--username', type=str, default='admin', help='Admin username (default: admin)')
-        parser.add_argument('--email', type=str, default='admin@appmwinda.com', help='Admin email')
-        parser.add_argument('--password', type=str, default='Admin@123456', help='Admin password')
-        parser.add_argument('--role', type=str, default='admin', help='Admin role (default: admin)')
-        parser.add_argument('--direction', type=str, default='design', help='Admin direction (default: design)')
+        parser.add_argument(
+            '--username',
+            type=str,
+            default=os.environ.get('ADMIN_USERNAME', 'admin'),
+        )
+        parser.add_argument(
+            '--email',
+            type=str,
+            default=os.environ.get('ADMIN_EMAIL', 'admin@appmwinda.com'),
+        )
+        parser.add_argument(
+            '--password',
+            type=str,
+            default=os.environ.get('ADMIN_PASSWORD', ''),
+        )
+        parser.add_argument(
+            '--role',
+            type=str,
+            default='admin',
+        )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Force la mise à jour du mot de passe même si le compte existe déjà.',
+        )
 
     def handle(self, *args, **options):
         username = options['username']
         email = options['email']
         password = options['password']
         role = options['role']
-        direction = options['direction']
+        force = options['force']
 
-        try:
-            # Check if user exists
-            user = User.objects.filter(username=username).first()
-            
-            if user:
-                # Update existing user - make sure password is set correctly
-                user.email = email
-                user.is_staff = True
-                user.is_superuser = True
-                user.role = role
-                user.direction = direction
-                user.set_password(password)  # Use set_password to hash the password
-                user.save()
-                self.stdout.write(self.style.SUCCESS('[OK] Updated admin user "{}"'.format(username)))
-            else:
-                # Create new user
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password,
-                    role=role,
-                    direction=direction,
+        user = User.objects.filter(username=username).first()
+        if user and not force:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'[OK] Admin "{username}" déjà présent — mot de passe conservé (safe pour les redeploys).'
                 )
-                user.is_staff = True
-                user.is_superuser = True
-                user.save()
-                self.stdout.write(self.style.SUCCESS('[OK] Created admin user "{}"'.format(username)))
-            
-            # Verify password works
-            from django.contrib.auth import authenticate
-            test_auth = authenticate(username=username, password=password)
-            if test_auth:
-                self.stdout.write(self.style.SUCCESS('[OK] Password verified - authentication works'))
-            else:
-                self.stdout.write(self.style.WARNING('[WARNING] Password verification failed'))
-        except Exception as e:
-            self.stdout.write(self.style.ERROR('[ERROR] Failed to create admin: {}'.format(str(e))))
+            )
+            return
 
-        self.stdout.write(self.style.SUCCESS('\n[OK] Admin credentials:'))
-        self.stdout.write('  Username: {}'.format(username))
-        self.stdout.write('  Password: {}'.format(password))
-        self.stdout.write('  Email: {}'.format(email))
-        self.stdout.write('  Role: {}'.format(role))
-        self.stdout.write('  Direction: {}'.format(direction))
+        if not password:
+            if user and force:
+                self.stdout.write(self.style.ERROR('[ERROR] --force nécessite ADMIN_PASSWORD / --password'))
+                return
+            self.stdout.write(
+                self.style.WARNING(
+                    '[SKIP] Aucun ADMIN_PASSWORD défini et aucun admin à créer. '
+                    'Créez un admin manuellement si besoin.'
+                )
+            )
+            return
+
+        # Direction valide par défaut (branche atelier)
+        direction = 'metal_design'
+        if hasattr(User, 'DIRECTION_CHOICES'):
+            valid = [value for value, _ in User.DIRECTION_CHOICES]
+            if direction not in valid and valid:
+                direction = valid[0]
+
+        if user and force:
+            user.email = email
+            user.is_staff = True
+            user.is_superuser = True
+            user.role = role
+            user.set_password(password)
+            user.save()
+            self.stdout.write(self.style.SUCCESS(f'[OK] Admin "{username}" mis à jour (--force).'))
+            return
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            role=role,
+            direction=direction,
+        )
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        self.stdout.write(self.style.SUCCESS(f'[OK] Admin "{username}" créé.'))

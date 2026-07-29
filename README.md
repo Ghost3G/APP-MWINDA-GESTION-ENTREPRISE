@@ -1,91 +1,64 @@
-# AppMwinda
+# AppMwinda — Groupe Agence Mwinda
 
-Application Django pour la gestion de projets et rapports.
+Application Django de gestion d’entreprise (projets, tâches, messages, finance, rapports).
 
-## Déploiement sur Render
+## Mise à jour en production (Render)
 
-### Prérequis
-- Compte Render (render.com)
-- Repository GitHub/GitLab avec ce code
+Workflow recommandé à chaque évolution :
 
-### Étapes de déploiement
+1. Modifier le code en local
+2. Tester (`python manage.py check` / tests)
+3. `git add` → `git commit` → `git push` vers GitHub
+4. Render détecte le push (`autoDeploy: true`) et redéploie
+5. Au démarrage : `migrate` applique les nouvelles tables/colonnes **sans effacer** les données Postgres
 
-1. **Push vers Git** :
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit for Render deployment"
-   git branch -M main
-   git remote add origin https://github.com/your-username/your-repo.git
-   git push -u origin main
-   ```
+### Ce qui est conservé
+| Élément | Conservé au redeploy ? |
+|---|---|
+| Utilisateurs, projets, tâches, messages, finance | **Oui** (Postgres `DATABASE_URL`) |
+| Photos / avatars / pièces jointes | **Oui** si `CLOUDINARY_URL` est défini |
+| Code source | Remplacé par la nouvelle version |
+| Mot de passe admin existant | **Conservé** (plus de reset à chaque deploy) |
 
-2. **Déploiement sur Render** :
-   - Connectez votre repository à Render
-   - Render détectera automatiquement le fichier `render.yaml`
-   - La base de données PostgreSQL sera créée automatiquement
+### Variables d’environnement obligatoires (Render)
+- `DEBUG=False`
+- `SECRET_KEY` (généré)
+- `DATABASE_URL` (lié au Postgres Render)
+- `DATABASE_SSL_REQUIRE=True`
+- `CLOUDINARY_URL` (compte Cloudinary gratuit possible)
+- `ALLOWED_HOSTS=.onrender.com` (ou votre domaine)
+- `ADMIN_PASSWORD` (uniquement utile au **premier** démarrage)
 
-3. **Configuration des variables d'environnement** :
-   Dans les settings de votre service Render, ajoutez :
-   - `ALLOWED_HOSTS` : votre-domaine.onrender.com (ex: appmwinda.onrender.com)
-
-4. **Après déploiement** :
-   - L'application sera accessible à l'URL fournie par Render
-   - Pour créer un superuser : `python manage.py createsuperuser`
-
-### Variables d'environnement
-- `DEBUG` : False (configuré automatiquement)
-- `SECRET_KEY` : Généré automatiquement par Render
-- `DATABASE_URL` : Fourni automatiquement par Render
-- `ALLOWED_HOSTS` : À configurer dans les secrets Render
+### Premier déploiement
+1. Créer le service via `render.yaml` (web + Postgres)
+2. Dans le dashboard Render, renseigner :
+   - `CLOUDINARY_URL`
+   - `ADMIN_PASSWORD` (fort)
+3. Déployer — migrations + admin créés une fois
+4. Se connecter et changer le mot de passe si besoin
 
 ### Développement local
 
-1. Installez les dépendances :
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Configurez votre `.env` basé sur `.env.example`
-
-3. Migrez la base de données :
-   ```bash
-   python manage.py migrate
-   ```
-
-4. Lancez le serveur :
-   ```bash
-   python manage.py runserver
-   ```
-
-### Structure du projet
-- `AppMwinda/` : Configuration Django
-- `users/` : Gestion des utilisateurs
-- `projects/` : Gestion des projets
-- `messaging/` : Système de messagerie
-- `reports/` : Génération de rapports
-- `static/` : Fichiers statiques
-- `templates/` : Templates HTML
-
-## Sécurité (Phase 1)
-
-- Verrouillage login après 5 échecs sur 15 minutes.
-- Durcissement mot de passe (minimum 10 caractères + validateurs Django).
-- Expiration de session renforcée (8h, fermeture navigateur, cookie HTTPOnly).
-- Journal d'audit minimal (`users.AuditLog`) pour actions HTTP sensibles.
-
-## Sauvegarde et restauration (SQLite)
-
-Créer un backup:
-
 ```bash
-./scripts/backup_db.sh
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # puis adapter
+python manage.py migrate
+python manage.py runserver
 ```
 
-Restaurer un backup:
+Localement sans `DATABASE_URL` → SQLite (`db.sqlite3`).  
+En prod Render → toujours Postgres.
 
-```bash
-./scripts/restore_db.sh backups/db_YYYYMMDD_HHMMSS.sqlite3.gz
-```
+### Structure
+- `AppMwinda/` — configuration
+- `users/` — comptes, sécurité, notifications
+- `projects/` — projets, tâches, tableau Kanban
+- `messaging/` — messagerie
+- `reports/` — rapports & finance
+- `scripts/render_start.sh` — démarrage prod (wait DB → migrate → gunicorn)
 
-Note: arrêter le serveur avant restauration.
+### Sauvegardes
+- **Prod** : utiliser les backups Postgres Render (dashboard)
+- **Local SQLite** : `./scripts/backup_db.sh`

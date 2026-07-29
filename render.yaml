@@ -3,26 +3,40 @@ services:
     name: appmwinda
     runtime: python
     region: frankfurt
+    plan: starter
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "python manage.py wait_for_db && python manage.py migrate && python manage.py create_admin --username admin --password Admin@123456 && gunicorn AppMwinda.wsgi:application --bind 0.0.0.0:$PORT"
+    startCommand: "bash scripts/render_start.sh"
+    autoDeploy: true
     envVars:
       - key: DEBUG
-        value: False
+        value: "False"
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
-        value: 3.13.5
+        value: "3.13.5"
+      # Laisser Render injecter l'hostname ; settings.py lit RENDER_EXTERNAL_HOSTNAME
       - key: ALLOWED_HOSTS
-        value: appmwinda-3pgq.onrender.com,.onrender.com,localhost,127.0.0.1
+        value: ".onrender.com,localhost,127.0.0.1"
       - key: DATABASE_URL
         fromDatabase:
           name: appmwinda-db
           property: connectionString
       - key: DATABASE_SSL_REQUIRE
-        value: False
+        value: "True"
+      # À renseigner dans le dashboard Render (Cloudinary) — médias durables entre mises à jour
+      - key: CLOUDINARY_URL
+        sync: false
+      # Optionnel : créer l'admin UNIQUEMENT s'il n'existe pas encore
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_EMAIL
+        value: admin@appmwinda.com
+      - key: ADMIN_PASSWORD
+        sync: false
 
 databases:
   - name: appmwinda-db
     region: frankfurt
+    plan: basic-256mb
     databaseName: appmwinda
     user: appmwinda_user

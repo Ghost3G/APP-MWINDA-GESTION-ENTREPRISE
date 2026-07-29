@@ -122,10 +122,12 @@ DATABASES = {
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
+    # Postgres Render : données durables entre les mises à jour / redeploys
+    ssl_require = os.environ.get('DATABASE_SSL_REQUIRE', 'True').lower() in {'1', 'true', 'yes'}
     DATABASES['default'] = dj_database_url.parse(
         DATABASE_URL,
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=ssl_require,
     )
 
 # ========================
@@ -168,7 +170,18 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Médias durables sur Render via Cloudinary si CLOUDINARY_URL est défini
+# Django 4.2+ / 5+ : backend staticfiles explicite
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+# Médias durables sur Render via Cloudinary (avatars, photos projets, PJ)
+# Sans CLOUDINARY_URL, les fichiers uploadés peuvent disparaître à chaque redeploy.
 if os.environ.get('CLOUDINARY_URL'):
     INSTALLED_APPS = [
         *INSTALLED_APPS[:INSTALLED_APPS.index('django.contrib.staticfiles') + 1],
@@ -177,19 +190,21 @@ if os.environ.get('CLOUDINARY_URL'):
         *INSTALLED_APPS[INSTALLED_APPS.index('django.contrib.staticfiles') + 1:],
     ]
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    STORAGES = {
-        'default': {
-            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
-        },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-        },
+    STORAGES['default'] = {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
     }
+elif not DEBUG:
+    # Prod sans Cloudinary : on logue un rappel (pas bloquant)
+    import logging
+    logging.getLogger(__name__).warning(
+        "CLOUDINARY_URL absent : les médias uploadés ne survivront pas aux redeploys Render."
+    )
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True').lower() in {'1', 'true', 'yes'}
 
 # ========================
 # AUTHENTIFICATION
