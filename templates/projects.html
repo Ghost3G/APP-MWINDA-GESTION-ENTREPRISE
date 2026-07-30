@@ -172,6 +172,18 @@
             color: #166534;
         }
 
+        .status-urgent {
+            background: #fee2e2;
+            color: #991b1b;
+            box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35);
+            font-weight: 800;
+        }
+
+        .project-item.is-urgent {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35), 0 10px 24px rgba(239, 68, 68, 0.12);
+        }
+
         .project-desc {
             color: #6b7280;
             font-size: 14px;
@@ -334,9 +346,10 @@
 
                     <div id="createForm" style="display: none; background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
                         <h3 style="margin-top: 0;">Créer un nouveau projet</h3>
-                        <form method="POST" enctype="multipart/form-data">
+                        <form method="POST" enctype="multipart/form-data" class="project-status-form">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="create">
+                            <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                 <input type="text" name="name" placeholder="Nom du projet" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
                                 <input type="date" name="start_date" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
@@ -391,7 +404,7 @@
                 {% if projects %}
                     <div class="projects-grid">
                         {% for project in projects %}
-                            <div class="project-item">
+                            <div class="project-item {% if project.status == 'urgent' %}is-urgent{% endif %}">
                                 <div class="project-cover">
                                     {% if project.cover_url %}
                                         <img src="{{ project.cover_url }}" alt="{{ project.name }}" loading="lazy" decoding="async">
@@ -402,7 +415,7 @@
                                 <div class="project-body">
                                 <div class="project-header">
                                     <h3 class="project-title">{{ project.name }}</h3>
-                                    <span class="status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% else %}completed{% endif %}">
+                                    <span class="status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% elif project.status == 'urgent' %}urgent{% else %}completed{% endif %}">
                                         {{ project.get_status_display }}
                                     </span>
                                 </div>
@@ -431,10 +444,11 @@
                                     {% if can_create_project %}
                                     <button type="button" class="btn-small" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier</button>
                                     <div id="edit-{{ project.id }}" style="display:none; margin-top:8px;">
-                                        <form method="POST" enctype="multipart/form-data" style="display:grid; gap:8px;">
+                                        <form method="POST" enctype="multipart/form-data" class="project-status-form" style="display:grid; gap:8px;">
                                             {% csrf_token %}
                                             <input type="hidden" name="action" value="update">
                                             <input type="hidden" name="project_id" value="{{ project.id }}">
+                                            <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
                                             <input type="text" name="name" value="{{ project.name }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                             <textarea name="description" rows="2" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">{{ project.description }}</textarea>
                                             <input type="date" name="start_date" value="{{ project.start_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
@@ -490,5 +504,24 @@
     </div>
 
     <script src="{% static 'js/dashboard.js' %}"></script>
+    <script>
+    document.querySelectorAll('.project-status-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const statusSelect = form.querySelector('select[name="status"]');
+            const confirmField = form.querySelector('.confirm-done-field');
+            if (!statusSelect || !confirmField) return;
+            if (statusSelect.value === 'done') {
+                const ok = window.confirm('Confirmer que ce projet est bien terminé ?');
+                if (!ok) {
+                    event.preventDefault();
+                    return;
+                }
+                confirmField.value = '1';
+            } else {
+                confirmField.value = '0';
+            }
+        });
+    });
+    </script>
 </body>
 </html>

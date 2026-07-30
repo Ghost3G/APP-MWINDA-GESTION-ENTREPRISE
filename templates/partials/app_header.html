@@ -43,6 +43,9 @@
     if (!bell || !panel || !list) return;
 
     const csrfToken = '{{ csrf_token }}';
+    const STORAGE_KEY = 'mwinda_notif_unread';
+    let lastUnread = Number(sessionStorage.getItem(STORAGE_KEY) || '{{ unread_notifications_total|default:0 }}');
+    let audioCtx = null;
 
     function kindLabel(kind) {
         if (kind === 'task') return 'Tâche';
@@ -50,15 +53,57 @@
         return 'Message';
     }
 
-    async function loadFeed() {
+    function playNotificationSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const gain = audioCtx.createGain();
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+            const osc1 = audioCtx.createOscillator();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, now);
+            osc1.connect(gain);
+            osc1.start(now);
+            osc1.stop(now + 0.18);
+
+            const osc2 = audioCtx.createOscillator();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1175, now + 0.14);
+            osc2.connect(gain);
+            osc2.start(now + 0.14);
+            osc2.stop(now + 0.36);
+        } catch (e) {
+            // Navigateur sans WebAudio : silencieux
+        }
+    }
+
+    function updateUnread(count) {
+        const next = Number(count) || 0;
+        if (badge) {
+            badge.textContent = next;
+            badge.classList.toggle('visible', next > 0);
+        }
+        if (next > lastUnread) {
+            playNotificationSound();
+        }
+        lastUnread = next;
+        sessionStorage.setItem(STORAGE_KEY, String(next));
+    }
+
+    async function loadFeed({ silent } = { silent: false }) {
         try {
             const res = await fetch('{% url "notifications_feed" %}');
             const data = await res.json();
             if (!data.ok) return;
-            if (badge) {
-                badge.textContent = data.unread || 0;
-                badge.classList.toggle('visible', !!data.unread);
-            }
+            updateUnread(data.unread || 0);
+            if (silent && panel.hidden) return;
             if (!data.items.length) {
                 list.innerHTML = '<p class="notif-empty">Aucune notification.</p>';
                 return;
@@ -72,9 +117,14 @@
                 </a>
             `).join('');
         } catch (e) {
-            list.innerHTML = '<p class="notif-empty">Impossible de charger.</p>';
+            if (!silent) list.innerHTML = '<p class="notif-empty">Impossible de charger.</p>';
         }
     }
+
+    // Débloquer l'audio après une interaction utilisateur
+    document.addEventListener('click', () => {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }, { once: true });
 
     bell.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -96,8 +146,14 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
             });
+            lastUnread = 0;
+            sessionStorage.setItem(STORAGE_KEY, '0');
             loadFeed();
         });
     }
+
+    // Polling léger pour détecter les nouvelles notifications
+    loadFeed({ silent: true });
+    setInterval(() => loadFeed({ silent: true }), 12000);
 })();
 </script>

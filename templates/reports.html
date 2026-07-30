@@ -357,6 +357,10 @@
                                             <p><strong>📝 Observations:</strong> {{ report.observations }}</p>
                                         {% endif %}
                                     </div>
+                                    <div class="report-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                                        <a href="{% url 'report_a4' report.id %}" class="btn-small" style="text-decoration:none;">Voir PDF A4</a>
+                                        <a href="{% url 'report_pdf' report.id %}" class="btn-small" style="text-decoration:none; background:#111827; color:#fde047;">Télécharger PDF</a>
+                                    </div>
                                 </div>
                             {% endfor %}
                         </div>

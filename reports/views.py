@@ -2,17 +2,19 @@ from calendar import monthrange
 from datetime import date
 from decimal import Decimal
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db.models import Sum, Count
+from django.http import HttpResponse, HttpResponseForbidden
 
 from projects.branches import TECH_BRANCH_CHOICES
 from users.permissions import is_admin_user, is_management_user, can_access_finance
 
 from .models import DailyReport, FinanceExpense, FinanceIncome
+from .pdf import build_report_pdf
 
 User = get_user_model()
 
@@ -308,6 +310,35 @@ def reports_list(request):
         'branch_choices': TECH_BRANCH_CHOICES,
     }
     return render(request, 'reports.html', context)
+
+
+def _can_view_report(user, report):
+    if is_management_user(user) or is_admin_user(user):
+        return True
+    return report.user_id == user.id
+
+
+@login_required(login_url='login')
+def report_pdf(request, report_id):
+    report = get_object_or_404(DailyReport.objects.select_related('user'), id=report_id)
+    if not _can_view_report(request.user, report):
+        return HttpResponseForbidden('Accès refusé')
+
+    pdf_bytes = build_report_pdf(report)
+    filename = f"rapport_{report.date.strftime('%Y%m%d')}_{report.id}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='login')
+def report_a4_view(request, report_id):
+    report = get_object_or_404(DailyReport.objects.select_related('user'), id=report_id)
+    if not _can_view_report(request.user, report):
+        return HttpResponseForbidden('Accès refusé')
+    return render(request, 'report_a4.html', {
+        'report': report,
+    })
 
 
 @login_required(login_url='login')

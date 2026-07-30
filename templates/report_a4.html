@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapport A4 — {{ report.project }} — {{ report.date }}</title>
+    <style>
+        @page { size: A4; margin: 16mm; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+            background: #111111;
+            color: #111827;
+        }
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: #1c1c1e;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .toolbar a, .toolbar button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            color: #111827;
+            background: #fde047;
+        }
+        .toolbar .secondary {
+            background: #fff;
+        }
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 18px auto;
+            padding: 16mm;
+            background: #fff;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        h1 { margin: 0 0 6px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; color: #6b7280; margin-bottom: 18px; font-size: 13px; }
+        .meta { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 13px; }
+        .meta td { padding: 4px 0; vertical-align: top; }
+        .meta td:first-child { width: 120px; font-weight: 700; color: #374151; }
+        h2 { font-size: 14px; margin: 16px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+        table.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+        table.grid td { border: 1px solid #e5e7eb; padding: 6px 8px; background: #f9fafb; }
+        table.grid td:first-child { width: 45%; font-weight: 600; }
+        .notes { font-size: 12px; line-height: 1.5; }
+        @media print {
+            body { background: #fff; }
+            .toolbar { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <a href="{% url 'reports_list' %}" class="secondary">← Retour</a>
+        <button type="button" onclick="window.print()">Imprimer / PDF navigateur</button>
+        <a href="{% url 'report_pdf' report.id %}">Télécharger PDF</a>
+    </div>
+
+    <main class="sheet">
+        <h1>Agence Mwinda — Rapport journalier</h1>
+        <p class="sub">{{ report.project }} · {{ report.date|date:"d/m/Y" }}</p>
+
+        <table class="meta">
+            <tr><td>Agent</td><td>{{ report.user.get_labeled_name }}</td></tr>
+            <tr><td>Département</td><td>{% if report.department %}{{ report.get_department_display }}{% else %}—{% endif %}</td></tr>
+            <tr><td>Équipe</td><td>{{ report.team_agent|default:"—" }}</td></tr>
+        </table>
+
+        {% include "partials/report_a4_sections.html" %}
+    </main>
+</body>
+</html>

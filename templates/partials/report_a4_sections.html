@@ -1,0 +1,70 @@
+{% with yes="Oui" no="—" %}
+<h2>1. Conception</h2>
+<table class="grid">
+    <tr><td>Brief reçu</td><td>{% if report.conception_brief_received %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Croquis validé</td><td>{% if report.conception_croquis_validated %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Modélisation</td><td>{% if report.conception_modeling_done %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Fichier prêt</td><td>{% if report.conception_file_ready %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>2. Découpe</h2>
+<table class="grid">
+    <tr><td>Bois</td><td>{% if report.decoupe_bois_decoupe %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Métal</td><td>{% if report.decoupe_metal_decoupe %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>PVC</td><td>{% if report.decoupe_pvc_decoupe %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Dimensions vérifiées</td><td>{% if report.decoupe_dimensions_verified %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>3. Assemblage</h2>
+<table class="grid">
+    <tr><td>Méthode</td><td>{{ report.get_assemblage_method_display|default:"—" }}</td></tr>
+    <tr><td>Partiel</td><td>{% if report.assemblage_partial %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Complet</td><td>{% if report.assemblage_complete %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Renforts</td><td>{% if report.assemblage_renforts %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>4. Installation LED</h2>
+<table class="grid">
+    <tr><td>Bande posée</td><td>{% if report.led_bande_posee %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Alimentation</td><td>{% if report.led_alimentation_installee %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Test allumage</td><td>{% if report.led_test_allumage %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Câblage sécurisé</td><td>{% if report.led_cablage_secure %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>5. Contrôle qualité</h2>
+<table class="grid">
+    <tr><td>Alignement</td><td>{% if report.qualite_alignement %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Solidité</td><td>{% if report.qualite_solidite %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Finitions</td><td>{% if report.qualite_finitions %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Conformité</td><td>{% if report.qualite_conformite %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Validation</td><td>{% if report.qualite_validation %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>6. Peinture & finition</h2>
+<table class="grid">
+    <tr><td>Ponçage</td><td>{% if report.peinture_poncage %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Sous-couche</td><td>{% if report.peinture_sous_couche %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Peinture</td><td>{% if report.peinture_peinture %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Vernis</td><td>{% if report.peinture_vernis %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Nettoyage</td><td>{% if report.peinture_nettoyage %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+<h2>7. Livraison / installation</h2>
+<table class="grid">
+    <tr><td>Emballage</td><td>{% if report.livraison_emballage %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Transport</td><td>{% if report.livraison_transport %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Installation</td><td>{% if report.livraison_installation %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Rapport photo</td><td>{% if report.livraison_rapport_photo %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+    <tr><td>Projet clôturé</td><td>{% if report.livraison_projet_cloture %}{{ yes }}{% else %}{{ no }}{% endif %}</td></tr>
+</table>
+
+{% if report.observations or report.work_done or report.problems or report.objectives %}
+<h2>Observations</h2>
+<div class="notes">
+    {% if report.observations %}<p><strong>Notes :</strong> {{ report.observations }}</p>{% endif %}
+    {% if report.work_done %}<p><strong>Travail effectué :</strong> {{ report.work_done }}</p>{% endif %}
+    {% if report.problems %}<p><strong>Problèmes :</strong> {{ report.problems }}</p>{% endif %}
+    {% if report.objectives %}<p><strong>Objectifs :</strong> {{ report.objectives }}</p>{% endif %}
+</div>
+{% endif %}
+{% endwith %}

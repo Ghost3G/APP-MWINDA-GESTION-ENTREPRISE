@@ -10,6 +10,7 @@ class Project(models.Model):
     STATUS_CHOICES = (
         ('pending', 'En attente'),
         ('progress', 'En cours'),
+        ('urgent', 'Urgence'),
         ('done', 'Terminé'),
     )
 

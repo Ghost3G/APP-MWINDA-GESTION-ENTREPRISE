@@ -283,6 +283,7 @@ def dashboard(request):
         project_status_counts = {
             'pending': projects_qs.filter(status='pending').count(),
             'progress': projects_qs.filter(status='progress').count(),
+            'urgent': projects_qs.filter(status='urgent').count(),
             'done': projects_qs.filter(status='done').count(),
         }
         total_projects = sum(project_status_counts.values())
@@ -621,6 +622,12 @@ def projects_list(request):
         start_date = request.POST.get('start_date', '').strip()
         end_date = request.POST.get('end_date', '').strip()
         project_status = request.POST.get('status', 'pending').strip() or 'pending'
+        valid_project_statuses = {value for value, _ in Project.STATUS_CHOICES}
+        if project_status not in valid_project_statuses:
+            project_status = 'pending'
+        if project_status == 'done' and request.POST.get('confirm_done') != '1':
+            messages.error(request, "Confirmez que le projet est bien terminé avant d'enregistrer.")
+            return redirect('projects_list')
         branch = normalize_branch(request.POST.get('branch', 'metal_design').strip())
         member_ids = request.POST.getlist('members')
         commercial_agent_id = request.POST.get('commercial_agent', '').strip()

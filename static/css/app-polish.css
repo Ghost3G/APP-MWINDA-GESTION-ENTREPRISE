@@ -1428,6 +1428,11 @@ body.login-page {
     color: #4ade80 !important;
 }
 
+.management-page .value[style*="#ef4444"],
+.management-page .stat-card .value.urgent {
+    color: #ef4444 !important;
+}
+
 .page-header p,
 .form-hint,
 .projects-page .muted,

@@ -6,3 +6,4 @@ dj-database-url==2.1.0
 Pillow==11.1.0
 cloudinary==1.45.0
 django-cloudinary-storage==0.3.0
+reportlab==4.2.5
