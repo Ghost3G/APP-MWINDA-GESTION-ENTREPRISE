@@ -1412,58 +1412,21 @@ body.login-page {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Vue Direction : cartes claires d'origine (blanc / texte sombre) */
-.management-page .stat-card,
-.management-page .panel {
-    background: #ffffff !important;
-    color: #111827 !important;
-    border: 1px solid #e5e7eb !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-}
-
-.management-page .header h1,
-.management-page .section-title,
-.management-page .stat-card .value,
-.management-page .projects-table td,
-.management-page .panel h3,
-.management-page .panel strong {
-    color: #111827 !important;
-}
-
-.management-page .header p,
-.management-page .stat-card h3,
-.management-page .projects-table th {
-    color: #6b7280 !important;
-}
-
+/* Vue Direction : garder le thème sombre, seulement les chiffres colorés */
 .management-page .stat-card .value.pending,
 .management-page .value.pending {
-    color: #92400e !important;
+    color: #fbbf24 !important;
 }
 
 .management-page .stat-card .value.progress,
 .management-page .value.progress {
-    color: #1e40af !important;
+    color: #60a5fa !important;
 }
 
 .management-page .stat-card .value.done,
 .management-page .value.done {
-    color: #166534 !important;
+    color: #4ade80 !important;
 }
-
-.management-page .projects-table th,
-.management-page .projects-table td {
-    border-bottom: 1px solid #f1f5f9 !important;
-}
-
-.management-page .progress-bar,
-.management-page .mini-bar {
-    background: #e5e7eb !important;
-}
-
-.management-page .task-pending { background: #fef3c7 !important; color: #92400e !important; }
-.management-page .task-in_progress { background: #dbeafe !important; color: #1e40af !important; }
-.management-page .task-done { background: #dcfce7 !important; color: #166534 !important; }
 
 .page-header p,
 .form-hint,
