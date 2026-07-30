@@ -51,6 +51,15 @@ python manage.py runserver
 Localement sans `DATABASE_URL` → SQLite (`db.sqlite3`).  
 En prod Render → toujours Postgres.
 
+### Checklist sécurité production
+- [ ] `DEBUG=False`
+- [ ] `SECRET_KEY` forte (générée Render, jamais la clé `django-insecure-…`)
+- [ ] `CLOUDINARY_URL` renseigné (médias durables)
+- [ ] `ADMIN_PASSWORD` fort au 1er démarrage, puis changé dans l’app
+- [ ] Ne pas exécuter `seed_demo_data.py` en prod
+- [ ] `/setup/` bloqué sauf `SETUP_TOKEN` (optionnel)
+- [ ] Endpoints debug absents hors `DEBUG=True`
+
 ### Structure
 - `AppMwinda/` — configuration
 - `users/` — comptes, sécurité, notifications

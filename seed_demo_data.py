@@ -14,9 +14,17 @@ from datetime import date, timedelta
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AppMwinda.settings')
 django.setup()
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from projects.models import Project, ProjectTask
 from projects.task_services import ensure_project_tasks, set_task_status
+
+# Protection : ne jamais seed les mots de passe démo en production
+if not settings.DEBUG and os.environ.get('ALLOW_DEMO_SEED', '').lower() not in {'1', 'true', 'yes'}:
+    raise SystemExit(
+        "seed_demo_data refusé en production (DEBUG=False). "
+        "Pour forcer localement : ALLOW_DEMO_SEED=1"
+    )
 
 User = get_user_model()
 

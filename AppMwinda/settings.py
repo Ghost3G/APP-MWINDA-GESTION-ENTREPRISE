@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -8,12 +9,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SÉCURITÉ
 # ========================
 
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-j^xrdlgae+#q(mc1+%chqnqw%hu3so-1qh6gampd_a0a1b%0ar'
-)
+_DEFAULT_INSECURE_SECRET = 'django-insecure-j^xrdlgae+#q(mc1+%chqnqw%hu3so-1qh6gampd_a0a1b%0ar'
+SECRET_KEY = os.environ.get('SECRET_KEY', _DEFAULT_INSECURE_SECRET)
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Exiger une SECRET_KEY forte uniquement en environnement prod-like
+_is_prod_like = bool(
+    os.environ.get('DATABASE_URL')
+    or os.environ.get('RENDER')
+    or os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+)
+if not DEBUG and _is_prod_like and (
+    not SECRET_KEY
+    or SECRET_KEY == _DEFAULT_INSECURE_SECRET
+    or SECRET_KEY.startswith('django-insecure-')
+    or SECRET_KEY in {'change-me-in-production', 'changeme'}
+):
+    raise ImproperlyConfigured(
+        "SECRET_KEY de production manquant ou trop faible. "
+        "Définissez une SECRET_KEY forte dans les variables d'environnement."
+    )
 
 ALLOWED_HOSTS = [
     host.strip()
