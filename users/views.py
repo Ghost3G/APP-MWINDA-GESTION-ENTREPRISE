@@ -17,11 +17,9 @@ from .security import (
     write_audit_log,
 )
 from .permissions import is_admin_user, is_management_user
+from .uploads import validate_avatar_upload
 
 User = get_user_model()
-
-MAX_AVATAR_SIZE = 3 * 1024 * 1024
-ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 
 
 def _format_seconds(total_seconds):
@@ -151,11 +149,9 @@ def profile_view(request):
         user.phone = phone
 
         if avatar_file:
-            if avatar_file.size > MAX_AVATAR_SIZE:
-                messages.error(request, 'Image trop volumineuse (max 3 Mo).')
-                return redirect('profile')
-            if avatar_file.content_type not in ALLOWED_AVATAR_TYPES:
-                messages.error(request, 'Format non supporté. Utilisez JPG, PNG, WEBP ou GIF.')
+            avatar_error = validate_avatar_upload(avatar_file)
+            if avatar_error:
+                messages.error(request, avatar_error)
                 return redirect('profile')
             if user.avatar:
                 user.avatar.delete(save=False)

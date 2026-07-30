@@ -31,6 +31,7 @@ from users.models import AuditLog
 from users.notifications import get_due_soon_tasks, get_overdue_tasks
 from users.permissions import admin_required, is_admin_user, is_management_user, management_required
 from users.security import write_audit_log
+from users.uploads import validate_image_upload
 
 User = get_user_model()
 
@@ -646,11 +647,9 @@ def projects_list(request):
 
             cover = request.FILES.get('cover_image')
             if cover:
-                if cover.size > 5 * 1024 * 1024:
-                    messages.error(request, "La photo du projet ne doit pas dépasser 5 Mo.")
-                    return redirect('projects_list')
-                if not (cover.content_type or '').startswith('image/'):
-                    messages.error(request, "Le fichier doit être une image.")
+                cover_error = validate_image_upload(cover)
+                if cover_error:
+                    messages.error(request, cover_error)
                     return redirect('projects_list')
                 if project.cover_image:
                     project.cover_image.delete(save=False)
@@ -684,11 +683,9 @@ def projects_list(request):
 
         cover = request.FILES.get('cover_image')
         if cover:
-            if cover.size > 5 * 1024 * 1024:
-                messages.error(request, "La photo du projet ne doit pas dépasser 5 Mo.")
-                return redirect('projects_list')
-            if not (cover.content_type or '').startswith('image/'):
-                messages.error(request, "Le fichier doit être une image.")
+            cover_error = validate_image_upload(cover)
+            if cover_error:
+                messages.error(request, cover_error)
                 return redirect('projects_list')
 
         project = Project.objects.create(

@@ -30,20 +30,11 @@ from .models import (
 )
 from .task_services import create_project_task, set_task_status, notify_task_assignment
 from users.security import write_audit_log
+from users.uploads import safe_filename, validate_attachment_upload
 
 User = get_user_model()
 
-MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024
 MAX_COMMENT_LENGTH = 2000
-ALLOWED_ATTACHMENT_TYPES = {
-    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain',
-}
 
 
 def _get_project_or_403(user, project_id):
@@ -279,16 +270,15 @@ def board_upload_attachment(request, task_id):
     upload = request.FILES.get('file')
     if not upload:
         return _json_error('Fichier manquant')
-    if upload.size > MAX_ATTACHMENT_SIZE:
-        return _json_error('Fichier trop volumineux (max 5 Mo)')
-    if upload.content_type not in ALLOWED_ATTACHMENT_TYPES:
-        return _json_error('Type de fichier non supporté')
+    upload_error = validate_attachment_upload(upload)
+    if upload_error:
+        return _json_error(upload_error)
 
     attachment = TaskAttachment.objects.create(
         task=task,
         uploaded_by=request.user,
         file=upload,
-        original_name=upload.name,
+        original_name=safe_filename(upload.name),
     )
     from .board_services import serialize_attachment
     return JsonResponse({'ok': True, 'attachment': serialize_attachment(attachment)})
