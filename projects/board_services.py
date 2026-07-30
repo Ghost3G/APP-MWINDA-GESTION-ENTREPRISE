@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Prefetch, Q
 from django.utils import timezone
 
+from users.permissions import is_management_user
+
 from .models import (
     Project,
     ProjectTask,
@@ -42,7 +44,7 @@ def _user_brief(user):
 
 
 def can_access_project(user, project):
-    if user.is_superuser or user.role in ['admin', 'directeur']:
+    if is_management_user(user):
         return True
     if project.manager_id == user.id:
         return True
@@ -62,7 +64,7 @@ def can_access_task(user, task):
 
 
 def can_edit_task(user, task):
-    if user.is_superuser or user.role in ['admin', 'directeur']:
+    if is_management_user(user):
         return True
     if task.project.manager_id == user.id:
         return True
@@ -73,8 +75,15 @@ def can_edit_task(user, task):
     return task.members.filter(id=user.id).exists()
 
 
+def can_create_board_task(user, project):
+    """Création de cartes : direction ou responsable suivi du projet."""
+    if is_management_user(user):
+        return True
+    return bool(project and project.manager_id == user.id)
+
+
 def accessible_projects(user):
-    if user.is_superuser or user.role in ['admin', 'directeur']:
+    if is_management_user(user):
         return Project.objects.order_by('created_at', 'id')
     return Project.objects.filter(
         Q(members=user)

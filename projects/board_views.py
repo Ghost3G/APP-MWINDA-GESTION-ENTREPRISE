@@ -14,6 +14,7 @@ from .board_services import (
     board_tasks_queryset,
     can_access_project,
     can_access_task,
+    can_create_board_task,
     can_edit_task,
     seed_task_labels,
     serialize_task,
@@ -28,10 +29,12 @@ from .models import (
     TaskLabel,
 )
 from .task_services import create_project_task, set_task_status, notify_task_assignment
+from users.security import write_audit_log
 
 User = get_user_model()
 
 MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024
+MAX_COMMENT_LENGTH = 2000
 ALLOWED_ATTACHMENT_TYPES = {
     'image/jpeg', 'image/png', 'image/webp', 'image/gif',
     'application/pdf',
@@ -104,13 +107,7 @@ def task_board(request):
             for user in project_members
         ]),
         'status_choices': ProjectTask.STATUS_CHOICES,
-        'can_create': bool(
-            selected_project and (
-                request.user.is_superuser
-                or request.user.role in ['admin', 'directeur']
-                or selected_project.manager_id == request.user.id
-            )
-        ),
+        'can_create': bool(selected_project and can_create_board_task(request.user, selected_project)),
     }
     return render(request, 'task_board.html', context)
 
@@ -145,6 +142,13 @@ def board_update_status(request, task_id):
 
     set_task_status(task, status)
     task.refresh_from_db()
+    write_audit_log(
+        request.user,
+        'board_status_change',
+        path=request.path,
+        method='POST',
+        metadata={'task_id': task.id, 'project_id': task.project_id, 'status': status},
+    )
     return JsonResponse({'ok': True, 'task': serialize_task(task)})
 
 
@@ -212,6 +216,8 @@ def board_add_comment(request, task_id):
     content = request.POST.get('content', '').strip()
     if not content:
         return _json_error('Commentaire vide')
+    if len(content) > MAX_COMMENT_LENGTH:
+        return _json_error(f'Commentaire trop long (max {MAX_COMMENT_LENGTH} caractères)')
 
     comment = TaskComment.objects.create(task=task, author=request.user, content=content)
     from .board_services import serialize_comment
@@ -301,19 +307,14 @@ def board_create_task(request):
     if not project:
         return _json_error('Projet inaccessible', 403)
 
-    can_create = (
-        request.user.is_superuser
-        or request.user.role in ['admin', 'directeur']
-        or project.manager_id == request.user.id
-    )
-    if not can_create:
+    if not can_create_board_task(request.user, project):
         return _json_error('Permission refusée', 403)
 
     if not title or not assigned_to_id:
         return _json_error('Titre et membre requis')
 
     try:
-        assignee = User.objects.get(id=assigned_to_id)
+        assignee = User.objects.get(id=assigned_to_id, is_active=True)
     except (User.DoesNotExist, ValueError, TypeError):
         return _json_error('Membre introuvable')
 
@@ -344,4 +345,11 @@ def board_create_task(request):
         except ValueError:
             pass
 
+    write_audit_log(
+        request.user,
+        'board_create_task',
+        path=request.path,
+        method='POST',
+        metadata={'task_id': task.id, 'project_id': project.id, 'assigned_to': assignee.id},
+    )
     return JsonResponse({'ok': True, 'task': serialize_task(task)})

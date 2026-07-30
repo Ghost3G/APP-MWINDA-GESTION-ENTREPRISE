@@ -30,6 +30,7 @@ from django.contrib.auth import get_user_model
 from users.models import AuditLog
 from users.notifications import get_due_soon_tasks, get_overdue_tasks
 from users.permissions import admin_required, is_admin_user, is_management_user, management_required
+from users.security import write_audit_log
 
 User = get_user_model()
 
@@ -964,14 +965,30 @@ def admin_users(request):
                 if user.is_superuser and admin_count <= 1:
                     messages.error(request, "Impossible de supprimer le dernier administrateur.")
                     return redirect('admin_users')
+                deleted_username = user.username
+                deleted_id = user.id
                 user.delete()
                 messages.success(request, "Utilisateur supprimé.")
+                write_audit_log(
+                    request.user,
+                    'admin_user_delete',
+                    path=request.path,
+                    method='POST',
+                    metadata={'target_user_id': deleted_id, 'username': deleted_username},
+                )
             elif action == 'make_admin':
                 user.is_superuser = True
                 user.is_staff = True
                 user.role = 'admin'
                 user.save()
                 messages.success(request, f"« {user.username} » promu administrateur.")
+                write_audit_log(
+                    request.user,
+                    'admin_make_admin',
+                    path=request.path,
+                    method='POST',
+                    metadata={'target_user_id': user.id, 'username': user.username},
+                )
             elif action == 'remove_admin':
                 if user.id == request.user.id:
                     messages.error(request, "Vous ne pouvez pas retirer vos propres droits admin.")
@@ -985,6 +1002,13 @@ def admin_users(request):
                     user.role = 'agent'
                 user.save()
                 messages.success(request, f"Droits admin retirés pour « {user.username} ».")
+                write_audit_log(
+                    request.user,
+                    'admin_remove_admin',
+                    path=request.path,
+                    method='POST',
+                    metadata={'target_user_id': user.id, 'username': user.username},
+                )
         except User.DoesNotExist:
             messages.error(request, "Utilisateur introuvable.")
         
@@ -1055,7 +1079,14 @@ def admin_create_user(request):
                 user.is_superuser = True
                 user.is_staff = True
                 user.save()
-            
+
+            write_audit_log(
+                request.user,
+                'admin_user_create',
+                path=request.path,
+                method='POST',
+                metadata={'username': username, 'role': role, 'is_admin': is_admin},
+            )
             return redirect('admin_users')
         
         context = {

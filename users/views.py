@@ -207,6 +207,13 @@ def users_directory(request):
             username = user.username
             user.delete()
             messages.success(request, f"Utilisateur « {username} » supprimé.")
+            write_audit_log(
+                request.user,
+                'user_delete',
+                path=request.path,
+                method='POST',
+                metadata={'target_username': username, 'target_user_id': user_id},
+            )
             return redirect('users_list')
 
         if action == 'update':
@@ -342,6 +349,13 @@ def users_directory(request):
             direction=direction,
         )
         messages.success(request, "Utilisateur créé avec succès.")
+        write_audit_log(
+            request.user,
+            'user_create',
+            path=request.path,
+            method='POST',
+            metadata={'username': username, 'role': role},
+        )
         return redirect('users_list')
 
     users = User.objects.all().order_by('username')

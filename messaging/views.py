@@ -5,16 +5,21 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.utils import timezone
+
+from users.permissions import is_management_user
+from users.security import write_audit_log
 
 from .models import Message
 
 User = get_user_model()
 
+MAX_MESSAGE_LENGTH = 2000
 
-def _is_management(user):
-    return user.is_superuser or user.role in ['admin', 'directeur']
+
+def _active_user_or_404(user_id):
+    return get_object_or_404(User, id=user_id, is_active=True)
 
 
 def _conversation_messages(user, other_user):
@@ -93,18 +98,27 @@ def messaging_view(request):
         content = request.POST.get('content', '').strip()
 
         try:
-            receiver = User.objects.get(id=receiver_id)
+            receiver = User.objects.get(id=receiver_id, is_active=True)
         except User.DoesNotExist:
             return JsonResponse({'error': 'Utilisateur introuvable'}, status=404)
 
         if not content:
             return JsonResponse({'error': 'Le message ne peut pas être vide'}, status=400)
+        if len(content) > MAX_MESSAGE_LENGTH:
+            return JsonResponse({'error': f'Message trop long (max {MAX_MESSAGE_LENGTH} caractères)'}, status=400)
 
         msg = Message.objects.create(
             sender=request.user,
             receiver=receiver,
             content=content,
             message_type='text',
+        )
+        write_audit_log(
+            request.user,
+            'message_send',
+            path=request.path,
+            method='POST',
+            metadata={'receiver_id': receiver.id, 'message_id': msg.id},
         )
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'ok': True, 'message': _serialize_message(msg, request.user)})
@@ -113,13 +127,14 @@ def messaging_view(request):
     return render(request, 'messaging.html', {
         'users': users,
         'initial_conversations': initial_conversations,
-        'is_management': _is_management(request.user),
+        'is_management': is_management_user(request.user),
     })
 
 
 @login_required
+@require_GET
 def get_messages(request, user_id):
-    other_user = get_object_or_404(User, id=user_id)
+    other_user = _active_user_or_404(user_id)
 
     messages = _conversation_messages(request.user, other_user)
     Message.objects.filter(
@@ -149,10 +164,12 @@ def get_messages(request, user_id):
 @login_required
 @require_POST
 def send_message_api(request, user_id):
-    other_user = get_object_or_404(User, id=user_id)
+    other_user = _active_user_or_404(user_id)
     content = request.POST.get('content', '').strip()
     if not content:
         return JsonResponse({'error': 'Message vide'}, status=400)
+    if len(content) > MAX_MESSAGE_LENGTH:
+        return JsonResponse({'error': f'Message trop long (max {MAX_MESSAGE_LENGTH} caractères)'}, status=400)
 
     msg = Message.objects.create(
         sender=request.user,
@@ -160,13 +177,20 @@ def send_message_api(request, user_id):
         content=content,
         message_type='text',
     )
+    write_audit_log(
+        request.user,
+        'message_send',
+        path=request.path,
+        method='POST',
+        metadata={'receiver_id': other_user.id, 'message_id': msg.id},
+    )
     return JsonResponse({'ok': True, 'message': _serialize_message(msg, request.user)})
 
 
 @login_required
 @require_POST
 def initiate_call(request, user_id):
-    other_user = get_object_or_404(User, id=user_id)
+    other_user = _active_user_or_404(user_id)
     now_label = timezone.localtime().strftime('%H:%M')
 
     Message.objects.create(
