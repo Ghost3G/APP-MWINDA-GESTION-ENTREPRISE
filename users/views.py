@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from projects.models import AgentTimeEntry, ProjectTask
 from .security import (
     clear_failed_attempts,
@@ -76,7 +77,9 @@ def login_view(request):
     return render(request, 'login.html')
 
 
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
+    # Préférer POST+CSRF ; GET conservé temporairement pour compatibilité liens anciens
     if request.user.is_authenticated:
         now = timezone.now()
         open_entries = AgentTimeEntry.objects.filter(
@@ -90,7 +93,7 @@ def logout_view(request):
             entry.ended_at = now
             entry.save(update_fields=['duration_seconds', 'ended_at'])
 
-    write_audit_log(request.user, "logout", path=request.path, method="GET")
+    write_audit_log(request.user, "logout", path=request.path, method=request.method)
     logout(request)
     return redirect('login')
 

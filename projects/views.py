@@ -29,6 +29,7 @@ from messaging.models import Message
 from django.contrib.auth import get_user_model
 from users.models import AuditLog
 from users.notifications import get_due_soon_tasks, get_overdue_tasks
+from users.permissions import admin_required, is_admin_user, is_management_user, management_required
 
 User = get_user_model()
 
@@ -110,29 +111,8 @@ def _ensure_work_session(user):
         # Silently continue if AgentTimeEntry creation fails (e.g., migrations not run)
         pass
 
-# Décorateur pour vérifier si l'utilisateur est admin
-def admin_required(view_func):
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect('login')
-        if not request.user.is_superuser and request.user.role != 'admin':
-            return HttpResponseForbidden("Vous n'avez pas l'accès administrateur")
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def management_required(view_func):
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect('login')
-        if not (request.user.is_superuser or request.user.role in ['admin', 'directeur']):
-            return HttpResponseForbidden("Vous n'avez pas la permission de gérer les tâches.")
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
 def _is_management_user(user):
-    return user.is_superuser or user.role in ['admin', 'directeur']
+    return is_management_user(user)
 
 
 def _commercial_agents_qs():
@@ -971,6 +951,7 @@ def admin_users(request):
         
         try:
             user = User.objects.get(id=user_id)
+            admin_count = User.objects.filter(is_superuser=True).count()
             
             if action == 'delete':
                 delete_confirm = request.POST.get('delete_confirm', '').strip().upper()
@@ -980,19 +961,32 @@ def admin_users(request):
                 if user.id == request.user.id:
                     messages.error(request, "Vous ne pouvez pas supprimer votre propre compte.")
                     return redirect('admin_users')
+                if user.is_superuser and admin_count <= 1:
+                    messages.error(request, "Impossible de supprimer le dernier administrateur.")
+                    return redirect('admin_users')
                 user.delete()
+                messages.success(request, "Utilisateur supprimé.")
             elif action == 'make_admin':
                 user.is_superuser = True
                 user.is_staff = True
                 user.role = 'admin'
                 user.save()
+                messages.success(request, f"« {user.username} » promu administrateur.")
             elif action == 'remove_admin':
+                if user.id == request.user.id:
+                    messages.error(request, "Vous ne pouvez pas retirer vos propres droits admin.")
+                    return redirect('admin_users')
+                if user.is_superuser and admin_count <= 1:
+                    messages.error(request, "Impossible de retirer le dernier administrateur.")
+                    return redirect('admin_users')
                 user.is_superuser = False
                 user.is_staff = False
-                user.role = 'agent'
+                if user.role == 'admin':
+                    user.role = 'agent'
                 user.save()
+                messages.success(request, f"Droits admin retirés pour « {user.username} ».")
         except User.DoesNotExist:
-            pass
+            messages.error(request, "Utilisateur introuvable.")
         
         return redirect('admin_users')
     

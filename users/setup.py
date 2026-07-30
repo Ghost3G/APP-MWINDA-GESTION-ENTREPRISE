@@ -15,14 +15,25 @@ User = get_user_model()
 
 def setup_view(request):
     """Initialize admin user if none exists."""
-    
+    import os
+    from django.http import HttpResponseForbidden
+
     # Check if any superuser exists
     has_admin = User.objects.filter(is_superuser=True).exists()
-    
+
     if has_admin:
         # Redirect to login if admin already exists
         return redirect('login')
-    
+
+    # En production : setup public désactivé sauf token explicite
+    if not settings.DEBUG:
+        expected = (os.environ.get('SETUP_TOKEN') or getattr(settings, 'SETUP_TOKEN', '') or '').strip()
+        provided = (request.GET.get('token') or request.POST.get('setup_token') or '').strip()
+        if not expected or provided != expected:
+            return HttpResponseForbidden(
+                "Setup désactivé en production. Utilisez create_admin ou un SETUP_TOKEN valide."
+            )
+
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()

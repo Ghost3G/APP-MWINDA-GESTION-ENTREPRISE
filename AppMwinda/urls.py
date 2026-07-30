@@ -32,13 +32,10 @@ from projects.views import (
 )
 from users.views import login_view, logout_view, profile_view
 from users.notifications import notifications_feed, notifications_mark_read, dismiss_onboarding
-from users.setup import setup_view, quick_admin_create
-from users.debug import debug_status
+from users.setup import setup_view
 
 urlpatterns = [
     path('admin/django/', admin.site.urls),
-    path('debug/status/', debug_status, name='debug_status'),
-    path('api/quick-admin-create/', quick_admin_create, name='quick_admin_create'),
     path('setup/', setup_view, name='setup'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
@@ -62,6 +59,16 @@ urlpatterns = [
     path('admin/reports/', admin_reports, name='admin_reports'),
     path('admin/audit-logs/', admin_audit_logs, name='admin_audit_logs'),
 ]
+
+# Endpoints de debug: exposés uniquement en environnement DEBUG
+if settings.DEBUG:
+    from users.setup import quick_admin_create
+    from users.debug import debug_status
+
+    urlpatterns += [
+        path('debug/status/', debug_status, name='debug_status'),
+        path('api/quick-admin-create/', quick_admin_create, name='quick_admin_create'),
+    ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
