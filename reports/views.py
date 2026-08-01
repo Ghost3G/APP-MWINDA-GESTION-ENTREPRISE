@@ -14,7 +14,7 @@ from projects.branches import TECH_BRANCH_CHOICES
 from users.permissions import is_admin_user, is_management_user, can_access_finance
 
 from .models import DailyReport, FinanceExpense, FinanceIncome
-from .pdf import build_report_pdf
+from .pdf import build_report_pdf, build_finance_pdf
 
 User = get_user_model()
 
@@ -55,10 +55,20 @@ def _finance_totals_for_date(selected):
 
 def _period_bounds(selected):
     month_last_day = monthrange(selected.year, selected.month)[1]
+    if selected.month <= 6:
+        semester_start = selected.replace(month=1, day=1)
+        semester_end = selected.replace(month=6, day=30)
+        semester_label = f'Semestre 1 {selected.year}'
+    else:
+        semester_start = selected.replace(month=7, day=1)
+        semester_end = selected.replace(month=12, day=31)
+        semester_label = f'Semestre 2 {selected.year}'
     return {
         'daily': (selected, selected),
         'monthly': (selected.replace(day=1), selected.replace(day=month_last_day)),
+        'semestrial': (semester_start, semester_end),
         'annual': (selected.replace(month=1, day=1), selected.replace(month=12, day=31)),
+        'semester_label': semester_label,
     }
 
 
@@ -368,6 +378,7 @@ def finance_dashboard(request):
 
     bounds = _period_bounds(selected_date)
     monthly_totals = _finance_totals(*bounds['monthly'])
+    semestrial_totals = _finance_totals(*bounds['semestrial'])
     annual_totals = _finance_totals(*bounds['annual'])
 
     by_command_incomes = (
@@ -382,10 +393,10 @@ def finance_dashboard(request):
     )
 
     chart_data = {
-        'labels': ['Journalier', 'Mensuel', 'Annuel'],
-        'entrees': [float(daily_totals['entrees']), float(monthly_totals['entrees']), float(annual_totals['entrees'])],
-        'sorties': [float(daily_totals['sorties']), float(monthly_totals['sorties']), float(annual_totals['sorties'])],
-        'soldes': [float(daily_totals['solde']), float(monthly_totals['solde']), float(annual_totals['solde'])],
+        'labels': ['Journalier', 'Mensuel', 'Semestriel'],
+        'entrees': [float(daily_totals['entrees']), float(monthly_totals['entrees']), float(semestrial_totals['entrees'])],
+        'sorties': [float(daily_totals['sorties']), float(monthly_totals['sorties']), float(semestrial_totals['sorties'])],
+        'soldes': [float(daily_totals['solde']), float(monthly_totals['solde']), float(semestrial_totals['solde'])],
     }
 
     expense_days = {
@@ -417,6 +428,8 @@ def finance_dashboard(request):
         'daily_incomes': daily_incomes,
         'daily_totals': daily_totals,
         'monthly_totals': monthly_totals,
+        'semestrial_totals': semestrial_totals,
+        'semester_label': bounds['semester_label'],
         'annual_totals': annual_totals,
         'by_command_incomes': by_command_incomes,
         'by_command_expenses': by_command_expenses,
@@ -427,3 +440,99 @@ def finance_dashboard(request):
         'is_finance': True,
     }
     return render(request, 'finance.html', context)
+
+
+def _finance_period_payload(selected_date, period):
+    bounds = _period_bounds(selected_date)
+    if period == 'daily':
+        start, end = bounds['daily']
+        label = f'Journalier — {selected_date.strftime("%d/%m/%Y")}'
+        slug = selected_date.strftime('%Y%m%d')
+    elif period == 'monthly':
+        start, end = bounds['monthly']
+        label = f'Mensuel — {selected_date.strftime("%m/%Y")}'
+        slug = selected_date.strftime('%Y%m')
+    elif period == 'semestrial':
+        start, end = bounds['semestrial']
+        label = bounds['semester_label']
+        slug = f"{selected_date.year}_S{'1' if selected_date.month <= 6 else '2'}"
+    else:
+        return None
+
+    incomes = list(
+        FinanceIncome.objects.filter(income_date__gte=start, income_date__lte=end)
+        .select_related('created_by')
+        .order_by('income_date', 'id')
+    )
+    expenses = list(
+        FinanceExpense.objects.filter(expense_date__gte=start, expense_date__lte=end)
+        .select_related('created_by')
+        .order_by('expense_date', 'id')
+    )
+    totals = _finance_totals(start, end)
+    by_command_incomes = list(
+        FinanceIncome.objects.filter(income_date__gte=start, income_date__lte=end)
+        .values('command_reference')
+        .annotate(total=Sum('amount'), count=Count('id'))
+        .order_by('-total', 'command_reference')
+    )
+    by_command_expenses = list(
+        FinanceExpense.objects.filter(expense_date__gte=start, expense_date__lte=end)
+        .values('command_reference')
+        .annotate(total=Sum('amount'), count=Count('id'))
+        .order_by('-total', 'command_reference')
+    )
+    return {
+        'period': period,
+        'period_label': label,
+        'slug': slug,
+        'start': start,
+        'end': end,
+        'totals': totals,
+        'incomes': incomes,
+        'expenses': expenses,
+        'by_command_incomes': by_command_incomes,
+        'by_command_expenses': by_command_expenses,
+    }
+
+
+@login_required(login_url='login')
+def finance_pdf(request, period):
+    if not _finance_access_or_redirect(request):
+        return redirect('dashboard')
+
+    selected_date = _parse_selected_date(request.GET.get('date', '').strip())
+    payload = _finance_period_payload(selected_date, period)
+    if not payload:
+        return HttpResponseForbidden('Période invalide')
+
+    pdf_bytes = build_finance_pdf(
+        period_label=payload['period_label'],
+        start=payload['start'],
+        end=payload['end'],
+        totals=payload['totals'],
+        incomes=payload['incomes'],
+        expenses=payload['expenses'],
+        by_command_incomes=payload['by_command_incomes'],
+        by_command_expenses=payload['by_command_expenses'],
+    )
+    filename = f"finance_{period}_{payload['slug']}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='login')
+def finance_a4_view(request, period):
+    if not _finance_access_or_redirect(request):
+        return redirect('dashboard')
+
+    selected_date = _parse_selected_date(request.GET.get('date', '').strip())
+    payload = _finance_period_payload(selected_date, period)
+    if not payload:
+        return HttpResponseForbidden('Période invalide')
+
+    return render(request, 'finance_a4.html', {
+        **payload,
+        'selected_date': selected_date.isoformat(),
+    })

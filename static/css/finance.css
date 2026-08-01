@@ -131,7 +131,7 @@
 
 .period-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 16px;
 }
@@ -149,6 +149,33 @@
     color: var(--mw-text);
     font-size: 15px;
     font-weight: 700;
+}
+
+.period-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.period-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--mw-text);
+    background: var(--mw-surface-2);
+    border: 1px solid var(--mw-border);
+}
+
+.period-actions a.download {
+    background: #fde047;
+    color: #111827;
+    border-color: transparent;
 }
 
 .period-stats {

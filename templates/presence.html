@@ -1,0 +1,516 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Présence - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/presence.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="presence-page">
+                <div class="page-header">
+                    <h1>{% if can_view_all_presence %}Présence{% else %}Ma présence{% endif %}</h1>
+                    <p>Horaires de référence : début <strong>{{ work_start_label }}</strong> · fin <strong>{{ work_end_label }}</strong>.{% if can_view_all_presence %} Suivi des arrivées, départs et absences.{% else %} Consultez uniquement votre propre rythme de connexion.{% endif %}</p>
+                </div>
+
+                <form method="GET" class="panel filter-panel">
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="presence-date">Journée</label>
+                            <input id="presence-date" type="date" name="date" value="{{ selected_date }}">
+                        </div>
+                        {% if can_view_all_presence %}
+                        <div class="form-group">
+                            <label for="presence-agent">Agent</label>
+                            <select id="presence-agent" name="agent">
+                                {% for agent in agents %}
+                                    <option value="{{ agent.id }}" {% if selected_agent and selected_agent.id == agent.id %}selected{% endif %}>
+                                        {{ agent.get_labeled_name }}
+                                    </option>
+                                {% empty %}
+                                    <option value="">Aucun agent</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <button type="submit" class="btn-primary btn-filter">Appliquer</button>
+                        {% if selected_agent %}
+                        <div class="pdf-actions">
+                            <a href="{% url 'presence_a4' selected_agent.id %}?month={{ selected_month }}">Voir PDF du mois</a>
+                            <a href="{% url 'presence_pdf' selected_agent.id %}?month={{ selected_month }}" class="download">Télécharger PDF</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="filter-hint">
+                        {% if can_view_all_presence %}
+                        Cliquez sur le nom d’un agent pour voir sa fiche de présence. PDF mensuel : {{ selected_month }} · rythme {{ work_start_label }}–{{ work_end_label }}.
+                        {% else %}
+                        Votre fiche de présence personnelle · PDF mensuel : {{ selected_month }} · rythme {{ work_start_label }}–{{ work_end_label }}.
+                        {% endif %}
+                    </p>
+                </form>
+
+                {% if selected_agent %}
+                <div class="panel agent-focus-panel{% if agent_explicit %} is-active{% endif %}" id="agent-detail">
+                    <div class="agent-focus-header">
+                        <div>
+                            <p class="agent-focus-kicker">Fiche de présence</p>
+                            <h2>{{ selected_agent.get_labeled_name }}</h2>
+                            <p class="muted">@{{ selected_agent.username }} · {{ selected_agent.get_role_display }} · {{ selected_date }}</p>
+                        </div>
+                        <div class="pdf-actions">
+                            <a href="{% url 'presence_a4' selected_agent.id %}?month={{ selected_month }}">Voir PDF du mois</a>
+                            <a href="{% url 'presence_pdf' selected_agent.id %}?month={{ selected_month }}" class="download">Télécharger PDF</a>
+                        </div>
+                    </div>
+
+                    <div class="agent-focus-stats">
+                        <div>
+                            <small>Arrivée</small>
+                            <strong>
+                                {% if agent_day_summary and agent_day_summary.first_login_at %}
+                                    {{ agent_day_summary.first_login_at|date:"H:i" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </strong>
+                            {% if agent_day_summary and agent_day_summary.arrival_status == 'late' %}
+                                <span class="badge late">Retard</span>
+                            {% elif agent_day_summary and agent_day_summary.present_today %}
+                                <span class="badge online">À l’heure</span>
+                            {% elif agent_day_summary %}
+                                <span class="badge absent">Absent</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <small>Départ</small>
+                            <strong>
+                                {% if agent_day_summary and agent_day_summary.last_logout_at %}
+                                    {{ agent_day_summary.last_logout_at|date:"H:i" }}
+                                {% elif agent_day_summary and agent_day_summary.present_today %}
+                                    En ligne
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </strong>
+                            {% if agent_day_summary and agent_day_summary.departure_status == 'early' %}
+                                <span class="badge early">Parti tôt</span>
+                            {% elif agent_day_summary and agent_day_summary.departure_status == 'on_time' %}
+                                <span class="badge offline">Fin OK</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <small>Sessions du jour</small>
+                            <strong>{{ agent_day_sessions|length }}</strong>
+                        </div>
+                        <div>
+                            <small>Sur 14 j. — présents / absents</small>
+                            <strong>{{ rhythm_data.stats.present_days|default:0 }} / {{ rhythm_data.stats.absent_days|default:0 }}</strong>
+                        </div>
+                        <div>
+                            <small>Retards / départs tôt</small>
+                            <strong>{{ rhythm_data.stats.late_arrivals|default:0 }} / {{ rhythm_data.stats.early_departures|default:0 }}</strong>
+                        </div>
+                    </div>
+
+                    {% if agent_day_sessions %}
+                    <div class="table-wrap">
+                        <table class="presence-table">
+                            <thead>
+                                <tr>
+                                    <th>Arrivée</th>
+                                    <th>Départ</th>
+                                    <th>Durée</th>
+                                    <th>Rythme</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in agent_day_sessions %}
+                                <tr>
+                                    <td>{{ row.login_at|date:"H:i:s" }}</td>
+                                    <td>{% if row.logout_at %}{{ row.logout_at|date:"H:i:s" }}{% else %}—{% endif %}</td>
+                                    <td>{{ row.duration_label }}</td>
+                                    <td>
+                                        {% if row.arrival_status == 'late' %}
+                                            <span class="badge late">Retard</span>
+                                        {% else %}
+                                            <span class="badge online">À l’heure</span>
+                                        {% endif %}
+                                        {% if row.departure_status == 'early' %}
+                                            <span class="badge early">Parti tôt</span>
+                                        {% elif row.departure_status == 'online' %}
+                                            <span class="badge online">En ligne</span>
+                                        {% elif row.departure_status == 'on_time' %}
+                                            <span class="badge offline">Fin OK</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="muted">Aucune connexion pour cet agent à cette date.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if can_view_all_presence %}
+                <div class="summary-card four">
+                    <div class="summary-item">
+                        <small>{% if is_today %}Présents aujourd'hui{% else %}Présents ce jour{% endif %}</small>
+                        <strong>{{ present_count }}</strong>
+                    </div>
+                    <div class="summary-item late">
+                        <small>En retard (> 8h)</small>
+                        <strong>{{ late_count }}</strong>
+                    </div>
+                    <div class="summary-item absent">
+                        <small>Absents</small>
+                        <strong>{{ absent_count }}</strong>
+                    </div>
+                    <div class="summary-item online">
+                        <small>Encore connectés</small>
+                        <strong>{{ online_count }}</strong>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if selected_agent %}
+                <div class="panel" id="agent-rhythm">
+                    <div class="chart-panel-header">
+                        <h3>Rythme — {{ selected_agent.get_labeled_name }}</h3>
+                        <span class="chart-total">14 jours ouvrés · {{ work_start_label }}–{{ work_end_label }}</span>
+                    </div>
+                    {% if rhythm_data.stats %}
+                    <div class="rhythm-stats">
+                        <span>Présents : <strong>{{ rhythm_data.stats.present_days }}</strong></span>
+                        <span>Absents : <strong>{{ rhythm_data.stats.absent_days }}</strong></span>
+                        <span>À l’heure : <strong>{{ rhythm_data.stats.on_time_arrivals }}</strong></span>
+                        <span>Retards : <strong>{{ rhythm_data.stats.late_arrivals }}</strong></span>
+                        <span>Départs tôt : <strong>{{ rhythm_data.stats.early_departures }}</strong></span>
+                    </div>
+                    {% endif %}
+                    <div class="rhythm-charts">
+                        <div>
+                            <h4>Heure d’arrivée</h4>
+                            <div class="chart-wrap">
+                                <canvas id="arrivalChart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Heure de départ</h4>
+                            <div class="chart-wrap">
+                                <canvas id="departureChart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Présence / Absence</h4>
+                            <div class="chart-wrap chart-wrap-sm">
+                                <canvas id="absenceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel chart-panel">
+                    <div class="chart-panel-header">
+                        <h3>Connexions — {{ selected_agent.get_labeled_name }}</h3>
+                        <span class="chart-total">{{ chart_data.total }} sur 14 jours</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="presenceChart"></canvas>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if can_view_all_presence %}
+                <div class="panel">
+                    <h3>Personnel — {% if is_today %}aujourd'hui{% else %}{{ selected_date }}{% endif %}</h3>
+                    <p class="filter-hint" style="margin-top:0; margin-bottom:12px;">Cliquez un nom pour ouvrir sa fiche de présence individuelle (agents et direction).</p>
+                    {% if summary %}
+                    <div class="table-wrap">
+                        <table class="presence-table">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Rôle</th>
+                                    <th>Arrivée</th>
+                                    <th>Départ</th>
+                                    <th>Présence</th>
+                                    <th>PDF mensuel</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in summary %}
+                                <tr class="{% if selected_agent and selected_agent.id == row.user.id %}is-selected{% endif %}">
+                                    <td>
+                                        <a class="agent-link" href="{% url 'presence_dashboard' %}?date={{ selected_date }}&agent={{ row.user.id }}#agent-detail">
+                                            <div class="agent-cell">
+                                                <strong>{{ row.user.get_labeled_name }}</strong>
+                                                <span>@{{ row.user.username }} · voir sa présence</span>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    <td>{{ row.user.get_role_display }}</td>
+                                    <td>
+                                        {% if row.first_login_at %}
+                                            {{ row.first_login_at|date:"H:i" }}
+                                            {% if row.arrival_status == 'late' %}
+                                                <span class="badge late">Retard</span>
+                                            {% else %}
+                                                <span class="badge online">OK</span>
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.last_logout_at %}
+                                            {{ row.last_logout_at|date:"H:i" }}
+                                            {% if row.departure_status == 'early' %}
+                                                <span class="badge early">Tôt</span>
+                                            {% else %}
+                                                <span class="badge offline">OK</span>
+                                            {% endif %}
+                                        {% elif row.present_today %}
+                                            <span class="badge online">En ligne</span>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.present_today %}
+                                            <span class="badge online">Présent</span>
+                                        {% else %}
+                                            <span class="badge absent">Absent</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="pdf-actions compact">
+                                            <a href="{% url 'presence_a4' row.user.id %}?month={{ selected_month }}">Voir</a>
+                                            <a href="{% url 'presence_pdf' row.user.id %}?month={{ selected_month }}" class="download">Télécharger</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="muted">Aucun compte actif.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    {{ chart_data|json_script:"presence-chart-data" }}
+    {{ rhythm_data|json_script:"rhythm-chart-data" }}
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script>
+        (function () {
+            if (typeof Chart === 'undefined') return;
+
+            Chart.defaults.color = '#a1a1aa';
+            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+            Chart.defaults.font.family = '"Plus Jakarta Sans", sans-serif';
+
+            function hourTick(value) {
+                const h = Math.floor(value);
+                const m = Math.round((value - h) * 60);
+                return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            }
+
+            function makeDoughnut(canvasId, labels, values, colors) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 12, padding: 12 },
+                            },
+                        },
+                    },
+                });
+            }
+
+            function makeTimeLine(canvasId, labels, values, refValues, color, refLabel) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Réel',
+                                data: values,
+                                borderColor: color,
+                                backgroundColor: color.replace('1)', '0.15)').replace('0.95)', '0.15)'),
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 5,
+                                tension: 0.25,
+                                spanGaps: false,
+                            },
+                            {
+                                label: refLabel,
+                                data: refValues,
+                                borderColor: 'rgba(253, 224, 71, 0.85)',
+                                borderWidth: 2,
+                                borderDash: [6, 4],
+                                pointRadius: 0,
+                                fill: false,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'bottom', labels: { boxWidth: 12 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        if (ctx.parsed.y == null) return ' ' + ctx.dataset.label + ' : absent';
+                                        return ' ' + ctx.dataset.label + ' : ' + hourTick(ctx.parsed.y);
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+                                border: { display: false },
+                            },
+                            y: {
+                                min: 7,
+                                max: 19,
+                                ticks: { callback: hourTick, stepSize: 1 },
+                                grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                                border: { display: false },
+                            },
+                        },
+                    },
+                });
+            }
+
+            const rhythmEl = document.getElementById('rhythm-chart-data');
+            if (rhythmEl) {
+                const rhythm = JSON.parse(rhythmEl.textContent);
+                makeTimeLine(
+                    'arrivalChart',
+                    rhythm.labels || [],
+                    rhythm.arrival_hours || [],
+                    rhythm.arrival_ref || [],
+                    'rgba(96, 165, 250, 0.95)',
+                    'Réf. ' + (rhythm.work_start_label || '08:00')
+                );
+                makeTimeLine(
+                    'departureChart',
+                    rhythm.labels || [],
+                    rhythm.departure_hours || [],
+                    rhythm.departure_ref || [],
+                    'rgba(251, 146, 60, 0.95)',
+                    'Réf. ' + (rhythm.work_end_label || '17:00')
+                );
+                const absence = rhythm.absence_chart || { labels: [], values: [] };
+                makeDoughnut(
+                    'absenceChart',
+                    absence.labels,
+                    absence.values,
+                    ['rgba(74, 222, 128, 0.85)', 'rgba(248, 113, 113, 0.75)']
+                );
+            }
+
+            const dataEl = document.getElementById('presence-chart-data');
+            const canvas = document.getElementById('presenceChart');
+            if (dataEl && canvas) {
+                const chartData = JSON.parse(dataEl.textContent);
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+                gradient.addColorStop(0, 'rgba(253, 224, 71, 0.95)');
+                gradient.addColorStop(1, 'rgba(202, 138, 4, 0.45)');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels || [],
+                        datasets: [{
+                            label: 'Connexions',
+                            data: chartData.counts || [],
+                            backgroundColor: gradient,
+                            borderColor: 'rgba(253, 224, 71, 0.5)',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            borderSkipped: false,
+                            maxBarThickness: 36,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const n = context.parsed.y;
+                                        return ' ' + n + ' connexion' + (n > 1 ? 's' : '');
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+                                border: { display: false },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                                border: { display: false },
+                            },
+                        },
+                    },
+                });
+            }
+        })();
+
+        (function () {
+            if (window.location.hash !== '#agent-detail') return;
+            const target = document.getElementById('agent-detail');
+            if (!target) return;
+            window.setTimeout(function () {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+        })();
+    </script>
+</body>
+</html>

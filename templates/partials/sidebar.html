@@ -43,6 +43,10 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements
         </a>
+        <a href="{% url 'presence_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'presence_dashboard' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
+            Présence
+        </a>
         {% if is_management or is_admin %}
         <a href="{% url 'manage_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_tasks' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>

@@ -383,6 +383,45 @@
     text-align: right;
 }
 
+.messaging-page .messages-container .message-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.messaging-page .messages-container .message.sent .message-meta {
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.messaging-page .messages-container .message-meta .message-time {
+    margin-top: 0;
+    padding: 0;
+}
+
+.messaging-page .messages-container .msg-ticks {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.messaging-page .messages-container .msg-ticks svg {
+    display: block;
+    width: 16px;
+    height: 11px;
+}
+
+.messaging-page .messages-container .msg-ticks.sent svg {
+    color: #a1a1aa;
+}
+
+.messaging-page .messages-container .msg-ticks.read svg {
+    color: #53bdeb;
+}
+
 .input-area {
     padding: 14px 16px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);

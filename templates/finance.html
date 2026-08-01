@@ -67,7 +67,28 @@
 
                 <div class="period-grid">
                     <div class="period-card">
-                        <h4>Mois en cours</h4>
+                        <h4>Journalier</h4>
+                        <div class="period-stats">
+                            <div>
+                                <small>Entrées</small>
+                                <strong class="positive">{{ daily_totals.entrees }} $</strong>
+                            </div>
+                            <div>
+                                <small>Sorties</small>
+                                <strong class="negative">{{ daily_totals.sorties }} $</strong>
+                            </div>
+                            <div>
+                                <small>{% if daily_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
+                                <strong class="{% if daily_totals.is_gain %}positive{% else %}negative{% endif %}">{{ daily_totals.solde }} $</strong>
+                            </div>
+                        </div>
+                        <div class="period-actions">
+                            <a href="{% url 'finance_a4' 'daily' %}?date={{ selected_date }}">Voir PDF</a>
+                            <a href="{% url 'finance_pdf' 'daily' %}?date={{ selected_date }}" class="download">Télécharger</a>
+                        </div>
+                    </div>
+                    <div class="period-card">
+                        <h4>Mensuel</h4>
                         <div class="period-stats">
                             <div>
                                 <small>Entrées</small>
@@ -82,22 +103,30 @@
                                 <strong class="{% if monthly_totals.is_gain %}positive{% else %}negative{% endif %}">{{ monthly_totals.solde }} $</strong>
                             </div>
                         </div>
+                        <div class="period-actions">
+                            <a href="{% url 'finance_a4' 'monthly' %}?date={{ selected_date }}">Voir PDF</a>
+                            <a href="{% url 'finance_pdf' 'monthly' %}?date={{ selected_date }}" class="download">Télécharger</a>
+                        </div>
                     </div>
                     <div class="period-card">
-                        <h4>Année en cours</h4>
+                        <h4>{{ semester_label }}</h4>
                         <div class="period-stats">
                             <div>
                                 <small>Entrées</small>
-                                <strong class="positive">{{ annual_totals.entrees }} $</strong>
+                                <strong class="positive">{{ semestrial_totals.entrees }} $</strong>
                             </div>
                             <div>
                                 <small>Sorties</small>
-                                <strong class="negative">{{ annual_totals.sorties }} $</strong>
+                                <strong class="negative">{{ semestrial_totals.sorties }} $</strong>
                             </div>
                             <div>
-                                <small>{% if annual_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
-                                <strong class="{% if annual_totals.is_gain %}positive{% else %}negative{% endif %}">{{ annual_totals.solde }} $</strong>
+                                <small>{% if semestrial_totals.is_gain %}Gain{% else %}Perte{% endif %}</small>
+                                <strong class="{% if semestrial_totals.is_gain %}positive{% else %}negative{% endif %}">{{ semestrial_totals.solde }} $</strong>
                             </div>
+                        </div>
+                        <div class="period-actions">
+                            <a href="{% url 'finance_a4' 'semestrial' %}?date={{ selected_date }}">Voir PDF</a>
+                            <a href="{% url 'finance_pdf' 'semestrial' %}?date={{ selected_date }}" class="download">Télécharger</a>
                         </div>
                     </div>
                 </div>
@@ -370,7 +399,7 @@
     </div>
 
     {{ chart_data|json_script:"finance-chart-data" }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
     <script src="{% static 'js/dashboard.js' %}"></script>
     <script>
         (function () {

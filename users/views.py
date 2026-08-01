@@ -16,7 +16,7 @@ from .security import (
     record_login_attempt,
     write_audit_log,
 )
-from .permissions import is_admin_user, is_management_user
+from .permissions import is_admin_user, is_management_user, management_required
 from .uploads import validate_avatar_upload
 
 User = get_user_model()
@@ -484,3 +484,154 @@ def users_directory(request):
         'is_management': is_management,
     }
     return render(request, 'users.html', context)
+
+
+@login_required(login_url='login')
+def presence_dashboard(request):
+    """Présence : direction voit tout le monde ; agent voit uniquement sa fiche."""
+    from .presence import (
+        build_agent_login_chart,
+        build_agent_presence_summary,
+        build_agent_rhythm_charts,
+        build_presence_sessions,
+        parse_presence_date,
+    )
+
+    can_view_all = is_management_user(request.user)
+    selected_date = parse_presence_date(request.GET.get('date', '').strip())
+    selected_month = selected_date.strftime('%Y-%m')
+
+    if can_view_all:
+        visible_users = list(
+            User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')
+        )
+        agent_id_raw = request.GET.get('agent', '').strip()
+        selected_agent = None
+        if agent_id_raw.isdigit():
+            selected_agent = next((u for u in visible_users if u.id == int(agent_id_raw)), None)
+        if selected_agent is None and visible_users:
+            selected_agent = visible_users[0]
+        agent_explicit = bool(agent_id_raw.isdigit())
+    else:
+        visible_users = [request.user]
+        selected_agent = request.user
+        agent_explicit = True
+
+    sessions = build_presence_sessions(selected_date)
+    summary = build_agent_presence_summary(selected_date, visible_users)
+    present_count = sum(1 for row in summary if row['present_today'])
+    absent_count = sum(1 for row in summary if not row['present_today'])
+    late_count = sum(1 for row in summary if row.get('arrival_status') == 'late')
+    online_count = sum(
+        1 for row in summary
+        if row['present_today'] and row.get('departure_status') == 'online'
+    )
+
+    agent_day_sessions = []
+    agent_day_summary = None
+    if selected_agent:
+        agent_day_sessions = [row for row in sessions if row['user'].id == selected_agent.id]
+        agent_day_summary = next(
+            (row for row in summary if row['user'].id == selected_agent.id),
+            None,
+        )
+
+    chart_data = {'labels': [], 'counts': [], 'total': 0}
+    rhythm_data = {
+        'labels': [],
+        'arrival_hours': [],
+        'departure_hours': [],
+        'arrival_ref': [],
+        'departure_ref': [],
+        'presence_flags': [],
+        'work_start': 8,
+        'work_end': 17,
+        'work_start_label': '08:00',
+        'work_end_label': '17:00',
+        'stats': {},
+        'absence_chart': {'labels': ['Présents', 'Absents'], 'values': [0, 0]},
+    }
+    if selected_agent:
+        chart_data = build_agent_login_chart(selected_agent, selected_date, days=14)
+        rhythm_data = build_agent_rhythm_charts(selected_agent, selected_date, days=14)
+
+    return render(request, 'presence.html', {
+        'selected_date': selected_date.isoformat(),
+        'selected_month': selected_month,
+        'is_today': selected_date == timezone.localdate(),
+        'agents': visible_users,
+        'selected_agent': selected_agent,
+        'agent_explicit': agent_explicit,
+        'agent_day_sessions': agent_day_sessions,
+        'agent_day_summary': agent_day_summary,
+        'summary': summary if can_view_all else [],
+        'present_count': present_count,
+        'online_count': online_count,
+        'late_count': late_count,
+        'absent_count': absent_count,
+        'chart_data': chart_data,
+        'rhythm_data': rhythm_data,
+        'work_start_label': '08:00',
+        'work_end_label': '17:00',
+        'can_view_all_presence': can_view_all,
+    })
+
+
+def _presence_can_access_agent(request, agent_id):
+    """Direction : tout le monde. Agent : uniquement son propre dossier."""
+    if is_management_user(request.user):
+        return True
+    return int(agent_id) == request.user.id
+
+
+def _presence_monthly_payload(request, agent_id):
+    from .presence import build_agent_monthly_sessions, parse_presence_date, parse_presence_month
+
+    if not _presence_can_access_agent(request, agent_id):
+        return None
+
+    try:
+        agent = User.objects.get(pk=agent_id, is_active=True)
+    except User.DoesNotExist:
+        return None
+
+    fallback = parse_presence_date(request.GET.get('date', '').strip())
+    year, month = parse_presence_month(request.GET.get('month', '').strip(), fallback)
+    return build_agent_monthly_sessions(agent, year, month)
+
+
+@login_required(login_url='login')
+def presence_pdf(request, agent_id):
+    from django.http import HttpResponse, HttpResponseForbidden
+    from .pdf import build_presence_monthly_pdf
+
+    if not _presence_can_access_agent(request, agent_id):
+        return HttpResponseForbidden("Vous ne pouvez consulter que votre propre présence.")
+
+    payload = _presence_monthly_payload(request, agent_id)
+    if not payload:
+        return HttpResponseForbidden('Agent introuvable')
+
+    pdf_bytes = build_presence_monthly_pdf(payload)
+    filename = f"presence_{payload['agent'].username}_{payload['year']}{payload['month']:02d}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='login')
+def presence_a4_view(request, agent_id):
+    from django.http import HttpResponseForbidden
+
+    if not _presence_can_access_agent(request, agent_id):
+        return HttpResponseForbidden("Vous ne pouvez consulter que votre propre présence.")
+
+    payload = _presence_monthly_payload(request, agent_id)
+    if not payload:
+        return HttpResponseForbidden('Agent introuvable')
+
+    return render(request, 'presence_a4.html', {
+        **payload,
+        'selected_month': f"{payload['year']}-{payload['month']:02d}",
+    })
+

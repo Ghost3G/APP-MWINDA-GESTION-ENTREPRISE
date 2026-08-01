@@ -159,3 +159,151 @@ def build_report_pdf(report) -> bytes:
 
     doc.build(story)
     return buffer.getvalue()
+
+
+def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by_command_incomes=None, by_command_expenses=None) -> bytes:
+    """PDF A4 — rapport finance (journalier / mensuel / semestriel)."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
+        title=f'Finance {period_label}',
+    )
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle(
+        'FinTitle',
+        parent=styles['Heading1'],
+        alignment=TA_CENTER,
+        fontSize=15,
+        spaceAfter=6,
+    )
+    subtitle = ParagraphStyle(
+        'FinSub',
+        parent=styles['Normal'],
+        alignment=TA_CENTER,
+        fontSize=10,
+        textColor=colors.HexColor('#4b5563'),
+        spaceAfter=12,
+    )
+    section = ParagraphStyle(
+        'FinSec',
+        parent=styles['Heading2'],
+        fontSize=11,
+        spaceBefore=10,
+        spaceAfter=4,
+    )
+    small = ParagraphStyle('FinSmall', parent=styles['Normal'], fontSize=8, leading=11)
+
+    story = [
+        Paragraph('Agence Mwinda — Rapport Finance', title),
+        Paragraph(
+            f'{period_label}<br/>Période : {start.strftime("%d/%m/%Y")} → {end.strftime("%d/%m/%Y")}',
+            subtitle,
+        ),
+    ]
+
+    result_label = 'Gain / Excédent' if totals.get('is_gain') else 'Perte / Déficit'
+    summary = [
+        ['Total entrées', f"{totals['entrees']} $"],
+        ['Total sorties', f"{totals['sorties']} $"],
+        [result_label, f"{totals['solde']} $"],
+    ]
+    summary_table = Table(summary, colWidths=[70 * mm, 100 * mm])
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e5e7eb')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TEXTCOLOR', (1, 0), (1, 0), colors.HexColor('#166534')),
+        ('TEXTCOLOR', (1, 1), (1, 1), colors.HexColor('#991b1b')),
+        ('TEXTCOLOR', (1, 2), (1, 2), colors.HexColor('#166534') if totals.get('is_gain') else colors.HexColor('#991b1b')),
+        ('FONTNAME', (1, 2), (1, 2), 'Helvetica-Bold'),
+    ]))
+    story.append(summary_table)
+
+    def _lines_table(title_text, rows, amount_color):
+        story.append(Paragraph(title_text, section))
+        if not rows:
+            story.append(Paragraph('Aucune écriture sur cette période.', small))
+            return
+        data = [['Date', 'Commande', 'Libellé', 'Montant']]
+        for row in rows:
+            data.append([
+                row['date'].strftime('%d/%m/%Y'),
+                Paragraph(str(row['command_reference']), small),
+                Paragraph(str(row['label']), small),
+                f"{row['amount']} $",
+            ])
+        table = Table(data, colWidths=[22 * mm, 40 * mm, 80 * mm, 28 * mm])
+        table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
+            ('TEXTCOLOR', (3, 1), (3, -1), amount_color),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        story.append(table)
+
+    income_rows = [
+        {
+            'date': item.income_date,
+            'command_reference': item.command_reference,
+            'label': item.label,
+            'amount': item.amount,
+        }
+        for item in incomes
+    ]
+    expense_rows = [
+        {
+            'date': item.expense_date,
+            'command_reference': item.command_reference,
+            'label': item.label,
+            'amount': item.amount,
+        }
+        for item in expenses
+    ]
+    _lines_table('Entrées', income_rows, colors.HexColor('#166534'))
+    _lines_table('Sorties', expense_rows, colors.HexColor('#991b1b'))
+
+    if by_command_incomes is not None or by_command_expenses is not None:
+        story.append(Paragraph('Totaux par commande', section))
+        cmd_data = [['Type', 'Commande', 'Nb', 'Total']]
+        for item in (by_command_incomes or []):
+            cmd_data.append(['Entrée', item['command_reference'], str(item['count']), f"{item['total']} $"])
+        for item in (by_command_expenses or []):
+            cmd_data.append(['Sortie', item['command_reference'], str(item['count']), f"{item['total']} $"])
+        if len(cmd_data) == 1:
+            story.append(Paragraph('Aucun regroupement.', small))
+        else:
+            cmd_table = Table(cmd_data, colWidths=[25 * mm, 85 * mm, 20 * mm, 40 * mm])
+            cmd_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+                ('ALIGN', (2, 1), (3, -1), 'RIGHT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            story.append(cmd_table)
+
+    doc.build(story)
+    return buffer.getvalue()

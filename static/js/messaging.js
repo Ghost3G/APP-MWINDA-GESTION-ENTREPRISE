@@ -6,6 +6,9 @@ let sendInFlight = false;
 let messagesRequestId = 0;
 let messagesAbort = null;
 let knownMessageIds = new Set();
+let lastUnreadTotal = Number(sessionStorage.getItem('mwinda_msg_unread') || 0);
+let msgAudioCtx = null;
+let unreadSoundReady = false;
 
 function getCookie(name) {
     const cookies = document.cookie ? document.cookie.split(';') : [];
@@ -16,6 +19,63 @@ function getCookie(name) {
         }
     }
     return '';
+}
+
+function unlockMessageAudio() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!msgAudioCtx) msgAudioCtx = new AudioContext();
+        if (msgAudioCtx.state === 'suspended') msgAudioCtx.resume();
+    } catch (e) {
+        // ignore
+    }
+}
+
+function playMessageSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!msgAudioCtx) msgAudioCtx = new AudioContext();
+        if (msgAudioCtx.state === 'suspended') msgAudioCtx.resume();
+
+        const now = msgAudioCtx.currentTime;
+        const gain = msgAudioCtx.createGain();
+        gain.connect(msgAudioCtx.destination);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+        const osc1 = msgAudioCtx.createOscillator();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(980, now);
+        osc1.connect(gain);
+        osc1.start(now);
+        osc1.stop(now + 0.14);
+
+        const osc2 = msgAudioCtx.createOscillator();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1240, now + 0.12);
+        osc2.connect(gain);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.3);
+    } catch (e) {
+        // Navigateur sans WebAudio
+    }
+}
+
+function totalUnreadCount(conversations) {
+    return (conversations || []).reduce((sum, item) => sum + (Number(item.unread_count) || 0), 0);
+}
+
+function maybePlayUnreadSound(conversations) {
+    const total = totalUnreadCount(conversations);
+    if (unreadSoundReady && total > lastUnreadTotal) {
+        playMessageSound();
+    }
+    unreadSoundReady = true;
+    lastUnreadTotal = total;
+    sessionStorage.setItem('mwinda_msg_unread', String(total));
 }
 
 function getCsrfToken() {
@@ -96,15 +156,33 @@ function renderAvatar(data, className = 'user-avatar') {
     return `<div class="${className}">${escapeHtml(initial)}</div>`;
 }
 
+function renderReadTicks(msg) {
+    if (!msg.is_sent) return '';
+    const read = Boolean(msg.is_read);
+    const title = read ? 'Vu' : 'Envoyé';
+    const cls = read ? 'msg-ticks read' : 'msg-ticks sent';
+    const svg = `
+        <svg viewBox="0 0 16 11" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M11.07 0.75L5.4 6.9 2.85 4.45 1.7 5.6l3.7 3.7 6.85-7.4z"/>
+            <path fill="currentColor" d="M14.55 0.75L8.88 6.9 8.1 6.15 6.95 7.3l1.93 1.95 6.85-7.4z"/>
+        </svg>`;
+    return `<span class="${cls}" title="${title}">${svg}</span>`;
+}
+
 function renderMessage(msg) {
     const messageClass = msg.is_sent ? 'sent' : 'received';
     const callClass = msg.message_type === 'call' ? ' call' : '';
     const idAttr = msg.id != null ? ` data-message-id="${msg.id}"` : '';
+    const readAttr = msg.is_sent ? ` data-is-read="${msg.is_read ? '1' : '0'}"` : '';
+    const ticks = renderReadTicks(msg);
     return `
-        <div class="message ${messageClass}${callClass}"${idAttr}>
+        <div class="message ${messageClass}${callClass}"${idAttr}${readAttr}>
             <div class="message-body">
                 <div class="message-bubble">${escapeHtml(msg.content)}</div>
-                <div class="message-time">${escapeHtml(msg.time_short || msg.created_at || '')}</div>
+                <div class="message-meta">
+                    <span class="message-time">${escapeHtml(msg.time_short || msg.created_at || '')}</span>
+                    ${ticks}
+                </div>
             </div>
         </div>
     `;
@@ -136,6 +214,17 @@ function appendMessage(msg) {
 function renderMessages(messages) {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
+
+    const previousIds = knownMessageIds;
+    const isRefresh = previousIds.size > 0;
+    if (isRefresh) {
+        const newIncoming = (messages || []).filter(
+            (msg) => !msg.is_sent && msg.id != null && !previousIds.has(msg.id),
+        );
+        if (newIncoming.length) {
+            playMessageSound();
+        }
+    }
 
     knownMessageIds = new Set(
         (messages || []).filter((msg) => msg.id != null).map((msg) => msg.id),
@@ -190,7 +279,11 @@ function loadConversations() {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
-        .then((data) => renderConversations(data.conversations || []))
+        .then((data) => {
+            const conversations = data.conversations || [];
+            maybePlayUnreadSound(conversations);
+            renderConversations(conversations);
+        })
         .catch((error) => {
             if (error.message === 'auth') return;
             console.error('Conversations error:', error);
@@ -231,6 +324,7 @@ function renderConversations(conversations) {
 }
 
 function openUserChat(userId, event) {
+    unlockMessageAudio();
     selectedUserId = Number(userId);
     knownMessageIds = new Set();
     document.querySelectorAll('.user-item').forEach((item) => item.classList.remove('active'));
@@ -266,7 +360,6 @@ function loadMessages(userId, focusInput = false) {
             return response.json();
         })
         .then((data) => {
-            // Ignore les réponses obsolètes (évite d'écraser un message tout juste envoyé)
             if (requestId !== messagesRequestId || Number(selectedUserId) !== targetId) {
                 return;
             }
@@ -278,6 +371,7 @@ function loadMessages(userId, focusInput = false) {
                 input?.focus();
                 autoResizeMessageInput(input);
             }
+            loadConversations();
         })
         .catch((error) => {
             if (error.name === 'AbortError' || error.message === 'auth') return;
@@ -353,6 +447,7 @@ async function sendMessage(event) {
     }
     if (sendInFlight) return;
 
+    unlockMessageAudio();
     const messageInput = document.getElementById('messageInput');
     const content = messageInput.value.trim();
     if (!content) return;
@@ -364,6 +459,7 @@ async function sendMessage(event) {
     appendMessage({
         content,
         is_sent: true,
+        is_read: false,
         message_type: 'text',
         time_short: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     });
@@ -442,6 +538,9 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshCsrfToken();
     loadConversations();
     conversationsPollTimer = setInterval(loadConversations, 15000);
+
+    document.addEventListener('click', unlockMessageAudio, { once: true });
+    document.addEventListener('keydown', unlockMessageAudio, { once: true });
 
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();

@@ -1,0 +1,406 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présence A4 — {{ agent.get_labeled_name }} — {{ period_label }}</title>
+    <style>
+        @page { size: A4; margin: 12mm; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+            background: #111111;
+            color: #111827;
+        }
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: #1c1c1e;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .toolbar a, .toolbar button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            color: #111827;
+            background: #fde047;
+        }
+        .toolbar .secondary { background: #fff; }
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 18px auto;
+            padding: 12mm 14mm;
+            background: #fff;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        h1 { margin: 0 0 4px; font-size: 18px; text-align: center; }
+        .sub { text-align: center; color: #6b7280; margin: 0 0 12px; font-size: 12px; line-height: 1.45; }
+        .summary {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 11px;
+        }
+        .summary td {
+            border: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            background: #f9fafb;
+            width: 16.66%;
+            text-align: center;
+            vertical-align: top;
+        }
+        .summary small {
+            display: block;
+            color: #6b7280;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+        .summary strong {
+            display: block;
+            font-size: 13px;
+            color: #111827;
+        }
+        h2 {
+            font-size: 13px;
+            margin: 12px 0 8px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 4px;
+        }
+        .chart-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .chart-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 10px 6px;
+            background: #fff;
+        }
+        .chart-box h3 {
+            margin: 0 0 4px;
+            font-size: 11px;
+            color: #374151;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: baseline;
+        }
+        .chart-box h3 span {
+            font-weight: 600;
+            color: #9ca3af;
+            font-size: 10px;
+        }
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 118px;
+        }
+        .chart-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 10px;
+            align-items: stretch;
+        }
+        .chart-wrap.donut {
+            height: 130px;
+            max-width: 220px;
+            margin: 0 auto;
+        }
+        .absence-legend {
+            list-style: none;
+            margin: 8px 0 0;
+            padding: 0;
+            font-size: 11px;
+            color: #374151;
+        }
+        .absence-legend li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .absence-legend i {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+        .absence-legend .present { background: #16a34a; }
+        .absence-legend .absent { background: #dc2626; }
+        table.grid { width: 100%; border-collapse: collapse; font-size: 10px; }
+        table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 4px 6px; text-align: left; }
+        table.grid th { background: #111827; color: #fff; }
+        table.grid td.center { text-align: center; }
+        .empty { font-size: 12px; color: #6b7280; }
+        @media print {
+            body { background: #fff; }
+            .toolbar { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; }
+            .chart-wrap { height: 110px; }
+            .chart-wrap.donut { height: 120px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <a href="{% url 'presence_dashboard' %}?date={{ end_day|date:'Y-m-d' }}&agent={{ agent.id }}" class="secondary">← Retour</a>
+        <button type="button" onclick="window.print()">Imprimer / PDF navigateur</button>
+        <a href="{% url 'presence_pdf' agent.id %}?month={{ selected_month }}">Télécharger PDF</a>
+    </div>
+
+    <main class="sheet">
+        <h1>Agence Mwinda — Liste de présence</h1>
+        <p class="sub">
+            {{ agent.get_labeled_name }} (@{{ agent.username }}) · Mois {{ period_label }}
+            ({{ start_day|date:"d/m/Y" }} → {{ end_day|date:"d/m/Y" }}) · Réf. {{ work_start }}–{{ work_end }}
+        </p>
+
+        <table class="summary">
+            <tr>
+                <td><small>Présents</small><strong>{{ present_days }}</strong></td>
+                <td><small>Connexions</small><strong>{{ session_count }}</strong></td>
+                <td><small>Temps total</small><strong>{{ total_duration_label }}</strong></td>
+                <td><small>À l’heure</small><strong>{{ rhythm_data.stats.on_time_arrivals|default:0 }}</strong></td>
+                <td><small>Retards</small><strong>{{ rhythm_data.stats.late_arrivals|default:0 }}</strong></td>
+                <td><small>Absents</small><strong>{{ rhythm_data.stats.absent_days|default:0 }}</strong></td>
+            </tr>
+        </table>
+
+        <h2>Diagrammes — rythme de travail</h2>
+        <div class="chart-stack">
+            <div class="chart-box">
+                <h3>Heure d’arrivée <span>ligne jaune = {{ work_start }}</span></h3>
+                <div class="chart-wrap"><canvas id="arrivalChart"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <h3>Heure de départ <span>ligne jaune = {{ work_end }}</span></h3>
+                <div class="chart-wrap"><canvas id="departureChart"></canvas></div>
+            </div>
+            <div class="chart-bottom">
+                <div class="chart-box">
+                    <h3>Présence / Absence <span>jours ouvrés</span></h3>
+                    <div class="chart-wrap donut"><canvas id="absenceChart"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <h3>Lecture rapide</h3>
+                    <ul class="absence-legend">
+                        <li><i class="present"></i> Présents : <strong>{{ rhythm_data.stats.present_days|default:0 }}</strong> jour(s)</li>
+                        <li><i class="absent"></i> Absents : <strong>{{ rhythm_data.stats.absent_days|default:0 }}</strong> jour(s)</li>
+                        <li>Départs à l’heure (≥ {{ work_end }}) : <strong>{{ rhythm_data.stats.on_time_departures|default:0 }}</strong></li>
+                        <li>Départs tôt (&lt; {{ work_end }}) : <strong>{{ rhythm_data.stats.early_departures|default:0 }}</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2>Détail des connexions</h2>
+        {% if sessions %}
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Login</th>
+                    <th>Déconnexion</th>
+                    <th>Durée</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sessions %}
+                <tr>
+                    <td>{{ row.login_at|date:"d/m/Y" }}</td>
+                    <td class="center">{{ row.login_at|date:"H:i" }}</td>
+                    <td class="center">{% if row.logout_at %}{{ row.logout_at|date:"H:i" }}{% else %}—{% endif %}</td>
+                    <td class="center">{{ row.duration_label }}</td>
+                    <td>
+                        {% if row.arrival_status == 'late' %}Retard
+                        {% elif row.departure_status == 'early' %}Parti tôt
+                        {% elif row.is_online %}En ligne
+                        {% else %}OK{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">Aucune connexion enregistrée ce mois-ci.</p>
+        {% endif %}
+    </main>
+
+    {{ rhythm_data|json_script:"rhythm-chart-data" }}
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
+    <script>
+        (function () {
+            if (typeof Chart === 'undefined') return;
+            const el = document.getElementById('rhythm-chart-data');
+            if (!el) return;
+            const rhythm = JSON.parse(el.textContent);
+
+            function hourTick(value) {
+                const h = Math.floor(value);
+                const m = Math.round((value - h) * 60) % 60;
+                return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            }
+
+            function yRange(values, ref, pad) {
+                const nums = (values || []).filter(function (v) { return v != null && !isNaN(v); });
+                nums.push(ref);
+                let min = Math.min.apply(null, nums);
+                let max = Math.max.apply(null, nums);
+                min = Math.floor(min - pad);
+                max = Math.ceil(max + pad);
+                if (max - min < 2) {
+                    min -= 1;
+                    max += 1;
+                }
+                return { min: min, max: max };
+            }
+
+            function makeTimeLine(canvasId, values, refValue, color) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const ref = Number(refValue);
+                const range = yRange(values, ref, 0.75);
+                const refSeries = (rhythm.labels || []).map(function () { return ref; });
+
+                new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: rhythm.labels || [],
+                        datasets: [
+                            {
+                                label: 'Réel',
+                                data: values,
+                                borderColor: color,
+                                backgroundColor: color + '22',
+                                borderWidth: 2.25,
+                                pointRadius: 2.5,
+                                pointHoverRadius: 4,
+                                pointBackgroundColor: color,
+                                tension: 0.3,
+                                spanGaps: false,
+                                fill: false,
+                            },
+                            {
+                                label: 'Référence',
+                                data: refSeries,
+                                borderColor: '#ca8a04',
+                                borderWidth: 1.75,
+                                borderDash: [6, 4],
+                                pointRadius: 0,
+                                fill: false,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        layout: { padding: { top: 4, right: 6, bottom: 0, left: 2 } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        if (ctx.parsed.y == null) return ' Absent';
+                                        return ' ' + hourTick(ctx.parsed.y);
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    maxTicksLimit: 10,
+                                    autoSkip: true,
+                                    maxRotation: 0,
+                                    font: { size: 9 },
+                                    color: '#6b7280',
+                                },
+                                grid: { display: false },
+                                border: { display: false },
+                            },
+                            y: {
+                                min: range.min,
+                                max: range.max,
+                                ticks: {
+                                    callback: hourTick,
+                                    stepSize: 1,
+                                    font: { size: 9 },
+                                    color: '#6b7280',
+                                },
+                                grid: { color: '#f3f4f6' },
+                                border: { display: false },
+                            },
+                        },
+                    },
+                });
+            }
+
+            makeTimeLine(
+                'arrivalChart',
+                rhythm.arrival_hours || [],
+                rhythm.work_start || 8,
+                '#2563eb'
+            );
+            makeTimeLine(
+                'departureChart',
+                rhythm.departure_hours || [],
+                rhythm.work_end || 17,
+                '#ea580c'
+            );
+
+            const absence = rhythm.absence_chart || { labels: [], values: [] };
+            const absenceCanvas = document.getElementById('absenceChart');
+            if (absenceCanvas) {
+                new Chart(absenceCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: absence.labels || [],
+                        datasets: [{
+                            data: absence.values || [],
+                            backgroundColor: ['#16a34a', '#dc2626'],
+                            borderWidth: 2,
+                            borderColor: '#fff',
+                            hoverOffset: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        cutout: '58%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return ' ' + ctx.label + ' : ' + ctx.parsed;
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

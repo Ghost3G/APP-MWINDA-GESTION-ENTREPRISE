@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance A4 — {{ period_label }}</title>
+    <style>
+        @page { size: A4; margin: 16mm; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+            background: #111111;
+            color: #111827;
+        }
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: #1c1c1e;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .toolbar a, .toolbar button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            color: #111827;
+            background: #fde047;
+        }
+        .toolbar .secondary { background: #fff; }
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 18px auto;
+            padding: 16mm;
+            background: #fff;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        h1 { margin: 0 0 6px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; color: #6b7280; margin-bottom: 18px; font-size: 13px; }
+        .summary { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+        .summary td { border: 1px solid #e5e7eb; padding: 8px 10px; background: #f9fafb; }
+        .summary td:first-child { width: 40%; font-weight: 700; }
+        .positive { color: #166534; font-weight: 700; }
+        .negative { color: #991b1b; font-weight: 700; }
+        h2 { font-size: 14px; margin: 16px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+        table.grid { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+        table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+        table.grid th { background: #111827; color: #fff; font-weight: 700; }
+        table.grid td.amount { text-align: right; white-space: nowrap; }
+        .empty { font-size: 12px; color: #6b7280; }
+        @media print {
+            body { background: #fff; }
+            .toolbar { display: none !important; }
+            .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <a href="{% url 'finance_dashboard' %}?date={{ selected_date }}" class="secondary">← Retour</a>
+        <button type="button" onclick="window.print()">Imprimer / PDF navigateur</button>
+        <a href="{% url 'finance_pdf' period %}?date={{ selected_date }}">Télécharger PDF</a>
+    </div>
+
+    <main class="sheet">
+        <h1>Agence Mwinda — Rapport Finance</h1>
+        <p class="sub">
+            {{ period_label }}<br>
+            Période : {{ start|date:"d/m/Y" }} → {{ end|date:"d/m/Y" }}
+        </p>
+
+        <table class="summary">
+            <tr>
+                <td>Total entrées</td>
+                <td class="positive">{{ totals.entrees }} $</td>
+            </tr>
+            <tr>
+                <td>Total sorties</td>
+                <td class="negative">{{ totals.sorties }} $</td>
+            </tr>
+            <tr>
+                <td>{% if totals.is_gain %}Gain / Excédent{% else %}Perte / Déficit{% endif %}</td>
+                <td class="{% if totals.is_gain %}positive{% else %}negative{% endif %}">{{ totals.solde }} $</td>
+            </tr>
+        </table>
+
+        <h2>Entrées</h2>
+        {% if incomes %}
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Commande</th>
+                    <th>Libellé</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in incomes %}
+                <tr>
+                    <td>{{ item.income_date|date:"d/m/Y" }}</td>
+                    <td>{{ item.command_reference }}</td>
+                    <td>{{ item.label }}</td>
+                    <td class="amount positive">{{ item.amount }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">Aucune entrée sur cette période.</p>
+        {% endif %}
+
+        <h2>Sorties</h2>
+        {% if expenses %}
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Commande</th>
+                    <th>Libellé</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in expenses %}
+                <tr>
+                    <td>{{ item.expense_date|date:"d/m/Y" }}</td>
+                    <td>{{ item.command_reference }}</td>
+                    <td>{{ item.label }}</td>
+                    <td class="amount negative">{{ item.amount }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">Aucune sortie sur cette période.</p>
+        {% endif %}
+
+        {% if by_command_incomes %}
+        <h2>Entrées par commande</h2>
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Commande</th>
+                    <th>Nb</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in by_command_incomes %}
+                <tr>
+                    <td>{{ row.command_reference }}</td>
+                    <td>{{ row.count }}</td>
+                    <td class="amount positive">{{ row.total }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if by_command_expenses %}
+        <h2>Sorties par commande</h2>
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Commande</th>
+                    <th>Nb</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in by_command_expenses %}
+                <tr>
+                    <td>{{ row.command_reference }}</td>
+                    <td>{{ row.count }}</td>
+                    <td class="amount negative">{{ row.total }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </main>
+</body>
+</html>
