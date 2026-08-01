@@ -173,7 +173,7 @@
                 <div class="page-header">
                     <div>
                         <h1>Tâches</h1>
-                        <p>Vue direction : une ligne claire par étape, regroupée par projet.</p>
+                        <p>Vue direction : planification auto (IA + règles) selon titres agents, puis suivi par projet.</p>
                     </div>
                     <div class="header-actions">
                         <a class="btn-linkish" href="{% url 'task_board' %}">Tableau Kanban</a>
@@ -186,6 +186,40 @@
                         <div class="message {{ message.tags }}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
+
+                <div class="panel" id="smartPlanPanel">
+                    <div class="panel-head">
+                        <h3>Planification auto — IA + règles</h3>
+                        <span class="work-meta">
+                            {% if ai_assignment_enabled %}IA activée (OPENAI_API_KEY){% else %}Mode règles (ajoutez OPENAI_API_KEY pour l'IA){% endif %}
+                        </span>
+                    </div>
+                    <p style="margin:0 0 12px;color:#a1a1aa;font-size:13px;">
+                        Crée les tâches du processus et les affecte selon le titre / département de chaque membre.
+                        L'IA propose d'abord si disponible, sinon les règles métier prennent le relais. N'écrase pas les tâches déjà présentes.
+                    </p>
+                    <form method="POST" class="filters">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="smart_plan">
+                        <div class="form-group">
+                            <label>Projet</label>
+                            <select name="project_id" required>
+                                <option value="">Choisir…</option>
+                                {% for project in projects %}
+                                    <option value="{{ project.id }}" {% if selected_project_id == project.id|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mode</label>
+                            <select name="use_ai">
+                                <option value="1" selected>IA puis règles (recommandé)</option>
+                                <option value="0">Règles métier uniquement</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Générer / compléter le plan</button>
+                    </form>
+                </div>
 
                 <div class="stats-row">
                     <a class="stat-pill {% if focus == 'open' and not selected_status %}active{% endif %}" href="?focus=open{% if selected_project_id %}&project_id={{ selected_project_id }}{% endif %}{% if selected_assigned_to_id %}&assigned_to_id={{ selected_assigned_to_id }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}">

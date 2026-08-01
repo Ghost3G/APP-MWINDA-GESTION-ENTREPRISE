@@ -165,15 +165,36 @@ def apply_department_template(project, user, department=None, actor=None):
     return created
 
 
-def ensure_project_tasks(project):
-    for member in project.members.all():
-        create_default_tasks_for_member(project, member)
+def ensure_project_tasks(project, actor=None, use_ai=True):
+    """
+    À la création / ouverture projet :
+    - si aucune tâche : plan intelligent (IA si dispo, sinon règles)
+    - sinon : ne duplique pas (comportement sûr)
+    """
+    from .assignment import apply_smart_project_plan
+
+    if project.tasks.exists():
+        return {'created': 0, 'source': 'existing'}
+    return apply_smart_project_plan(
+        project,
+        actor=actor,
+        use_ai=use_ai,
+        replace_empty_only=False,
+    )
 
 
 def ensure_user_has_tasks(user):
+    """Filet de sécurité : si un agent n'a encore aucune tâche sur un projet, appliquer le plan projet."""
+    from .assignment import apply_smart_project_plan
+
     assigned_projects = Project.objects.filter(members=user).order_by('created_at', 'id')
     for project in assigned_projects:
-        create_default_tasks_for_member(project, user)
+        if project.tasks.filter(assigned_to=user).exists():
+            continue
+        if project.tasks.exists():
+            # Le projet a déjà un plan global : ne pas re-dumper tout le template sur l'agent
+            continue
+        apply_smart_project_plan(project, use_ai=True)
 
 
 def get_task_for_user(user, task_id=None, task_label=None):

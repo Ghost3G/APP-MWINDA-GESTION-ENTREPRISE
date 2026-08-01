@@ -24,6 +24,7 @@ from .task_services import (
     update_project_task,
     notify_task_assignment,
 )
+from .assignment import ai_available, apply_smart_project_plan
 from reports.models import DailyReport
 from messaging.models import Message
 from django.contrib.auth import get_user_model
@@ -247,6 +248,31 @@ def _handle_task_management_post(request, default_project_id=None):
             messages.success(request, f"{created} tâche(s) ajoutée(s) depuis le modèle département.")
         else:
             messages.info(request, "Toutes les tâches du modèle existent déjà pour cet agent.")
+        return
+
+    if action == 'smart_plan':
+        project_id = request.POST.get('project_id', '').strip() or (str(default_project_id) if default_project_id else '')
+        use_ai = request.POST.get('use_ai', '1').strip() != '0'
+        if not project_id:
+            messages.error(request, "Sélectionnez un projet pour la planification auto.")
+            return
+
+        project = get_object_or_404(Project, id=project_id)
+        if not project.members.exists():
+            messages.error(request, "Ajoutez d'abord des membres au projet.")
+            return
+
+        result = apply_smart_project_plan(project, actor=request.user, use_ai=use_ai)
+        source = result.get('source')
+        if result.get('created'):
+            detail = f" ({'IA' if source == 'ai' else 'règles métier'})"
+            messages.success(request, f"{result['message']}{detail}")
+        else:
+            hint = ''
+            if use_ai and not ai_available():
+                hint = " Astuce : définissez OPENAI_API_KEY pour activer l'IA (les règles restent actives)."
+            messages.info(request, f"{result['message']}{hint}")
+        return
         return
 
     messages.error(request, "Action non reconnue.")
@@ -713,7 +739,7 @@ def projects_list(request):
             if stakeholder and stakeholder not in members:
                 members.append(stakeholder)
         project.members.set(members)
-        ensure_project_tasks(project)
+        plan_result = ensure_project_tasks(project, actor=request.user, use_ai=True)
         for member in members:
             if member.id != request.user.id:
                 ProjectAssignmentNotification.objects.get_or_create(
@@ -721,7 +747,16 @@ def projects_list(request):
                     project=project,
                 )
 
-        messages.success(request, "Projet créé avec succès.")
+        created_n = (plan_result or {}).get('created') or 0
+        source = (plan_result or {}).get('source') or 'rules'
+        if created_n:
+            via = 'IA' if source == 'ai' else 'règles métier'
+            messages.success(
+                request,
+                f"Projet créé avec succès. {created_n} tâche(s) planifiée(s) automatiquement ({via}).",
+            )
+        else:
+            messages.success(request, "Projet créé avec succès.")
         return redirect('projects_list')
 
     ProjectAssignmentNotification.objects.filter(
@@ -907,6 +942,7 @@ def manage_tasks(request):
         'selected_status': status,
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
         'is_management': True,
+        'ai_assignment_enabled': ai_available(),
     }
     return render(request, 'manage_tasks.html', context)
 
