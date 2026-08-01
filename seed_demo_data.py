@@ -28,8 +28,8 @@ if not settings.DEBUG and os.environ.get('ALLOW_DEMO_SEED', '').lower() not in {
 
 User = get_user_model()
 
+# Ne jamais inclure 'admin' : compte prod créé au déploiement Render.
 LEGACY_USERNAMES = [
-    'admin',
     'directeur',
     'agent_metal',
     'agent_wood',
