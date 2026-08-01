@@ -57,11 +57,11 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_profil.svg' %}" alt=""></span>
             Mon profil
         </a>
-        <form method="POST" action="{% url 'logout' %}" class="nav-item logout" style="margin:0; padding:0; display:block;">
+        <form method="POST" action="{% url 'logout' %}" class="sidebar-logout-form">
             {% csrf_token %}
-            <button type="submit" class="nav-item logout" style="width:100%; border:0; background:transparent; cursor:pointer; text-align:left;">
+            <button type="submit" class="nav-item logout">
                 <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_quitte.png' %}" alt=""></span>
-                Déconnexion
+                <span class="nav-label">Déconnexion</span>
             </button>
         </form>
     </nav>

@@ -129,9 +129,9 @@ body {
 }
 
 .sidebar-nav .nav-item.logout {
-    margin-top:24px;
-    color:#111827;
-    background:#dbe2ea;
+    margin-top: 0;
+    color: inherit;
+    background: transparent;
 }
 
 .dashboard-content {

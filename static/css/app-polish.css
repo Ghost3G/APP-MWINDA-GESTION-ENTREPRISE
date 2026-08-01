@@ -324,6 +324,52 @@ body {
     filter: brightness(0) saturate(100%) invert(55%) sepia(79%) saturate(2476%) hue-rotate(331deg) brightness(98%) contrast(96%) !important;
 }
 
+.sidebar-logout-form {
+    margin-top: 18px !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100%;
+    border: 0;
+    background: transparent;
+}
+
+.sidebar-logout-form .nav-item.logout {
+    width: 100% !important;
+    margin: 0 !important;
+    border: 1px solid rgba(239, 68, 68, 0.22) !important;
+    border-radius: var(--mw-radius-sm) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #fca5a5 !important;
+    font: inherit !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 14px !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.sidebar-logout-form .nav-item.logout:hover {
+    background: rgba(239, 68, 68, 0.16) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    color: #fecaca !important;
+    transform: translateX(3px);
+}
+
+.sidebar-logout-form .nav-item.logout:active {
+    transform: translateX(1px) scale(0.99);
+}
+
+.sidebar-logout-form .nav-label {
+    flex: 1;
+    line-height: 1.2;
+}
+
 /* ——— Cartes dashboard ——— */
 .dashboard-content {
     background:
