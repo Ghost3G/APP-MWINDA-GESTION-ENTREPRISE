@@ -227,6 +227,11 @@ if os.environ.get('CLOUDINARY_URL'):
     STORAGES['default'] = {
         'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
     }
+    # Options django-cloudinary-storage
+    CLOUDINARY_STORAGE = {
+        'SECURE': True,
+        'PREFIX': 'media',
+    }
 elif not DEBUG:
     # Prod sans Cloudinary : on logue un rappel (pas bloquant)
     import logging

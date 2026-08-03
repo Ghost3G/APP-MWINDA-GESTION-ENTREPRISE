@@ -1,14 +1,23 @@
 """Validation sécurisée des fichiers uploadés (avatars, covers, PJ)."""
 from __future__ import annotations
 
+import logging
 import os
 import re
+
+logger = logging.getLogger(__name__)
 
 IMAGE_CONTENT_TYPES = {
     'image/jpeg',
     'image/png',
     'image/webp',
     'image/gif',
+}
+IMAGE_CONTENT_TYPE_ALIASES = {
+    'image/jpg': 'image/jpeg',
+    'image/pjpeg': 'image/jpeg',
+    'image/x-png': 'image/png',
+    'application/octet-stream': None,  # on se fie à la signature
 }
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
 
@@ -25,7 +34,7 @@ ATTACHMENT_EXTENSIONS = IMAGE_EXTENSIONS | {
 }
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
-MAX_AVATAR_SIZE = 3 * 1024 * 1024
+MAX_AVATAR_SIZE = 5 * 1024 * 1024
 MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024
 
 _SAFE_NAME_RE = re.compile(r'[^A-Za-z0-9._\- ()\[\]]+')
@@ -69,12 +78,15 @@ def sniff_content_kind(upload) -> str | None:
         return 'image/gif'
     if len(header) >= 12 and header.startswith(b'RIFF') and header[8:12] == b'WEBP':
         return 'image/webp'
+    # HEIC / HEIF (souvent iPhone)
+    if len(header) >= 12 and header[4:8] == b'ftyp':
+        brand = header[8:12]
+        if brand in {b'heic', b'heif', b'mif1', b'msf1', b'heim', b'heis'}:
+            return 'image/heic'
     if header.startswith(b'%PDF'):
         return 'application/pdf'
     if header.startswith(b'PK\x03\x04'):
-        # Conteneurs Office Open XML (docx/xlsx) ou zip
         return 'application/zip'
-    # Texte brut approximatif
     try:
         header.decode('utf-8')
         if all(32 <= b <= 126 or b in (9, 10, 13) for b in header):
@@ -92,9 +104,7 @@ def validate_upload(
     max_size: int,
     require_magic: bool = True,
 ) -> str | None:
-    """
-    Retourne un message d'erreur, ou None si le fichier est acceptable.
-    """
+    """Retourne un message d'erreur, ou None si le fichier est acceptable."""
     if not upload:
         return 'Fichier manquant'
 
@@ -113,22 +123,38 @@ def validate_upload(
         return f'Fichier trop volumineux (max {mb} Mo)'
 
     ext = os.path.splitext(name)[1].lower()
-    if ext not in allowed_extensions:
-        return 'Extension de fichier non autorisée'
+    if ext and ext not in allowed_extensions:
+        return 'Extension de fichier non autorisée (utilisez JPG ou PNG)'
 
     declared = (getattr(upload, 'content_type', '') or '').lower().strip()
-    if declared not in allowed_types:
-        return 'Type de fichier non supporté'
+    if declared in IMAGE_CONTENT_TYPE_ALIASES:
+        alias = IMAGE_CONTENT_TYPE_ALIASES[declared]
+        if alias:
+            declared = alias
 
-    if not require_magic:
+    sniffed = sniff_content_kind(upload) if require_magic else None
+    if sniffed == 'image/heic':
+        return 'Format iPhone HEIC non supporté. Exportez la photo en JPG ou PNG.'
+
+    # Images : la signature réelle prime sur le Content-Type navigateur
+    if (
+        declared in IMAGE_CONTENT_TYPES
+        or ext in IMAGE_EXTENSIONS
+        or not declared
+        or declared == 'application/octet-stream'
+    ):
+        if require_magic:
+            if sniffed not in IMAGE_CONTENT_TYPES or sniffed not in allowed_types:
+                return 'Le contenu ne correspond pas à une image JPG/PNG/WEBP/GIF valide'
+            return None
         return None
 
-    sniffed = sniff_content_kind(upload)
+    if declared and declared not in allowed_types:
+        if sniffed in IMAGE_CONTENT_TYPES and sniffed in allowed_types:
+            return None
+        return f'Type de fichier non supporté ({declared or "inconnu"})'
 
-    # Images : on se fie à la signature réelle
-    if declared in IMAGE_CONTENT_TYPES or ext in IMAGE_EXTENSIONS:
-        if sniffed not in IMAGE_CONTENT_TYPES or sniffed not in allowed_types:
-            return 'Le contenu ne correspond pas à une image valide'
+    if not require_magic:
         return None
 
     if declared == 'application/pdf' or ext == '.pdf':
@@ -149,7 +175,6 @@ def validate_upload(
             return 'Le contenu ne correspond pas à un fichier texte'
         return None
 
-    # doc/xls historiques : pas de signature fiable — type + extension déjà validés
     if declared in {'application/msword', 'application/vnd.ms-excel'} or ext in {'.doc', '.xls'}:
         return None
 
@@ -181,3 +206,55 @@ def validate_attachment_upload(upload) -> str | None:
         max_size=MAX_ATTACHMENT_SIZE,
         require_magic=True,
     )
+
+
+def store_user_avatar(user, upload) -> str | None:
+    """
+    Enregistre l'avatar via Cloudinary (si configuré) ou stockage local.
+    Retourne un message d'erreur, ou None si OK.
+    """
+    from django.conf import settings
+
+    try:
+        if hasattr(upload, 'seek'):
+            upload.seek(0)
+    except Exception:
+        pass
+
+    if os.environ.get('CLOUDINARY_URL') or getattr(settings, 'CLOUDINARY_STORAGE', None):
+        try:
+            import cloudinary.uploader
+        except Exception as exc:
+            logger.exception('Cloudinary import failed')
+            return f'Cloudinary indisponible ({exc})'
+
+        try:
+            result = cloudinary.uploader.upload(
+                upload,
+                folder='avatars',
+                public_id=f'user_{user.pk}',
+                overwrite=True,
+                resource_type='image',
+                invalidate=True,
+                transformation=[{'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto'}],
+            )
+            public_id = result.get('public_id')
+            if not public_id:
+                return 'Réponse Cloudinary invalide (pas de public_id).'
+            user.avatar = public_id
+            user.save(update_fields=['avatar', 'first_name', 'last_name', 'phone'])
+            return None
+        except Exception as exc:
+            logger.exception('Cloudinary avatar upload failed')
+            detail = str(exc).strip() or exc.__class__.__name__
+            if len(detail) > 180:
+                detail = detail[:177] + '…'
+            return f'Échec upload Cloudinary : {detail}'
+
+    try:
+        user.avatar = upload
+        user.save()
+        return None
+    except Exception as exc:
+        logger.exception('Local avatar upload failed')
+        return f'Échec enregistrement photo : {exc}'

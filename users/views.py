@@ -17,7 +17,7 @@ from .security import (
     write_audit_log,
 )
 from .permissions import is_admin_user, is_management_user, management_required
-from .uploads import validate_avatar_upload
+from .uploads import validate_avatar_upload, store_user_avatar
 
 User = get_user_model()
 
@@ -161,40 +161,19 @@ def profile_view(request):
             if avatar_error:
                 messages.error(request, avatar_error)
                 return redirect('profile')
+
+            # Sauver d'abord les champs texte, puis la photo
             try:
-                # Repositionner le curseur après la validation (signatures binaires)
-                if hasattr(avatar_file, 'seek'):
-                    avatar_file.seek(0)
+                user.save(update_fields=['first_name', 'last_name', 'phone'])
             except Exception:
                 pass
 
-            old_name = ''
-            try:
-                old_name = user.avatar.name if user.avatar else ''
-            except Exception:
-                old_name = ''
-
-            user.avatar = avatar_file
-            try:
-                user.save()
-            except Exception:
-                import logging
-                logging.getLogger(__name__).exception('Échec enregistrement avatar profil')
-                messages.error(
-                    request,
-                    "Impossible d’enregistrer la photo. Vérifiez le format (JPG/PNG, max 3 Mo) "
-                    "ou réessayez sans photo pour sauver le téléphone / le nom.",
-                )
+            upload_error = store_user_avatar(user, avatar_file)
+            if upload_error:
+                messages.error(request, upload_error)
                 return redirect('profile')
 
-            # Supprimer l’ancienne photo seulement après succès du nouvel upload
-            if old_name and old_name != getattr(user.avatar, 'name', ''):
-                try:
-                    user.avatar.storage.delete(old_name)
-                except Exception:
-                    pass
-
-            messages.success(request, 'Profil mis à jour avec succès.')
+            messages.success(request, 'Profil et photo mis à jour avec succès.')
             return redirect('profile')
 
         try:
