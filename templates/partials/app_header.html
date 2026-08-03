@@ -44,8 +44,11 @@
 
     const csrfToken = '{{ csrf_token }}';
     const STORAGE_KEY = 'mwinda_notif_unread';
+    const NAG_MS = 60 * 1000;
     let lastUnread = Number(sessionStorage.getItem(STORAGE_KEY) || '{{ unread_notifications_total|default:0 }}');
     let audioCtx = null;
+    let audioUnlocked = false;
+    let nagTimer = null;
 
     function kindLabel(kind) {
         if (kind === 'task') return 'Tâche';
@@ -53,34 +56,69 @@
         return 'Message';
     }
 
+    function unlockAudio() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            audioUnlocked = true;
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    /** Alerte plus forte : 3 bips insistants */
     function playNotificationSound() {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
             if (!audioCtx) audioCtx = new AudioContext();
             if (audioCtx.state === 'suspended') audioCtx.resume();
+
             const now = audioCtx.currentTime;
-            const gain = audioCtx.createGain();
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+            const master = audioCtx.createGain();
+            master.connect(audioCtx.destination);
+            master.gain.setValueAtTime(0.0001, now);
+            master.gain.exponentialRampToValueAtTime(0.55, now + 0.02);
+            master.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
 
-            const osc1 = audioCtx.createOscillator();
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(880, now);
-            osc1.connect(gain);
-            osc1.start(now);
-            osc1.stop(now + 0.18);
+            const pattern = [
+                { t: 0, freq: 880, dur: 0.16 },
+                { t: 0.2, freq: 1175, dur: 0.16 },
+                { t: 0.4, freq: 1319, dur: 0.22 },
+                { t: 0.7, freq: 988, dur: 0.28 },
+            ];
 
-            const osc2 = audioCtx.createOscillator();
-            osc2.type = 'sine';
-            osc2.frequency.setValueAtTime(1175, now + 0.14);
-            osc2.connect(gain);
-            osc2.start(now + 0.14);
-            osc2.stop(now + 0.36);
+            pattern.forEach(({ t, freq, dur }) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + t);
+                gain.gain.setValueAtTime(0.0001, now + t);
+                gain.gain.exponentialRampToValueAtTime(0.35, now + t + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + t + dur);
+                osc.connect(gain);
+                gain.connect(master);
+                osc.start(now + t);
+                osc.stop(now + t + dur + 0.02);
+            });
         } catch (e) {
             // Navigateur sans WebAudio : silencieux
+        }
+    }
+
+    function setNagging(active) {
+        bell.classList.toggle('is-nagging', !!active);
+        if (active) {
+            if (!nagTimer) {
+                nagTimer = setInterval(() => {
+                    if (lastUnread > 0) playNotificationSound();
+                }, NAG_MS);
+            }
+        } else if (nagTimer) {
+            clearInterval(nagTimer);
+            nagTimer = null;
         }
     }
 
@@ -92,9 +130,12 @@
         }
         if (next > lastUnread) {
             playNotificationSound();
+        } else if (next > 0 && lastUnread === 0) {
+            playNotificationSound();
         }
         lastUnread = next;
         sessionStorage.setItem(STORAGE_KEY, String(next));
+        setNagging(next > 0);
     }
 
     async function loadFeed({ silent } = { silent: false }) {
@@ -121,13 +162,17 @@
         }
     }
 
-    // Débloquer l'audio après une interaction utilisateur
-    document.addEventListener('click', () => {
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    }, { once: true });
+    // Débloquer l'audio après une interaction (politique navigateurs)
+    ['click', 'keydown', 'touchstart'].forEach((evt) => {
+        document.addEventListener(evt, () => {
+            unlockAudio();
+            if (lastUnread > 0) setNagging(true);
+        }, { once: true, passive: true });
+    });
 
     bell.addEventListener('click', (e) => {
         e.stopPropagation();
+        unlockAudio();
         const open = panel.hasAttribute('hidden');
         panel.hidden = !open;
         bell.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -148,12 +193,14 @@
             });
             lastUnread = 0;
             sessionStorage.setItem(STORAGE_KEY, '0');
+            setNagging(false);
             loadFeed();
         });
     }
 
-    // Polling léger pour détecter les nouvelles notifications
+    // Polling : nouvelles notifs + rappel sonore si non lues
     loadFeed({ silent: true });
     setInterval(() => loadFeed({ silent: true }), 12000);
+    if (lastUnread > 0) setNagging(true);
 })();
 </script>

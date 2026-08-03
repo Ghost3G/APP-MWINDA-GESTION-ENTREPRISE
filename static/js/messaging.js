@@ -40,27 +40,49 @@ function playMessageSound() {
         if (msgAudioCtx.state === 'suspended') msgAudioCtx.resume();
 
         const now = msgAudioCtx.currentTime;
-        const gain = msgAudioCtx.createGain();
-        gain.connect(msgAudioCtx.destination);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+        const master = msgAudioCtx.createGain();
+        master.connect(msgAudioCtx.destination);
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(0.5, now + 0.02);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
 
-        const osc1 = msgAudioCtx.createOscillator();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(980, now);
-        osc1.connect(gain);
-        osc1.start(now);
-        osc1.stop(now + 0.14);
-
-        const osc2 = msgAudioCtx.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(1240, now + 0.12);
-        osc2.connect(gain);
-        osc2.start(now + 0.12);
-        osc2.stop(now + 0.3);
+        const pattern = [
+            { t: 0, freq: 880, dur: 0.14 },
+            { t: 0.18, freq: 1175, dur: 0.14 },
+            { t: 0.36, freq: 1319, dur: 0.2 },
+            { t: 0.62, freq: 988, dur: 0.26 },
+        ];
+        pattern.forEach(({ t, freq, dur }) => {
+            const osc = msgAudioCtx.createOscillator();
+            const gain = msgAudioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, now + t);
+            gain.gain.setValueAtTime(0.0001, now + t);
+            gain.gain.exponentialRampToValueAtTime(0.32, now + t + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + t + dur);
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start(now + t);
+            osc.stop(now + t + dur + 0.02);
+        });
     } catch (e) {
         // Navigateur sans WebAudio
+    }
+}
+
+let msgNagTimer = null;
+const MSG_NAG_MS = 60 * 1000;
+
+function setMessageNagging(active) {
+    if (active) {
+        if (!msgNagTimer) {
+            msgNagTimer = setInterval(() => {
+                if (lastUnreadTotal > 0) playMessageSound();
+            }, MSG_NAG_MS);
+        }
+    } else if (msgNagTimer) {
+        clearInterval(msgNagTimer);
+        msgNagTimer = null;
     }
 }
 
@@ -72,10 +94,13 @@ function maybePlayUnreadSound(conversations) {
     const total = totalUnreadCount(conversations);
     if (unreadSoundReady && total > lastUnreadTotal) {
         playMessageSound();
+    } else if (unreadSoundReady && total > 0 && lastUnreadTotal === 0) {
+        playMessageSound();
     }
     unreadSoundReady = true;
     lastUnreadTotal = total;
     sessionStorage.setItem('mwinda_msg_unread', String(total));
+    setMessageNagging(total > 0);
 }
 
 function getCsrfToken() {
