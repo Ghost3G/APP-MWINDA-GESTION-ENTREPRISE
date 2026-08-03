@@ -41,6 +41,7 @@ body {
 .deadline-ticker {
     width: 100%;
     overflow: hidden;
+    position: relative;
     background: linear-gradient(90deg, #7f1d1d 0%, #b91c1c 40%, #dc2626 50%, #b91c1c 60%, #7f1d1d 100%);
     border-bottom: 1px solid rgba(254, 202, 202, 0.35);
     box-shadow: 0 8px 20px rgba(185, 28, 28, 0.35);
@@ -50,11 +51,14 @@ body {
 .deadline-ticker__track {
     display: inline-flex;
     align-items: center;
-    gap: 0;
+    width: max-content;
+    max-width: none;
     white-space: nowrap;
     padding: 9px 0;
-    animation: deadline-marquee 28s linear infinite;
+    /* Part de la droite de l’écran, sort complètement à gauche */
+    animation: deadline-marquee 22s linear infinite;
     will-change: transform;
+    transform: translateX(100vw);
 }
 
 .deadline-ticker:hover .deadline-ticker__track {
@@ -93,21 +97,25 @@ body {
 }
 
 @keyframes deadline-marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% {
+        transform: translateX(100vw);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .deadline-ticker__track {
         animation: none;
+        transform: none;
+        display: flex;
         flex-wrap: wrap;
+        width: 100%;
         white-space: normal;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 8px;
         padding: 8px 12px;
-    }
-    .deadline-ticker__sep:nth-child(n+3) {
-        display: none;
     }
 }
 
