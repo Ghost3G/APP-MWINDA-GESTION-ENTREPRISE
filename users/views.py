@@ -105,7 +105,11 @@ def profile_view(request):
 
         if action == 'remove_avatar':
             if user.avatar:
-                user.avatar.delete(save=False)
+                try:
+                    user.avatar.delete(save=False)
+                except Exception:
+                    # Cloudinary / stockage : ne pas bloquer la suppression en base
+                    pass
                 user.avatar = None
                 user.save(update_fields=['avatar'])
             messages.success(request, 'Photo de profil supprimée.')
@@ -139,10 +143,14 @@ def profile_view(request):
             messages.success(request, 'Mot de passe mis à jour.')
             return redirect('profile')
 
-        first_name = request.POST.get('first_name', '').strip()
-        last_name = request.POST.get('last_name', '').strip()
+        first_name = request.POST.get('first_name', '').strip()[:150]
+        last_name = request.POST.get('last_name', '').strip()[:150]
         phone = request.POST.get('phone', '').strip()
         avatar_file = request.FILES.get('avatar')
+
+        if len(phone) > 40:
+            messages.error(request, 'Le numéro de téléphone est trop long (40 caractères max).')
+            return redirect('profile')
 
         user.first_name = first_name
         user.last_name = last_name
@@ -153,11 +161,50 @@ def profile_view(request):
             if avatar_error:
                 messages.error(request, avatar_error)
                 return redirect('profile')
-            if user.avatar:
-                user.avatar.delete(save=False)
-            user.avatar = avatar_file
+            try:
+                # Repositionner le curseur après la validation (signatures binaires)
+                if hasattr(avatar_file, 'seek'):
+                    avatar_file.seek(0)
+            except Exception:
+                pass
 
-        user.save()
+            old_name = ''
+            try:
+                old_name = user.avatar.name if user.avatar else ''
+            except Exception:
+                old_name = ''
+
+            user.avatar = avatar_file
+            try:
+                user.save()
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('Échec enregistrement avatar profil')
+                messages.error(
+                    request,
+                    "Impossible d’enregistrer la photo. Vérifiez le format (JPG/PNG, max 3 Mo) "
+                    "ou réessayez sans photo pour sauver le téléphone / le nom.",
+                )
+                return redirect('profile')
+
+            # Supprimer l’ancienne photo seulement après succès du nouvel upload
+            if old_name and old_name != getattr(user.avatar, 'name', ''):
+                try:
+                    user.avatar.storage.delete(old_name)
+                except Exception:
+                    pass
+
+            messages.success(request, 'Profil mis à jour avec succès.')
+            return redirect('profile')
+
+        try:
+            user.save()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Échec enregistrement profil')
+            messages.error(request, "Impossible d’enregistrer le profil. Réessayez.")
+            return redirect('profile')
+
         messages.success(request, 'Profil mis à jour avec succès.')
         return redirect('profile')
 

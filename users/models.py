@@ -38,7 +38,7 @@ class User(AbstractUser):
     job_title = models.CharField(max_length=180, blank=True)
     grade = models.CharField(max_length=80, blank=True)
     department_name = models.CharField(max_length=120, blank=True)
-    phone = models.CharField(max_length=30, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     has_seen_guide = models.BooleanField(default=False)
 
@@ -99,8 +99,11 @@ class User(AbstractUser):
 
     @property
     def avatar_url(self):
-        if self.avatar:
-            return self.avatar.url
+        try:
+            if self.avatar:
+                return self.avatar.url
+        except Exception:
+            return ''
         return ''
 
     # Fix reverse accessor clashes

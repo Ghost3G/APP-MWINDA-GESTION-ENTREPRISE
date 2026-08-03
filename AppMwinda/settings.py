@@ -206,6 +206,23 @@ if os.environ.get('CLOUDINARY_URL'):
         'cloudinary_storage',
         *INSTALLED_APPS[INSTALLED_APPS.index('django.contrib.staticfiles') + 1:],
     ]
+    # Normaliser l’URL (évite les guillemets / espaces collés depuis Render)
+    raw_cloudinary = os.environ.get('CLOUDINARY_URL', '').strip().strip('"').strip("'")
+    if raw_cloudinary.startswith('URL_CLOUDINARY='):
+        raw_cloudinary = raw_cloudinary.split('=', 1)[1].strip()
+    if raw_cloudinary and not raw_cloudinary.startswith('cloudinary://'):
+        # Laisser Cloudinary échouer clairement plutôt qu’un 500 opaque
+        import logging
+        logging.getLogger(__name__).error(
+            "CLOUDINARY_URL invalide (doit commencer par cloudinary://)."
+        )
+    else:
+        os.environ['CLOUDINARY_URL'] = raw_cloudinary
+        try:
+            import cloudinary
+            cloudinary.config(secure=True)
+        except Exception:
+            pass
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     STORAGES['default'] = {
         'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
