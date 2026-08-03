@@ -49,9 +49,9 @@ def app_notifications(request):
             .count()
         )
 
-        # Bandeau rouge : projets non terminés avec échéance ≤ 7 jours (ou en retard)
+        # Bandeau rouge : projets non terminés avec échéance ≤ 2 jours (ou en retard)
         today = timezone.localdate()
-        soon_limit = today + timedelta(days=7)
+        soon_limit = today + timedelta(days=2)
         projects_qs = Project.objects.exclude(status='done').filter(end_date__lte=soon_limit)
         if not is_management and not user.is_superuser:
             projects_qs = projects_qs.filter(
