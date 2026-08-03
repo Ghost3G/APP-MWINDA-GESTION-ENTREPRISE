@@ -1,0 +1,19 @@
+{% if project_deadline_alerts %}
+<div class="deadline-ticker" role="status" aria-live="polite">
+    <div class="deadline-ticker__track">
+        {% for alert in project_deadline_alerts %}
+            <a class="deadline-ticker__item deadline-ticker__item--{{ alert.level }}" href="{{ alert.url }}">
+                {{ alert.label }}
+            </a>
+            <span class="deadline-ticker__sep" aria-hidden="true">✦</span>
+        {% endfor %}
+        {# Duplication pour un défilement continu fluide #}
+        {% for alert in project_deadline_alerts %}
+            <a class="deadline-ticker__item deadline-ticker__item--{{ alert.level }}" href="{{ alert.url }}" tabindex="-1">
+                {{ alert.label }}
+            </a>
+            <span class="deadline-ticker__sep" aria-hidden="true">✦</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

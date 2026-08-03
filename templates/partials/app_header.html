@@ -33,6 +33,9 @@
         {% endif %}
     </div>
 </header>
+{% if request.user.is_authenticated %}
+    {% include "partials/deadline_ticker.html" %}
+{% endif %}
 <script>
 (() => {
     const bell = document.getElementById('notifBell');
