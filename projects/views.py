@@ -25,6 +25,7 @@ from .task_services import (
     notify_task_assignment,
 )
 from .assignment import ai_available, apply_smart_project_plan
+from .project_notifications import notify_commercial_on_project
 from reports.models import DailyReport
 from messaging.models import Message
 from django.contrib.auth import get_user_model
@@ -819,6 +820,7 @@ def projects_list(request):
                 if stakeholder and stakeholder not in members:
                     members.append(stakeholder)
             project.members.set(members)
+            notify_commercial_on_project(project, actor=request.user, members=members)
             messages.success(request, "Projet mis à jour.")
             return redirect('projects_list')
 
@@ -872,12 +874,7 @@ def projects_list(request):
                 members.append(stakeholder)
         project.members.set(members)
         plan_result = ensure_project_tasks(project, actor=request.user, use_ai=True)
-        for member in members:
-            if member.id != request.user.id:
-                ProjectAssignmentNotification.objects.get_or_create(
-                    user=member,
-                    project=project,
-                )
+        notify_commercial_on_project(project, actor=request.user, members=members)
 
         created_n = (plan_result or {}).get('created') or 0
         source = (plan_result or {}).get('source') or 'rules'

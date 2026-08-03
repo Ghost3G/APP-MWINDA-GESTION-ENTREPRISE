@@ -9,6 +9,9 @@ PROJECT_MANAGER_USERNAMES = frozenset({
     'emmanuel.maki',     # Ass. Directeur Technique — Emmanuel Maki
 })
 
+# Responsable Commercial — accès large sauf Finance ; informée à chaque projet commercial
+COMMERCIAL_LEAD_USERNAME = 'michelle.bukebo'
+
 
 def is_admin_user(user):
     return bool(user and user.is_authenticated and (user.is_superuser or user.role == "admin"))
@@ -25,9 +28,17 @@ def can_manage_projects(user):
     return (user.username or '').strip().lower() in PROJECT_MANAGER_USERNAMES
 
 
-def can_access_finance(user):
-    """Direction + équipe Finance (comptable, etc.)."""
+def is_commercial_lead(user):
     if not user or not user.is_authenticated:
+        return False
+    return (user.username or '').strip().lower() == COMMERCIAL_LEAD_USERNAME
+
+
+def can_access_finance(user):
+    """Direction + équipe Finance (comptable, etc.). Michelle Bukebo : exclue."""
+    if not user or not user.is_authenticated:
+        return False
+    if is_commercial_lead(user):
         return False
     if is_management_user(user):
         return True

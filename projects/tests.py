@@ -57,10 +57,59 @@ class ProjectsFeatureTests(TestCase):
                 'members': [self.agent.id],
                 'commercial_agent': commercial.id,
             },
+            follow=True,
+            secure=True,
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(Project.objects.filter(name='Projet Test').exists())
         self.assertTrue(ProjectAssignmentNotification.objects.filter(user=self.agent, is_read=False).exists())
+        self.assertTrue(
+            ProjectAssignmentNotification.objects.filter(user=commercial, is_read=False).exists()
+        )
+
+    def test_michelle_notified_when_commercial_assigned(self):
+        michelle = User.objects.create_user(
+            username='michelle.bukebo',
+            password='testpass123',
+            email='michelle@example.com',
+            role='directeur',
+            org_group='commercial',
+            direction='branding',
+            job_title='Responsable Commercial',
+            grade='RESPONSABLE COMMERCIAL',
+        )
+        commercial = User.objects.create_user(
+            username='commercial1',
+            password='testpass123',
+            email='commercial1@example.com',
+            role='agent',
+            direction='branding',
+            org_group='commercial',
+            grade='Agent Commercial',
+        )
+        self.client.login(username='ibrahim.japhete', password='testpass123')
+        response = self.client.post(
+            reverse('projects_list'),
+            {
+                'name': 'Projet Commercial Lead',
+                'description': 'Description test',
+                'start_date': '2026-04-01',
+                'end_date': '2026-04-30',
+                'status': 'pending',
+                'branch': 'metal_design',
+                'members': [self.agent.id],
+                'commercial_agent': commercial.id,
+            },
+            follow=True,
+            secure=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Project.objects.filter(name='Projet Commercial Lead').exists())
+        self.assertTrue(
+            ProjectAssignmentNotification.objects.filter(user=michelle, is_read=False).exists()
+        )
+        from users.permissions import can_access_finance
+        self.assertFalse(can_access_finance(michelle))
 
     def test_other_directeur_cannot_create_project(self):
         self.client.login(username='boss', password='testpass123')

@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from messaging.models import Message
 from projects.models import ProjectAssignmentNotification, ProjectTask, TaskAssignmentNotification
+from users.permissions import is_commercial_lead
 
 
 def build_notification_feed(user, limit=30):
@@ -28,12 +29,22 @@ def build_notification_feed(user, limit=30):
             'created_at': notif.created_at,
         })
 
-    for notif in ProjectAssignmentNotification.objects.filter(user=user).select_related('project')[:limit]:
+    for notif in ProjectAssignmentNotification.objects.filter(user=user).select_related(
+        'project', 'project__commercial_agent'
+    )[:limit]:
+        if is_commercial_lead(user) and notif.project.commercial_agent_id:
+            agent = notif.project.commercial_agent
+            agent_label = agent.get_labeled_name() if agent else 'Commercial'
+            title = 'Commercial affecté'
+            body = f'{notif.project.name} — {agent_label}'
+        else:
+            title = 'Nouveau projet'
+            body = notif.project.name
         items.append({
             'id': f'project-{notif.id}',
             'kind': 'project',
-            'title': 'Nouveau projet',
-            'body': notif.project.name,
+            'title': title,
+            'body': body,
             'url': f'/projects/{notif.project_id}/',
             'is_read': notif.is_read,
             'created_at': notif.created_at,

@@ -49,14 +49,17 @@ DIRECTOR_GRADES = {
     'DIRECTEUR TECHNIQUE',
     'ASSISTANT DIRECTEUR TECHNIQUE',
     'ASSISTANT DIRECTEUR FINANCIER',
+    'RESPONSABLE COMMERCIAL',
 }
 
 # Directeurs (leadership) — Hans (Comptable) est au département Finance
+# Michelle Bukebo : accès large sauf Finance (voir can_access_finance)
 DIRECTOR_USERNAMES = {
     'michael.ilunga',
     'archirey.muhongaya',
     'ibrahim.japhete',
     'emmanuel.maki',
+    'michelle.bukebo',
 }
 
 PERSONNEL = [
@@ -227,6 +230,16 @@ PERSONNEL = [
         'grade': 'TECHNICIEN',
         'direction': 'metal_design',
         'password': 'Isako2026',
+    },
+    {
+        'username': 'michelle.bukebo',
+        'first_name': 'Michelle',
+        'last_name': 'Bukebo',
+        'function': 'Responsable Commercial',
+        'department': 'Direction Commercial',
+        'grade': 'RESPONSABLE COMMERCIAL',
+        'direction': 'branding',
+        'password': 'Bukebo2026',
     },
     {
         'username': 'rachel.nsilulu',
