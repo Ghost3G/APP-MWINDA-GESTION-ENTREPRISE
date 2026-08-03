@@ -3,6 +3,12 @@ from functools import wraps
 from django.http import HttpResponseForbidden
 from django.shortcuts import redirect
 
+# Seuls ces comptes peuvent créer / modifier / terminer / réouvrir un projet
+PROJECT_MANAGER_USERNAMES = frozenset({
+    'ibrahim.japhete',   # Directeur Technique — Japhete Kuta
+    'emmanuel.maki',     # Ass. Directeur Technique — Emmanuel Maki
+})
+
 
 def is_admin_user(user):
     return bool(user and user.is_authenticated and (user.is_superuser or user.role == "admin"))
@@ -10,6 +16,13 @@ def is_admin_user(user):
 
 def is_management_user(user):
     return bool(user and user.is_authenticated and (user.is_superuser or user.role in {"admin", "directeur"}))
+
+
+def can_manage_projects(user):
+    """Création / modification / clôture de projets : Japhete Kuta & Emmanuel Maki uniquement."""
+    if not user or not user.is_authenticated:
+        return False
+    return (user.username or '').strip().lower() in PROJECT_MANAGER_USERNAMES
 
 
 def can_access_finance(user):

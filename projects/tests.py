@@ -13,18 +13,25 @@ User = get_user_model()
 class ProjectsFeatureTests(TestCase):
     def setUp(self):
         self.directeur = User.objects.create_user(
+            username='ibrahim.japhete',
+            password='testpass123',
+            email='japhete@example.com',
+            role='directeur',
+            direction='metal_design',
+        )
+        self.other_directeur = User.objects.create_user(
             username='boss',
             password='testpass123',
             email='boss@example.com',
             role='directeur',
-            direction='technique',
+            direction='metal_design',
         )
         self.agent = User.objects.create_user(
             username='agent1',
             password='testpass123',
             email='agent1@example.com',
             role='agent',
-            direction='design',
+            direction='branding',
         )
 
     def test_directeur_can_create_project(self):
@@ -37,7 +44,7 @@ class ProjectsFeatureTests(TestCase):
             org_group='commercial',
             grade='Agent Commercial',
         )
-        self.client.login(username='boss', password='testpass123')
+        self.client.login(username='ibrahim.japhete', password='testpass123')
         response = self.client.post(
             reverse('projects_list'),
             {
@@ -54,6 +61,22 @@ class ProjectsFeatureTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Project.objects.filter(name='Projet Test').exists())
         self.assertTrue(ProjectAssignmentNotification.objects.filter(user=self.agent, is_read=False).exists())
+
+    def test_other_directeur_cannot_create_project(self):
+        self.client.login(username='boss', password='testpass123')
+        response = self.client.post(
+            reverse('projects_list'),
+            {
+                'name': 'Projet Interdit DT',
+                'description': 'Description test',
+                'start_date': '2026-04-01',
+                'end_date': '2026-04-30',
+                'status': 'pending',
+                'branch': 'metal_design',
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.filter(name='Projet Interdit DT').exists())
 
     def test_project_assignment_notification_is_marked_read_on_projects_page(self):
         project = Project.objects.create(

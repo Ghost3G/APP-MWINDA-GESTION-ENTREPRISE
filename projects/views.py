@@ -30,7 +30,7 @@ from messaging.models import Message
 from django.contrib.auth import get_user_model
 from users.models import AuditLog
 from users.notifications import get_due_soon_tasks, get_overdue_tasks
-from users.permissions import admin_required, is_admin_user, is_management_user, management_required
+from users.permissions import admin_required, is_admin_user, is_management_user, management_required, can_manage_projects
 from users.security import write_audit_log
 from users.uploads import validate_image_upload
 
@@ -720,11 +720,14 @@ def projects_list(request):
     if branch:
         projects = projects.filter(branch=normalize_branch(branch))
 
-    is_manager = request.user.role in ['admin', 'directeur'] or request.user.is_superuser
+    is_manager = can_manage_projects(request.user)
 
     if request.method == 'POST':
         if not is_manager:
-            return HttpResponseForbidden("Vous n'avez pas la permission de gérer un projet.")
+            return HttpResponseForbidden(
+                "Seuls le Directeur Technique (Japhete Kuta) et l’Ass. Directeur Technique "
+                "(Emmanuel Maki) peuvent créer, modifier ou terminer un projet."
+            )
 
         action = request.POST.get('action', 'create').strip() or 'create'
 
