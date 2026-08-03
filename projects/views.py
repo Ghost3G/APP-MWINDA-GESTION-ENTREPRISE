@@ -727,6 +727,25 @@ def projects_list(request):
             return HttpResponseForbidden("Vous n'avez pas la permission de gérer un projet.")
 
         action = request.POST.get('action', 'create').strip() or 'create'
+
+        if action in {'complete', 'reopen'}:
+            project_id = request.POST.get('project_id', '').strip()
+            project = get_object_or_404(Project, id=project_id)
+            if action == 'complete':
+                if request.POST.get('confirm_done') != '1':
+                    messages.error(request, "Confirmez que le projet est bien terminé.")
+                    return redirect('projects_list')
+                project.status = 'done'
+                project.show_on_home = False
+                project.home_order = 0
+                project.save(update_fields=['status', 'show_on_home', 'home_order'])
+                messages.success(request, f'Projet « {project.name} » marqué comme terminé.')
+            else:
+                project.status = 'progress'
+                project.save(update_fields=['status'])
+                messages.success(request, f'Projet « {project.name} » réouvert (en cours).')
+            return redirect('projects_list')
+
         name = request.POST.get('name', '').strip()
         description = request.POST.get('description', '').strip()
         start_date = request.POST.get('start_date', '').strip()
@@ -762,6 +781,10 @@ def projects_list(request):
             project.branch = branch
             project.commercial_agent = commercial_agent
 
+            if project_status == 'done':
+                project.show_on_home = False
+                project.home_order = 0
+
             cover = request.FILES.get('cover_image')
             if cover:
                 cover_error = validate_image_upload(cover)
@@ -778,11 +801,15 @@ def projects_list(request):
 
             project.save()
 
-            show_on_home, home_order = _parse_home_feature(request.POST)
-            ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
-            if not ok:
-                messages.error(request, feature_error)
-                return redirect('projects_list')
+            if project_status != 'done':
+                show_on_home, home_order = _parse_home_feature(request.POST)
+                ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
+                if not ok:
+                    messages.error(request, feature_error)
+                    return redirect('projects_list')
+            else:
+                # Déjà retiré de l’Accueil ci-dessus
+                pass
 
             members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
             for stakeholder in (project.technical_director, project.manager, commercial_agent):
@@ -810,6 +837,10 @@ def projects_list(request):
             if cover_error:
                 messages.error(request, cover_error)
                 return redirect('projects_list')
+
+        # À la création, on n’accepte pas "terminé" sans confirmation claire
+        if project_status == 'done':
+            project_status = 'pending'
 
         project = Project.objects.create(
             name=name,
@@ -862,8 +893,21 @@ def projects_list(request):
         is_read=False,
     ).update(is_read=True)
 
+    # Séparer actifs / terminés pour l’affichage (sauf filtre statut explicite)
+    if status == 'done':
+        active_projects = Project.objects.none()
+        completed_projects = projects
+    elif status:
+        active_projects = projects
+        completed_projects = Project.objects.none()
+    else:
+        active_projects = projects.exclude(status='done')
+        completed_projects = projects.filter(status='done').order_by('-end_date', '-id')
+
     context = {
         'projects': projects,
+        'active_projects': active_projects,
+        'completed_projects': completed_projects,
         'status_choices': Project.STATUS_CHOICES,
         'branch_choices': TECH_BRANCH_CHOICES,
         'tech_department_label': TECH_DEPARTMENT_LABEL,

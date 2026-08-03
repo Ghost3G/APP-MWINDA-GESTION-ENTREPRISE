@@ -184,6 +184,64 @@
             box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35), 0 10px 24px rgba(239, 68, 68, 0.12);
         }
 
+        .projects-section-title {
+            margin: 28px 0 14px;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #a1a1aa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .projects-section-title .count-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: rgba(253, 224, 71, 0.15);
+            color: #fde047;
+            font-size: 12px;
+        }
+
+        .btn-complete {
+            width: 100%;
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #16a34a;
+            color: #fff;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-complete:hover {
+            background: #15803d;
+        }
+
+        .btn-reopen {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid rgba(253, 224, 71, 0.45);
+            border-radius: 10px;
+            background: transparent;
+            color: #fde047;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .project-item.is-done {
+            opacity: 0.92;
+            border-color: rgba(34, 197, 94, 0.35);
+        }
+
         .project-desc {
             color: #6b7280;
             font-size: 14px;
@@ -416,9 +474,13 @@
                     </div>
                 {% endif %}
 
-                {% if projects %}
+                {% if active_projects %}
+                    <h2 class="projects-section-title">
+                        Projets en cours
+                        <span class="count-pill">{{ active_projects|length }}</span>
+                    </h2>
                     <div class="projects-grid">
-                        {% for project in projects %}
+                        {% for project in active_projects %}
                             <div class="project-item {% if project.status == 'urgent' %}is-urgent{% endif %}">
                                 <div class="project-cover">
                                     {% if project.cover_url %}
@@ -460,6 +522,13 @@
                                 <div class="project-footer" style="display:grid; gap:8px;">
                                     <a class="btn-small" href="{% url 'project_detail' project.id %}" style="text-align: center; text-decoration: none;">Voir les détails</a>
                                     {% if can_create_project %}
+                                    <form method="POST" class="complete-project-form" style="margin:0;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="complete">
+                                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                                        <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
+                                        <button type="submit" class="btn-complete">Terminer le projet</button>
+                                    </form>
                                     <button type="button" class="btn-small" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier</button>
                                     <div id="edit-{{ project.id }}" style="display:none; margin-top:8px;">
                                         <form method="POST" enctype="multipart/form-data" class="project-status-form" style="display:grid; gap:8px;">
@@ -473,7 +542,9 @@
                                             <input type="date" name="end_date" value="{{ project.end_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                             <select name="status" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                                 {% for value, label in status_choices %}
+                                                    {% if value != 'done' %}
                                                     <option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endif %}
                                                 {% endfor %}
                                             </select>
                                             <select name="branch" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
@@ -521,11 +592,60 @@
                             </div>
                         {% endfor %}
                     </div>
-                {% else %}
+                {% elif selected_status != 'done' %}
                     <div class="empty-state">
                         <div class="empty-state-icon">📁</div>
-                        <h3>Aucun projet</h3>
-                        <p>Commence par créer ton premier projet</p>
+                        <h3>Aucun projet en cours</h3>
+                        <p>{% if can_create_project %}Créez un projet ou filtrez autrement{% else %}Aucun projet assigné pour le moment{% endif %}</p>
+                    </div>
+                {% endif %}
+
+                {% if completed_projects %}
+                    <h2 class="projects-section-title" id="projets-termines">
+                        Projets terminés
+                        <span class="count-pill">{{ completed_projects|length }}</span>
+                    </h2>
+                    <div class="projects-grid">
+                        {% for project in completed_projects %}
+                            <div class="project-item is-done">
+                                <div class="project-cover">
+                                    {% if project.cover_url %}
+                                        <img src="{{ project.cover_url }}" alt="{{ project.name }}" loading="lazy" decoding="async">
+                                    {% else %}
+                                        <div class="project-cover-empty">Photo du projet</div>
+                                    {% endif %}
+                                </div>
+                                <div class="project-body">
+                                <div class="project-header">
+                                    <h3 class="project-title">{{ project.name }}</h3>
+                                    <span class="status-badge status-completed">Terminé</span>
+                                </div>
+                                <p class="project-desc">{{ project.description|truncatewords:15 }}</p>
+                                <div class="project-meta">
+                                    <div class="project-meta-item">🏷 {{ project.get_branch_display }}</div>
+                                    <div class="project-meta-item">📅 {{ project.start_date }} → {{ project.end_date }}</div>
+                                    <div class="project-meta-item">👤 {{ project.manager.get_labeled_name }}</div>
+                                </div>
+                                <div class="project-footer" style="display:grid; gap:8px;">
+                                    <a class="btn-small" href="{% url 'project_detail' project.id %}" style="text-align: center; text-decoration: none;">Voir les détails</a>
+                                    {% if can_create_project %}
+                                    <form method="POST" style="margin:0;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="reopen">
+                                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                                        <button type="submit" class="btn-reopen">Réouvrir le projet</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% elif selected_status == 'done' %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <h3>Aucun projet terminé</h3>
+                        <p>Les projets validés par la direction apparaîtront ici.</p>
                     </div>
                 {% endif %}
             </div>
@@ -549,6 +669,18 @@
             } else {
                 confirmField.value = '0';
             }
+        });
+    });
+
+    document.querySelectorAll('.complete-project-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const confirmField = form.querySelector('.confirm-done-field');
+            const ok = window.confirm('Confirmer que ce projet est bien terminé ?\nIl sera déplacé dans « Projets terminés ».');
+            if (!ok) {
+                event.preventDefault();
+                return;
+            }
+            if (confirmField) confirmField.value = '1';
         });
     });
     </script>
