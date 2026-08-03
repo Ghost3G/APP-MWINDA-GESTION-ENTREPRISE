@@ -239,10 +239,13 @@ def store_user_avatar(user, upload) -> str | None:
                 transformation=[{'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto'}],
             )
             public_id = result.get('public_id')
+            secure_url = result.get('secure_url') or ''
             if not public_id:
                 return 'Réponse Cloudinary invalide (pas de public_id).'
+            # Stocker le public_id ; l’URL est reconstruite via User.avatar_url
             user.avatar = public_id
             user.save(update_fields=['avatar', 'first_name', 'last_name', 'phone'])
+            logger.info('Avatar Cloudinary OK user=%s public_id=%s url=%s', user.pk, public_id, secure_url)
             return None
         except Exception as exc:
             logger.exception('Cloudinary avatar upload failed')

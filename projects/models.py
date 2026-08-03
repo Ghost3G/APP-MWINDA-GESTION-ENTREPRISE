@@ -82,9 +82,28 @@ class Project(models.Model):
 
     @property
     def cover_url(self):
-        if self.cover_image:
+        try:
+            if not self.cover_image:
+                return ''
+            name = (getattr(self.cover_image, 'name', None) or '').strip()
+            if not name:
+                return ''
+            if name.startswith('http://') or name.startswith('https://'):
+                return name
+            try:
+                import cloudinary
+                import os
+                from django.conf import settings
+                if getattr(settings, 'CLOUDINARY_STORAGE', None) or os.environ.get('CLOUDINARY_URL'):
+                    return cloudinary.CloudinaryResource(
+                        name,
+                        resource_type='image',
+                    ).build_url(secure=True)
+            except Exception:
+                pass
             return self.cover_image.url
-        return ''
+        except Exception:
+            return ''
 
     def get_branch_display_label(self):
         return get_branch_label(self.branch)

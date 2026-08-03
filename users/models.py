@@ -99,12 +99,31 @@ class User(AbstractUser):
 
     @property
     def avatar_url(self):
+        """URL d’avatar fiable (Cloudinary public_id ou stockage local)."""
         try:
-            if self.avatar:
-                return self.avatar.url
+            if not self.avatar:
+                return ''
+            name = (getattr(self.avatar, 'name', None) or str(self.avatar) or '').strip()
+            if not name:
+                return ''
+            if name.startswith('http://') or name.startswith('https://'):
+                return name
+
+            # Upload Cloudinary direct → public_id du type "avatars/user_12"
+            try:
+                import cloudinary
+                from django.conf import settings
+                if getattr(settings, 'CLOUDINARY_STORAGE', None) or __import__('os').environ.get('CLOUDINARY_URL'):
+                    return cloudinary.CloudinaryResource(
+                        name,
+                        resource_type='image',
+                    ).build_url(secure=True)
+            except Exception:
+                pass
+
+            return self.avatar.url
         except Exception:
             return ''
-        return ''
 
     # Fix reverse accessor clashes
     groups = models.ManyToManyField(

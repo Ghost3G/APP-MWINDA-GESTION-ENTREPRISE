@@ -230,7 +230,8 @@ if os.environ.get('CLOUDINARY_URL'):
     # Options django-cloudinary-storage
     CLOUDINARY_STORAGE = {
         'SECURE': True,
-        'PREFIX': 'media',
+        # Pas de préfixe "media/" : sinon les public_id Cloudinary (avatars/user_x) cassent l’URL
+        'PREFIX': '',
     }
 elif not DEBUG:
     # Prod sans Cloudinary : on logue un rappel (pas bloquant)
