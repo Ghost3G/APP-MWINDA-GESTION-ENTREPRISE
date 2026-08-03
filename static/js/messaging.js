@@ -423,7 +423,7 @@ function handleKeyPress(event) {
 function autoResizeMessageInput(textarea) {
     if (!textarea) return;
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 72)}px`;
 }
 
 async function postWithCsrf(url, formData, retried = false) {

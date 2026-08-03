@@ -1,12 +1,39 @@
 /* Messagerie AppMwinda */
+body:has(.messaging-page) {
+    overflow: hidden;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+body:has(.messaging-page) .app-header,
+body:has(.messaging-page) .deadline-ticker {
+    flex-shrink: 0;
+}
+
+body:has(.messaging-page) .app-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    overflow: hidden;
+}
+
 .messaging-page {
     padding: 0 !important;
     background: var(--mw-bg, #050506) !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .messaging-container {
     display: flex;
-    min-height: calc(100vh - 72px);
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
     background: var(--mw-bg, #050506);
 }
 
@@ -15,6 +42,7 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     background: linear-gradient(180deg, #0e0e10 0%, #0a0a0b 100%);
 }
@@ -173,7 +201,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    margin: 16px;
+    min-height: 0;
+    margin: 12px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: #141416;
@@ -271,10 +300,11 @@
 }
 
 .messages-container {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 20px;
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -437,7 +467,7 @@
 
 /* Zone de saisie — classes dédiées pour éviter les conflits dashboard.css */
 .messaging-page .chat-composer {
-    padding: 16px 20px 14px;
+    padding: 10px 16px 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     background: linear-gradient(180deg, #101012 0%, #0c0c0e 100%);
     flex-shrink: 0;
@@ -446,7 +476,7 @@
 .messaging-page .chat-composer-row {
     display: flex;
     align-items: flex-end;
-    gap: 12px;
+    gap: 10px;
 }
 
 .messaging-page .chat-input-box {
@@ -454,9 +484,9 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    min-height: 52px;
-    padding: 12px 16px;
-    border-radius: 18px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 16px;
     background: #1a1a1e;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -471,8 +501,8 @@
     flex: 1;
     width: 100%;
     min-width: 0;
-    min-height: 26px;
-    max-height: 140px;
+    min-height: 22px;
+    max-height: 72px;
     padding: 0;
     margin: 0;
     border: none !important;
@@ -483,10 +513,11 @@
     color: #f4f4f5 !important;
     font-family: inherit;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.4;
     white-space: pre-wrap;
     overflow-wrap: break-word;
     word-break: normal;
+    overflow-y: auto;
 }
 
 .messaging-page .chat-input-box textarea::placeholder {
@@ -494,10 +525,10 @@
 }
 
 .messaging-page .chat-send-btn {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     border: none;
-    border-radius: 16px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #fde047, #facc15);
     color: #111827;
     display: inline-flex;
@@ -526,10 +557,7 @@
 }
 
 .messaging-page .chat-composer-hint {
-    margin: 10px 4px 0;
-    font-size: 11px;
-    color: #52525b;
-    text-align: center;
+    display: none;
 }
 
 .messaging-page .input-wrapper {
@@ -695,31 +723,28 @@
     .messaging-container { flex-direction: column; }
     .messaging-sidebar {
         width: 100%;
-        max-height: 38vh;
+        max-height: 32vh;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     .chat-area {
         margin: 0;
         border-radius: 0;
-        min-height: 62vh;
+        min-height: 0;
+        flex: 1 1 auto;
     }
 
     .messaging-page .chat-composer {
-        padding: 12px 14px 10px;
-    }
-
-    .messaging-page .chat-composer-hint {
-        display: none;
+        padding: 8px 12px 10px;
     }
 
     .messaging-page .chat-send-btn {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
     }
 
     .messaging-page .chat-input-box {
-        min-height: 48px;
-        padding: 10px 14px;
+        min-height: 42px;
+        padding: 8px 12px;
     }
 }
