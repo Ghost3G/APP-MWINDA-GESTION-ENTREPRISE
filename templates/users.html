@@ -13,7 +13,7 @@
         }
 
         .users-table {
-            background: white;
+            background: #141416;
             border-radius: 12px;
             overflow: hidden;
         }
@@ -24,15 +24,15 @@
         }
 
         .users-table thead {
-            background: #f3f4f6;
-            border-bottom: 2px solid #e5e7eb;
+            background: #1a1a1c;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .users-table th {
             padding: 14px;
             text-align: left;
             font-weight: 600;
-            color: #374151;
+            color: #a1a1aa;
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -40,12 +40,17 @@
 
         .users-table td {
             padding: 14px;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             vertical-align: middle;
         }
 
+        .users-table tbody tr {
+            background: transparent;
+            transition: background 0.15s ease;
+        }
+
         .users-table tbody tr:hover {
-            background: #fafbfc;
+            background: rgba(253, 224, 71, 0.06) !important;
         }
 
         .user-avatar {
@@ -310,17 +315,26 @@
             text-decoration: none;
             font-size: 13px;
             font-weight: 600;
-            transition: all 0.2s ease;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+            outline: none;
+            box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .department-tab:hover {
-            border-color: rgba(253, 224, 71, 0.35);
-            background: rgba(253, 224, 71, 0.08);
+        .department-tab:hover,
+        .department-tab:focus,
+        .department-tab:focus-visible {
+            border-color: rgba(253, 224, 71, 0.4);
+            background: #1c1c1f;
             color: #fde047;
-            transform: translateY(-1px);
+            transform: none;
+            outline: none;
+            box-shadow: none;
         }
 
-        .department-tab.active {
+        .department-tab.active,
+        .department-tab.active:hover,
+        .department-tab.active:focus {
             background: #fde047;
             border-color: #fde047;
             color: #111827;

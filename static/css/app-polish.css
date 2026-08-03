@@ -1015,7 +1015,23 @@ body {
 .projects-table tbody tr:hover,
 .users-table tbody tr:hover,
 .tasks-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(253, 224, 71, 0.06);
+}
+
+/* Onglets départements : pas de flash blanc au survol */
+.department-tab:hover,
+.department-tab:focus,
+.department-tab:focus-visible {
+    background: #1c1c1f !important;
+    color: #fde047 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.department-tab.active:hover,
+.department-tab.active:focus {
+    background: #fde047 !important;
+    color: #111827 !important;
 }
 
 /* ——— Scrollbar discrète ——— */
