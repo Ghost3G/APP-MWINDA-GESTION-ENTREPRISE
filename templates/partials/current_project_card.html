@@ -15,7 +15,7 @@
     </div>
 
     <div class="current-project-body">
-        <p class="current-project-kicker">Projet en cours</p>
+        <p class="current-project-kicker">{{ current_project.kicker|default:"Projet en cours" }}</p>
         <h2>{{ current_project.title }}</h2>
         <p class="current-project-desc">{{ current_project.description }}</p>
 

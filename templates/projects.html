@@ -371,6 +371,21 @@
                                 <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#fff;">
                                 <small style="color:#6b7280;">JPG/PNG, max 5 Mo — visible sur la carte projet</small>
                             </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; padding:12px; border:1px solid #fde68a; border-radius:10px; background:#fffbeb;">
+                                <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+                                    <input type="checkbox" name="show_on_home" value="1">
+                                    Afficher sur l’Accueil
+                                </label>
+                                <div>
+                                    <label style="display:block; margin-bottom:6px; font-weight:600;">Position (1 à {{ home_featured_max }})</label>
+                                    <select name="home_order" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                                        <option value="1">1 — en haut</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                    </select>
+                                    <small style="color:#6b7280;">Max {{ home_featured_max }} projets ({{ home_featured_count }} déjà en avant)</small>
+                                </div>
+                            </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Directeur Technique</label>
@@ -428,6 +443,9 @@
                                     {% if project.commercial_agent %}
                                     <div class="project-meta-item">💼 {{ project.commercial_agent.get_labeled_name }}</div>
                                     {% endif %}
+                                    {% if project.show_on_home %}
+                                    <div class="project-meta-item" style="color:#ca8a04; font-weight:700;">⭐ Accueil · position {{ project.home_order }}</div>
+                                    {% endif %}
                                 </div>
                                 <div class="project-members">
                                     <div class="members-list">
@@ -482,6 +500,17 @@
                                                 </label>
                                                 {% endif %}
                                                 <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                            </div>
+                                            <div style="padding:10px; border:1px solid #fde68a; border-radius:8px; background:#fffbeb; display:grid; gap:8px;">
+                                                <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px;">
+                                                    <input type="checkbox" name="show_on_home" value="1" {% if project.show_on_home %}checked{% endif %}>
+                                                    Afficher sur l’Accueil
+                                                </label>
+                                                <select name="home_order" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    <option value="1" {% if project.home_order == 1 or not project.home_order %}selected{% endif %}>Position 1</option>
+                                                    <option value="2" {% if project.home_order == 2 %}selected{% endif %}>Position 2</option>
+                                                    <option value="3" {% if project.home_order == 3 %}selected{% endif %}>Position 3</option>
+                                                </select>
                                             </div>
                                             <button type="submit" style="padding:8px; border:0; border-radius:8px; background:#22c55e; color:white; font-weight:700;">Enregistrer</button>
                                         </form>

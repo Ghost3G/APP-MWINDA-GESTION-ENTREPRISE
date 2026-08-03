@@ -61,6 +61,17 @@ class Project(models.Model):
         verbose_name='Photo du projet',
     )
 
+    # Accueil : jusqu'à 3 projets mis en avant (contrôle directeur)
+    show_on_home = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Afficher sur l’Accueil',
+    )
+    home_order = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Position sur l’Accueil (1 à 3). 0 = non affiché.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

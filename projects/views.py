@@ -44,7 +44,7 @@ def _format_seconds(total_seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
-def _build_current_project_card(project, empty_title='Aucun projet en cours', empty_description=''):
+def _build_current_project_card(project, empty_title='Aucun projet en cours', empty_description='', kicker='Projet en cours'):
     """Payload Accueil : aperçu + photo du projet en cours."""
     if not project:
         return {
@@ -60,6 +60,8 @@ def _build_current_project_card(project, empty_title='Aucun projet en cours', em
             'manager_name': '',
             'members_count': 0,
             'detail_url': '',
+            'kicker': kicker,
+            'home_order': 0,
         }
 
     description = (project.description or '').strip()
@@ -79,7 +81,90 @@ def _build_current_project_card(project, empty_title='Aucun projet en cours', em
         'manager_name': project.manager.get_labeled_name() if project.manager_id else '',
         'members_count': project.members.count(),
         'detail_url': f'/projects/{project.id}/',
+        'kicker': kicker,
+        'home_order': getattr(project, 'home_order', 0) or 0,
     }
+
+
+HOME_FEATURED_MAX = 3
+
+
+def _parse_home_feature(post_data):
+    show = post_data.get('show_on_home') in {'1', 'on', 'true', 'True', 'yes'}
+    raw_order = post_data.get('home_order', '1') or '1'
+    try:
+        order = int(raw_order)
+    except (TypeError, ValueError):
+        order = 1
+    order = max(1, min(HOME_FEATURED_MAX, order))
+    return show, order
+
+
+def _apply_home_feature(project, show_on_home, home_order=1):
+    """Épingler / retirer un projet de l’Accueil (max 3). Retourne (ok, message_erreur)."""
+    if not show_on_home:
+        if project.show_on_home or project.home_order:
+            project.show_on_home = False
+            project.home_order = 0
+            project.save(update_fields=['show_on_home', 'home_order'])
+        return True, None
+
+    others = Project.objects.filter(show_on_home=True).exclude(pk=project.pk)
+    if not project.show_on_home and others.count() >= HOME_FEATURED_MAX:
+        return False, (
+            f"Maximum {HOME_FEATURED_MAX} projets sur l’Accueil. "
+            "Décochez un autre projet avant d’en ajouter un."
+        )
+
+    home_order = max(1, min(HOME_FEATURED_MAX, int(home_order or 1)))
+    Project.objects.filter(show_on_home=True, home_order=home_order).exclude(pk=project.pk).update(
+        show_on_home=False,
+        home_order=0,
+    )
+    project.show_on_home = True
+    project.home_order = home_order
+    project.save(update_fields=['show_on_home', 'home_order'])
+    return True, None
+
+
+def _resolve_home_project_cards(fallback_candidates, *, empty_title='Aucun projet en cours', empty_description=''):
+    """
+    Cartes Accueil : projets épinglés (1–3), sinon repli automatique (1 carte).
+    """
+    featured = list(
+        Project.objects.filter(show_on_home=True)
+        .select_related('manager')
+        .prefetch_related('members')
+        .order_by('home_order', 'created_at', 'id')[:HOME_FEATURED_MAX]
+    )
+    if featured:
+        cards = []
+        for index, project in enumerate(featured, start=1):
+            card = _build_current_project_card(
+                project,
+                kicker=f'Projet mis en avant · {index}',
+            )
+            card['home_order'] = project.home_order or index
+            cards.append(card)
+        return cards, cards[0]
+
+    fallback = None
+    for candidate in fallback_candidates:
+        if candidate is None:
+            continue
+        if isinstance(candidate, Project):
+            fallback = candidate
+        elif hasattr(candidate, 'first'):
+            fallback = candidate.first()
+        if fallback:
+            break
+
+    card = _build_current_project_card(
+        fallback,
+        empty_title=empty_title,
+        empty_description=empty_description,
+    )
+    return [card], card
 
 
 def _entry_elapsed_seconds(entry, now):
@@ -388,14 +473,13 @@ def dashboard(request):
             | Q(technical_director=request.user)
             | Q(commercial_agent=request.user)
         ).distinct().order_by('created_at', 'id')
-        current_project_obj = (
-            assigned_projects.filter(status='progress').first()
-            or assigned_projects.first()
-            or projects_qs.filter(status='progress').first()
-            or projects_qs.order_by('created_at', 'id').first()
-        )
-        current_project = _build_current_project_card(
-            current_project_obj,
+        current_projects, current_project = _resolve_home_project_cards(
+            [
+                assigned_projects.filter(status='progress'),
+                assigned_projects,
+                projects_qs.filter(status='progress'),
+                projects_qs.order_by('created_at', 'id'),
+            ],
             empty_description='Vue d’ensemble direction — ouvrez les projets pour le détail.',
         )
 
@@ -405,6 +489,7 @@ def dashboard(request):
             'full_name': full_name,
             'user_role_display': user_role_display,
             'current_project': current_project,
+            'current_projects': current_projects,
             'project_status_counts': project_status_counts,
             'total_projects': total_projects,
             'progress_ratio': progress_ratio,
@@ -455,13 +540,11 @@ def dashboard(request):
     user_role_display = request.user.get_title_label()
 
     assigned_projects = Project.objects.filter(members=request.user).order_by('created_at', 'id')
-    current_project_obj = (
-        assigned_projects.filter(status='progress').first()
-        or assigned_projects.first()
-    )
-
-    current_project = _build_current_project_card(
-        current_project_obj,
+    current_projects, current_project = _resolve_home_project_cards(
+        [
+            assigned_projects.filter(status='progress'),
+            assigned_projects,
+        ],
         empty_title='Aucun projet assigné',
         empty_description='Aucune assignation active pour le moment.',
     )
@@ -504,6 +587,7 @@ def dashboard(request):
         "user_role_display": user_role_display,
         "profile_progress": profile_progress,
         "current_project": current_project,
+        "current_projects": current_projects,
         "open_tasks": open_tasks,
         "done_tasks": done_tasks,
         "tasks": open_tasks,
@@ -694,6 +778,12 @@ def projects_list(request):
 
             project.save()
 
+            show_on_home, home_order = _parse_home_feature(request.POST)
+            ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
+            if not ok:
+                messages.error(request, feature_error)
+                return redirect('projects_list')
+
             members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
             for stakeholder in (project.technical_director, project.manager, commercial_agent):
                 if stakeholder and stakeholder not in members:
@@ -733,6 +823,14 @@ def projects_list(request):
             commercial_agent=commercial_agent,
             cover_image=cover if cover else None,
         )
+
+        show_on_home, home_order = _parse_home_feature(request.POST)
+        ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
+        if not ok:
+            messages.warning(
+                request,
+                f"Projet créé, mais non mis en avant sur l’Accueil : {feature_error}",
+            )
 
         members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
         for stakeholder in (technical_director, manager, commercial_agent):
@@ -778,6 +876,8 @@ def projects_list(request):
         'default_project_manager': _default_project_manager(),
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
         'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
+        'home_featured_max': HOME_FEATURED_MAX,
+        'home_featured_count': Project.objects.filter(show_on_home=True).count(),
     }
     return render(request, 'projects.html', context)
 

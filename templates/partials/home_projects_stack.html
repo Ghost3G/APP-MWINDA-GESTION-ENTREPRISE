@@ -1,0 +1,10 @@
+{% load static %}
+<div class="home-projects-stack {% if current_projects|length > 1 %}is-multi{% endif %}">
+    {% if current_projects %}
+        {% for current_project in current_projects %}
+            {% include "partials/current_project_card.html" %}
+        {% endfor %}
+    {% else %}
+        {% include "partials/current_project_card.html" %}
+    {% endif %}
+</div>

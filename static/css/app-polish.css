@@ -402,6 +402,30 @@ body {
     min-height: 420px;
 }
 
+.home-projects-stack {
+    display: grid;
+    gap: 16px;
+}
+
+.home-projects-stack.is-multi .current-project-card {
+    min-height: 0;
+}
+
+.home-projects-stack.is-multi .current-project-cover {
+    height: 150px;
+}
+
+.home-projects-stack.is-multi .current-project-card h2 {
+    font-size: 1.15rem;
+}
+
+.home-projects-stack.is-multi .current-project-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 .current-project-cover {
     position: relative;
     width: 100%;
