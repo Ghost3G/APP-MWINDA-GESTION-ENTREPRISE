@@ -407,60 +407,60 @@
                         + Nouveau projet
                     </button>
 
-                    <div id="createForm" style="display: none; background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
+                    <div id="createForm" class="project-create-panel" style="display: none;">
                         <h3 style="margin-top: 0;">Créer un nouveau projet</h3>
                         <form method="POST" enctype="multipart/form-data" class="project-status-form">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="create">
                             <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                                <input type="text" name="name" placeholder="Nom du projet" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
-                                <input type="date" name="start_date" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
-                                <input type="date" name="end_date" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
-                                <select name="status" style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                                <input type="text" name="name" placeholder="Nom du projet" required>
+                                <input type="date" name="start_date" required>
+                                <input type="date" name="end_date" required>
+                                <select name="status">
                                     {% for value, label in status_choices %}
                                         <option value="{{ value }}">{{ label }}</option>
                                     {% endfor %}
                                 </select>
-                                <select name="branch" required style="padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;">
+                                <select name="branch" required>
                                     {% for value, label in branch_choices %}
                                         <option value="{{ value }}">{{ label }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <textarea name="description" rows="3" placeholder="Description du projet" required style="width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;"></textarea>
+                            <textarea name="description" rows="3" placeholder="Description du projet" required style="width: 100%; margin-bottom: 12px;"></textarea>
                             <div style="margin-bottom:12px;">
                                 <label style="display:block; margin-bottom:6px; font-weight:600;">Photo d’illustration</label>
-                                <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#fff;">
-                                <small style="color:#6b7280;">JPG/PNG, max 5 Mo — visible sur la carte projet</small>
+                                <input type="file" name="cover_image" accept="image/*" style="width:100%;">
+                                <small class="field-hint">JPG/PNG, max 5 Mo — visible sur la carte projet</small>
                             </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; padding:12px; border:1px solid #fde68a; border-radius:10px; background:#fffbeb;">
+                            <div class="home-feature-panel">
                                 <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
                                     <input type="checkbox" name="show_on_home" value="1">
                                     Afficher sur l’Accueil
                                 </label>
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Position (1 à {{ home_featured_max }})</label>
-                                    <select name="home_order" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                                    <select name="home_order" style="width:100%;">
                                         <option value="1">1 — en haut</option>
                                         <option value="2">2</option>
                                         <option value="3">3</option>
                                     </select>
-                                    <small style="color:#6b7280;">Max {{ home_featured_max }} projets ({{ home_featured_count }} déjà en avant)</small>
+                                    <small class="field-hint">Max {{ home_featured_max }} projets ({{ home_featured_count }} déjà en avant)</small>
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Directeur Technique</label>
-                                    <input type="text" value="{% if default_technical_director %}{{ default_technical_director.get_labeled_name }}{% else %}Japhete Kuta{% endif %}" readonly style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#f3f4f6;">
+                                    <input type="text" value="{% if default_technical_director %}{{ default_technical_director.get_labeled_name }}{% else %}Japhete Kuta{% endif %}" readonly class="input-readonly" style="width:100%;">
                                 </div>
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Responsable suivi</label>
-                                    <input type="text" value="{% if default_project_manager %}{{ default_project_manager.get_labeled_name }}{% else %}Emmanuel Maki{% endif %}" readonly style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#f3f4f6;">
+                                    <input type="text" value="{% if default_project_manager %}{{ default_project_manager.get_labeled_name }}{% else %}Emmanuel Maki{% endif %}" readonly class="input-readonly" style="width:100%;">
                                 </div>
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Agent commercial *</label>
-                                    <select name="commercial_agent" required style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                                    <select name="commercial_agent" required style="width:100%;">
                                         <option value="">— Choisir —</option>
                                         {% for user in commercial_agents %}
                                             <option value="{{ user.id }}">{{ user.get_labeled_name }}</option>
@@ -469,12 +469,12 @@
                                 </div>
                             </div>
                             <label style="display: block; margin-bottom: 8px; font-weight: 600;"><strong>Équipe technique</strong></label>
-                            <select id="members" name="members" multiple style="width: 100%; margin: 0 0 12px; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; min-height: 100px;">
+                            <select id="members" name="members" multiple style="width: 100%; margin: 0 0 12px; min-height: 100px;">
                                 {% for user in available_users %}
                                     <option value="{{ user.id }}">{{ user.get_labeled_name }} — {{ user.get_direction_display }}</option>
                                 {% endfor %}
                             </select>
-                            <button type="submit" style="padding: 10px 18px; border: 0; border-radius: 8px; background: #22c55e; color: white; cursor: pointer; font-weight: 600;">Créer le projet</button>
+                            <button type="submit" class="btn-create-project">Créer le projet</button>
                         </form>
                     </div>
                 {% endif %}
@@ -577,12 +577,12 @@
                                                 {% endif %}
                                                 <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                             </div>
-                                            <div style="padding:10px; border:1px solid #fde68a; border-radius:8px; background:#fffbeb; display:grid; gap:8px;">
+                                            <div class="home-feature-panel home-feature-panel--compact">
                                                 <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px;">
                                                     <input type="checkbox" name="show_on_home" value="1" {% if project.show_on_home %}checked{% endif %}>
                                                     Afficher sur l’Accueil
                                                 </label>
-                                                <select name="home_order" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <select name="home_order">
                                                     <option value="1" {% if project.home_order == 1 or not project.home_order %}selected{% endif %}>Position 1</option>
                                                     <option value="2" {% if project.home_order == 2 %}selected{% endif %}>Position 2</option>
                                                     <option value="3" {% if project.home_order == 3 %}selected{% endif %}>Position 3</option>

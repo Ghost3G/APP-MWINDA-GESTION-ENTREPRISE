@@ -1620,6 +1620,85 @@ body.login-page {
     color: #a1a1aa !important;
 }
 
+/* ——— Formulaire projet : plus de bande blanche / crème ——— */
+.projects-page .project-create-panel {
+    background: #141416 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: none;
+    color: #e4e4e7;
+}
+
+.projects-page .project-create-panel h3,
+.projects-page .project-create-panel label,
+.projects-page .project-create-panel strong {
+    color: #f4f4f5 !important;
+}
+
+.projects-page .project-create-panel input:not([type="checkbox"]):not([type="file"]),
+.projects-page .project-create-panel select,
+.projects-page .project-create-panel textarea,
+.projects-page .project-item input:not([type="checkbox"]):not([type="file"]),
+.projects-page .project-item select,
+.projects-page .project-item textarea {
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px;
+    background: #0e0e10 !important;
+    color: #f4f4f5 !important;
+    color-scheme: dark;
+}
+
+.projects-page .project-create-panel input[type="file"],
+.projects-page .project-item input[type="file"] {
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px;
+    background: #0e0e10 !important;
+    color: #a1a1aa !important;
+}
+
+.projects-page .project-create-panel .input-readonly,
+.projects-page .input-readonly {
+    background: #1a1a1c !important;
+    color: #a1a1aa !important;
+}
+
+.projects-page .home-feature-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid rgba(253, 224, 71, 0.28);
+    border-radius: 10px;
+    background: rgba(253, 224, 71, 0.06) !important;
+    color: #f4f4f5;
+}
+
+.projects-page .home-feature-panel--compact {
+    margin-bottom: 0;
+    gap: 8px;
+}
+
+.projects-page .field-hint {
+    display: block;
+    margin-top: 4px;
+    color: #a1a1aa !important;
+}
+
+.projects-page .btn-create-project {
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 8px;
+    background: #22c55e;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     .header-user-chip__text {
         display: none;
