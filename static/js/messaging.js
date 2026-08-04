@@ -8,6 +8,8 @@ let messagesAbort = null;
 let conversationsRequestId = 0;
 let conversationsAbort = null;
 let knownMessageIds = new Set();
+let lastMessagesFingerprint = '';
+let lastConversationsFingerprint = '';
 let lastUnreadTotal = Number(sessionStorage.getItem('mwinda_msg_unread') || 0);
 let msgAudioCtx = null;
 let unreadSoundReady = false;
@@ -219,13 +221,16 @@ function renderMessage(msg) {
     `;
 }
 
-function scrollMessagesToBottom() {
+function scrollMessagesToBottom({ force = false } = {}) {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
-    container.scrollTop = container.scrollHeight;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (force || distanceFromBottom < 80) {
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
-function appendMessage(msg) {
+function appendMessage(msg, { forceScroll = true } = {}) {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
 
@@ -239,7 +244,7 @@ function appendMessage(msg) {
     if (empty) empty.remove();
 
     container.insertAdjacentHTML('beforeend', renderMessage(msg));
-    scrollMessagesToBottom();
+    scrollMessagesToBottom({ force: forceScroll });
 }
 
 function updateReadTicks(messages) {
@@ -258,6 +263,18 @@ function updateReadTicks(messages) {
         if (oldTicks) oldTicks.remove();
         meta.insertAdjacentHTML('beforeend', renderReadTicks(msg));
     });
+}
+
+function messagesFingerprint(messages) {
+    return (messages || [])
+        .map((msg) => `${msg.id || 'x'}:${msg.is_read ? 1 : 0}:${msg.content || ''}`)
+        .join('|');
+}
+
+function conversationsFingerprint(conversations) {
+    return (conversations || [])
+        .map((c) => `${c.id}:${c.last_activity_ts || 0}:${c.unread_count || 0}:${c.last_message || ''}`)
+        .join('|');
 }
 
 function clearContactUnreadBadge(userId) {
@@ -292,21 +309,32 @@ function renderMessages(messages, { soft = false } = {}) {
     if (!container) return;
 
     const list = messages || [];
+    const fingerprint = messagesFingerprint(list);
+    if (soft && fingerprint === lastMessagesFingerprint) {
+        return;
+    }
+
     const previousIds = knownMessageIds;
     const isRefresh = soft && previousIds.size > 0;
 
     if (isRefresh) {
         const newIncoming = list.filter(
-            (msg) => !msg.is_sent && msg.id != null && !previousIds.has(msg.id),
+            (msg) => msg.id != null && !previousIds.has(msg.id),
         );
-        // Pas de son si on est déjà dans la conversation ouverte (plus calme).
         updateReadTicks(list);
-        newIncoming.forEach((msg) => appendMessage(msg));
+        newIncoming.forEach((msg) => appendMessage(msg, { forceScroll: !msg.is_sent }));
         knownMessageIds = new Set(list.filter((msg) => msg.id != null).map((msg) => msg.id));
+        lastMessagesFingerprint = fingerprint;
+        if (newIncoming.length && selectedUserId) {
+            const last = newIncoming[newIncoming.length - 1];
+            const preview = last.message_type === 'call' ? '📞 Appel' : (last.content || '');
+            updateConversationPreview(selectedUserId, preview);
+        }
         return;
     }
 
     knownMessageIds = new Set(list.filter((msg) => msg.id != null).map((msg) => msg.id));
+    lastMessagesFingerprint = fingerprint;
 
     if (!list.length) {
         container.innerHTML = `
@@ -317,7 +345,7 @@ function renderMessages(messages, { soft = false } = {}) {
         return;
     }
     container.innerHTML = list.map(renderMessage).join('');
-    scrollMessagesToBottom();
+    scrollMessagesToBottom({ force: true });
 }
 
 function updateChatHeader(contact) {
@@ -404,13 +432,13 @@ function buildConversationItemHtml(conversation) {
 
 function applyConversationDataToItem(item, conversation) {
     if (!item) return;
-    const currentlyFocused = document.activeElement && item.contains(document.activeElement);
 
     const currentTitle = item.querySelector('.user-info h3')?.textContent || '';
     const nextTitle = conversation.short_name || conversation.name || '';
     const currentMeta = item.querySelector('.user-meta')?.textContent || '';
     const nextMeta = conversation.title || conversation.branch || '';
-    const currentPreview = item.querySelector('.user-preview')?.textContent || '';
+    const previewEl = item.querySelector('.user-preview');
+    const currentPreview = previewEl?.textContent || '';
     const nextPreview = conversation.last_message || '';
     const badge = item.querySelector('.unread-badge');
     const currentUnread = badge && badge.classList.contains('visible')
@@ -418,20 +446,27 @@ function applyConversationDataToItem(item, conversation) {
         : 0;
     const nextUnread = Number(conversation.unread_count) || 0;
 
-    // Evite de refaire tout le noeud à chaque poll (rafraîchissement discret).
-    if (
-        currentTitle === nextTitle &&
-        currentMeta === nextMeta &&
-        currentPreview === nextPreview &&
-        currentUnread === nextUnread
-    ) {
-        return;
+    if (currentTitle !== nextTitle) {
+        const titleEl = item.querySelector('.user-info h3');
+        if (titleEl) titleEl.textContent = nextTitle;
     }
-
-    item.innerHTML = buildConversationItemHtml(conversation);
-    if (currentlyFocused) {
-        item.focus();
+    if (currentMeta !== nextMeta) {
+        const metaEl = item.querySelector('.user-meta');
+        if (metaEl) metaEl.textContent = nextMeta;
     }
+    if (currentPreview !== nextPreview && previewEl) {
+        previewEl.textContent = nextPreview;
+    }
+    if (badge && currentUnread !== nextUnread) {
+        if (nextUnread > 0) {
+            badge.classList.add('visible');
+            badge.textContent = String(nextUnread);
+        } else {
+            badge.classList.remove('visible');
+            badge.textContent = '';
+        }
+    }
+    item.dataset.activityTs = String(conversation.last_activity_ts || 0);
 }
 
 function renderConversations(conversations) {
@@ -440,23 +475,28 @@ function renderConversations(conversations) {
 
     if (!conversations.length) {
         list.innerHTML = '<div class="empty-state">Aucun collègue disponible</div>';
+        lastConversationsFingerprint = '';
         return;
     }
+
+    const fingerprint = conversationsFingerprint(conversations);
+    if (fingerprint === lastConversationsFingerprint) {
+        return;
+    }
+    lastConversationsFingerprint = fingerprint;
 
     const empty = list.querySelector('.empty-state');
     if (empty) empty.remove();
 
     const expectedIds = new Set(conversations.map((conversation) => String(conversation.id)));
 
-    // Supprime les anciens items absents côté API.
     list.querySelectorAll('.user-item').forEach((node) => {
-        const nodeId = node.dataset.userId;
-        if (!expectedIds.has(nodeId)) {
+        if (!expectedIds.has(node.dataset.userId)) {
             node.remove();
         }
     });
 
-    // Met à jour / crée chaque conversation et maintient l'ordre sans "flash".
+    // Met à jour le contenu sans bouger les nodes d’abord.
     conversations.forEach((conversation) => {
         const idStr = String(conversation.id);
         let item = list.querySelector(`.user-item[data-user-id="${idStr}"]`);
@@ -467,17 +507,24 @@ function renderConversations(conversations) {
             item.dataset.userId = idStr;
             item.onclick = (event) => openUserChat(conversation.id, event);
             item.innerHTML = buildConversationItemHtml(conversation);
+            item.dataset.activityTs = String(conversation.last_activity_ts || 0);
+            list.appendChild(item);
         } else {
             applyConversationDataToItem(item, conversation);
         }
-
-        // Place l'item à la bonne position si nécessaire, sans rerender global.
-        const desiredIndex = conversations.findIndex((entry) => entry.id === conversation.id);
-        const currentAtIndex = list.children[desiredIndex];
-        if (currentAtIndex !== item) {
-            list.insertBefore(item, currentAtIndex || null);
-        }
     });
+
+    // Réordonne seulement si l’ordre a changé (dernier échange en haut).
+    const desiredOrder = conversations.map((c) => String(c.id)).join(',');
+    const currentOrder = [...list.querySelectorAll('.user-item')].map((n) => n.dataset.userId).join(',');
+    if (desiredOrder !== currentOrder) {
+        const fragment = document.createDocumentFragment();
+        conversations.forEach((conversation) => {
+            const item = list.querySelector(`.user-item[data-user-id="${conversation.id}"]`);
+            if (item) fragment.appendChild(item);
+        });
+        list.appendChild(fragment);
+    }
 
     if (selectedUserId) {
         const active = list.querySelector(`[data-user-id="${selectedUserId}"]`);
@@ -489,6 +536,7 @@ function openUserChat(userId, event) {
     unlockMessageAudio();
     selectedUserId = Number(userId);
     knownMessageIds = new Set();
+    lastMessagesFingerprint = '';
     document.querySelectorAll('.user-item').forEach((item) => item.classList.remove('active'));
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
@@ -566,9 +614,10 @@ function loadMessages(userId, focusInput = false) {
 
 function startMessagePolling() {
     if (messagePollTimer) clearInterval(messagePollTimer);
+    // Poll plus lent = moins de “refresh” visible ; le soft skip évite le DOM inutile.
     messagePollTimer = setInterval(() => {
         if (selectedUserId) loadMessages(selectedUserId, false);
-    }, 4000);
+    }, 8000);
 }
 
 function handleKeyPress(event) {
@@ -612,14 +661,17 @@ async function postWithCsrf(url, formData, retried = false) {
 }
 
 function updateConversationPreview(userId, preview) {
-    const item = document.querySelector(`.user-item[data-user-id="${userId}"]`);
-    if (!item) return;
+    const list = document.getElementById('usersList');
+    const item = list?.querySelector(`.user-item[data-user-id="${userId}"]`);
+    if (!item || !list) return;
     const previewEl = item.querySelector('.user-preview');
     if (previewEl) previewEl.textContent = preview;
-    const list = document.getElementById('usersList');
-    if (list && item !== list.firstElementChild) {
+    item.dataset.activityTs = String(Math.floor(Date.now() / 1000));
+    if (list.firstElementChild !== item) {
         list.prepend(item);
     }
+    // Invalide le cache pour accepter le nouvel ordre serveur au prochain poll.
+    lastConversationsFingerprint = '';
 }
 
 async function sendMessage(event) {
@@ -729,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
         url.searchParams.delete('user');
         window.history.replaceState({}, '', url.toString());
     });
-    conversationsPollTimer = setInterval(loadConversations, 15000);
+    conversationsPollTimer = setInterval(loadConversations, 20000);
 
     document.addEventListener('click', unlockMessageAudio, { once: true });
     document.addEventListener('keydown', unlockMessageAudio, { once: true });

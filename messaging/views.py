@@ -42,15 +42,23 @@ def _serialize_message(msg, current_user):
     }
 
 
-def _last_message_preview(user, other_user):
+def _last_message_meta(user, other_user):
     last = _conversation_messages(user, other_user).last()
     if not last:
-        return 'Aucun message'
+        return {
+            'preview': 'Aucun message',
+            'last_activity_ts': 0,
+        }
     if last.message_type == 'call':
-        prefix = '📞 Appel'
+        preview = '📞 Appel'
     else:
-        prefix = last.content[:40]
-    return prefix + ('…' if last.message_type == 'text' and len(last.content) > 40 else '')
+        preview = last.content[:40]
+        if len(last.content) > 40:
+            preview += '…'
+    return {
+        'preview': preview,
+        'last_activity_ts': int(last.created_at.timestamp()),
+    }
 
 
 def _mark_conversation_as_read(receiver, sender):
@@ -64,6 +72,52 @@ def _mark_conversation_as_read(receiver, sender):
 
 def _unread_total_for(user):
     return Message.objects.filter(receiver=user, is_read=False).count()
+
+
+def _build_conversations(current_user):
+    users = (
+        User.objects.exclude(id=current_user.id)
+        .filter(is_active=True)
+        .order_by('first_name', 'username')
+    )
+    conversations = []
+
+    for user in users:
+        unread_count = Message.objects.filter(
+            sender=user,
+            receiver=current_user,
+            is_read=False,
+            message_type='text',
+        ).count()
+        meta = _last_message_meta(current_user, user)
+        conversations.append({
+            'id': user.id,
+            'username': user.username,
+            'name': user.get_labeled_name(),
+            'short_name': user.get_display_name(),
+            'title': user.get_title_label(),
+            'email': user.email,
+            'branch': user.get_org_group_display(),
+            'department': user.get_org_group_display(),
+            'role': user.get_role_display(),
+            'phone': user.phone or '',
+            'has_phone': bool(user.phone),
+            'unread_count': unread_count,
+            'last_message': meta['preview'],
+            'last_activity_ts': meta['last_activity_ts'],
+            'initial': user.get_avatar_initial(),
+            'avatar_url': user.avatar_url,
+        })
+
+    # Dernière personne avec qui on a échangé en haut, puis non lus, puis nom.
+    conversations.sort(
+        key=lambda item: (
+            -item['last_activity_ts'],
+            -item['unread_count'],
+            (item.get('short_name') or item.get('name') or '').lower(),
+        )
+    )
+    return conversations
 
 
 @login_required
@@ -88,35 +142,8 @@ def messaging_view(request):
         if other_user:
             _mark_conversation_as_read(request.user, other_user)
 
+    initial_conversations = _build_conversations(request.user)
     users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
-    initial_conversations = []
-
-    for user in users:
-        unread_count = Message.objects.filter(
-            sender=user,
-            receiver=request.user,
-            is_read=False,
-            message_type='text',
-        ).count()
-        initial_conversations.append({
-            'id': user.id,
-            'username': user.username,
-            'name': user.get_labeled_name(),
-            'short_name': user.get_display_name(),
-            'title': user.get_title_label(),
-            'email': user.email,
-            'branch': user.get_org_group_display(),
-            'department': user.get_org_group_display(),
-            'role': user.get_role_display(),
-            'phone': user.phone or '',
-            'has_phone': bool(user.phone),
-            'unread_count': unread_count,
-            'last_message': _last_message_preview(request.user, user),
-            'initial': user.get_avatar_initial(),
-            'avatar_url': user.avatar_url,
-        })
-
-    initial_conversations.sort(key=lambda item: (-item['unread_count'], item['name'].lower()))
 
     if request.method == 'POST':
         receiver_id = request.POST.get('receiver')
@@ -256,34 +283,4 @@ def get_unread_count(request):
 
 @login_required
 def get_conversations(request):
-    users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
-    conversations = []
-
-    for user in users:
-        unread_count = Message.objects.filter(
-            sender=user,
-            receiver=request.user,
-            is_read=False,
-            message_type='text',
-        ).count()
-        conversations.append({
-            'id': user.id,
-            'username': user.username,
-            'name': user.get_labeled_name(),
-            'short_name': user.get_display_name(),
-            'title': user.get_title_label(),
-            'email': user.email,
-            'branch': user.get_org_group_display(),
-            'department': user.get_org_group_display(),
-            'role': user.get_role_display(),
-            'phone': user.phone or '',
-            'has_phone': bool(user.phone),
-            'unread_count': unread_count,
-            'last_message': _last_message_preview(request.user, user),
-            'initial': user.get_avatar_initial(),
-            'avatar_url': user.avatar_url,
-        })
-
-    conversations.sort(key=lambda item: (-item['unread_count'], item['name'].lower()))
-
-    return JsonResponse({'conversations': conversations})
+    return JsonResponse({'conversations': _build_conversations(request.user)})
