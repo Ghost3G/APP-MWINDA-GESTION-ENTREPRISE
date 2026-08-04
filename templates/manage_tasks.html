@@ -291,7 +291,7 @@
                                 <strong>{{ group.grouper.name }}</strong>
                                 <span> · ajouté le {{ group.grouper.created_at|date:"d/m/Y" }}</span>
                             </div>
-                            <a href="{% url 'task_board' %}?project_id={{ group.grouper.id }}">Ouvrir le tableau →</a>
+                            <a href="{% url 'project_detail' group.grouper.id %}">Voir le projet →</a>
                         </div>
                         <table class="tasks-table">
                             <thead>
