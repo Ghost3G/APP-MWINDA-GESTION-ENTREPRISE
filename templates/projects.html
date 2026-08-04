@@ -275,11 +275,11 @@
         }
 
         .completed-month {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--app-border, #2b2b2b);
             border-radius: 14px;
-            background: #fff;
+            background: var(--app-panel, #111111);
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-shadow: none;
         }
 
         .completed-month > summary {
@@ -291,7 +291,8 @@
             gap: 12px;
             padding: 14px 16px;
             font-weight: 700;
-            color: #111827;
+            color: var(--app-text, #f8fafc);
+            background: var(--app-panel-soft, #181818);
             user-select: none;
         }
 
@@ -310,7 +311,7 @@
             content: '›';
             display: inline-flex;
             width: 18px;
-            color: #ca8a04;
+            color: var(--app-yellow, #fde047);
             font-size: 18px;
             line-height: 1;
             transition: transform 0.15s ease;
@@ -320,14 +321,32 @@
             transform: rotate(90deg);
         }
 
+        .completed-month[open] > summary {
+            border-bottom: 1px solid var(--app-border, #2b2b2b);
+        }
+
         .completed-month-body {
             padding: 0 16px 16px;
-            border-top: 1px solid #f3f4f6;
+            background: var(--app-panel, #111111);
+            border-top: 0;
         }
 
         .completed-month-body .projects-grid {
             margin-top: 14px;
             margin-bottom: 0;
+        }
+
+        .completed-month .count-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: rgba(253, 224, 71, 0.15);
+            color: #fde047;
+            font-size: 12px;
         }
 
         .project-desc {
