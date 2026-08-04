@@ -242,26 +242,73 @@ function appendMessage(msg) {
     scrollMessagesToBottom();
 }
 
-function renderMessages(messages) {
+function updateReadTicks(messages) {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+    (messages || []).forEach((msg) => {
+        if (!msg.is_sent || msg.id == null) return;
+        const node = container.querySelector(`[data-message-id="${msg.id}"]`);
+        if (!node) return;
+        const next = msg.is_read ? '1' : '0';
+        if (node.getAttribute('data-is-read') === next) return;
+        node.setAttribute('data-is-read', next);
+        const meta = node.querySelector('.message-meta');
+        if (!meta) return;
+        const oldTicks = meta.querySelector('.msg-ticks');
+        if (oldTicks) oldTicks.remove();
+        meta.insertAdjacentHTML('beforeend', renderReadTicks(msg));
+    });
+}
+
+function clearContactUnreadBadge(userId) {
+    const item = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+    if (!item) return;
+    const badge = item.querySelector('.unread-badge');
+    if (!badge) return;
+    badge.classList.remove('visible');
+    badge.textContent = '';
+}
+
+function syncHeaderMessageUnread(previousMessageUnread, nextMessageUnread) {
+    // Ajuste discrètement le badge cloche sans toucher au reste de l’UI.
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    const current = Number(badge.textContent || 0);
+    const prev = Number(previousMessageUnread) || 0;
+    const next = Number(nextMessageUnread) || 0;
+    const delta = prev - next;
+    if (delta <= 0) return;
+    const updated = Math.max(0, current - delta);
+    badge.textContent = String(updated);
+    badge.classList.toggle('visible', updated > 0);
+    sessionStorage.setItem('mwinda_notif_unread', String(updated));
+    if (updated === 0) {
+        document.getElementById('notifBell')?.classList.remove('is-nagging');
+    }
+}
+
+function renderMessages(messages, { soft = false } = {}) {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
 
+    const list = messages || [];
     const previousIds = knownMessageIds;
-    const isRefresh = previousIds.size > 0;
+    const isRefresh = soft && previousIds.size > 0;
+
     if (isRefresh) {
-        const newIncoming = (messages || []).filter(
+        const newIncoming = list.filter(
             (msg) => !msg.is_sent && msg.id != null && !previousIds.has(msg.id),
         );
-        if (newIncoming.length) {
-            playMessageSound();
-        }
+        // Pas de son si on est déjà dans la conversation ouverte (plus calme).
+        updateReadTicks(list);
+        newIncoming.forEach((msg) => appendMessage(msg));
+        knownMessageIds = new Set(list.filter((msg) => msg.id != null).map((msg) => msg.id));
+        return;
     }
 
-    knownMessageIds = new Set(
-        (messages || []).filter((msg) => msg.id != null).map((msg) => msg.id),
-    );
+    knownMessageIds = new Set(list.filter((msg) => msg.id != null).map((msg) => msg.id));
 
-    if (!messages.length) {
+    if (!list.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">💬</div>
@@ -269,7 +316,7 @@ function renderMessages(messages) {
             </div>`;
         return;
     }
-    container.innerHTML = messages.map(renderMessage).join('');
+    container.innerHTML = list.map(renderMessage).join('');
     scrollMessagesToBottom();
 }
 
@@ -465,6 +512,8 @@ function loadMessages(userId, focusInput = false) {
     if (messagesAbort) messagesAbort.abort();
     messagesAbort = new AbortController();
 
+    const soft = !focusInput && knownMessageIds.size > 0;
+
     fetch(urlForUser(window.MESSAGING_URLS.messages, targetId), {
         credentials: 'same-origin',
         signal: messagesAbort.signal,
@@ -485,19 +534,33 @@ function loadMessages(userId, focusInput = false) {
             }
             selectedContact = data.contact;
             updateChatHeader(data.contact);
-            renderMessages(data.messages || []);
+            renderMessages(data.messages || [], { soft });
+            clearContactUnreadBadge(targetId);
+
+            const unreadTotal = Number(data.unread_total);
+            if (!Number.isNaN(unreadTotal)) {
+                const previousMessageUnread = lastUnreadTotal;
+                lastUnreadTotal = unreadTotal;
+                sessionStorage.setItem('mwinda_msg_unread', String(unreadTotal));
+                setMessageNagging(unreadTotal > 0);
+                syncHeaderMessageUnread(previousMessageUnread, unreadTotal);
+            }
+
             if (focusInput) {
                 const input = document.getElementById('messageInput');
                 input?.focus();
                 autoResizeMessageInput(input);
+                // Une seule synchro liste après ouverture — pas à chaque poll.
+                loadConversations();
             }
-            loadConversations();
         })
         .catch((error) => {
             if (error.name === 'AbortError' || error.message === 'auth') return;
             if (requestId !== messagesRequestId) return;
-            document.getElementById('messagesContainer').innerHTML =
-                '<div class="empty-state">Erreur de chargement des messages</div>';
+            if (!soft) {
+                document.getElementById('messagesContainer').innerHTML =
+                    '<div class="empty-state">Erreur de chargement des messages</div>';
+            }
         });
 }
 

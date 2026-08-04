@@ -53,6 +53,19 @@ def _last_message_preview(user, other_user):
     return prefix + ('…' if last.message_type == 'text' and len(last.content) > 40 else '')
 
 
+def _mark_conversation_as_read(receiver, sender):
+    """Marque tous les messages non lus de sender → receiver (texte + appels)."""
+    return Message.objects.filter(
+        sender=sender,
+        receiver=receiver,
+        is_read=False,
+    ).update(is_read=True)
+
+
+def _unread_total_for(user):
+    return Message.objects.filter(receiver=user, is_read=False).count()
+
+
 @login_required
 @ensure_csrf_cookie
 def csrf_token_view(request):
@@ -73,12 +86,7 @@ def messaging_view(request):
         except (TypeError, ValueError, User.DoesNotExist):
             other_user = None
         if other_user:
-            Message.objects.filter(
-                sender=other_user,
-                receiver=request.user,
-                is_read=False,
-                message_type='text',
-            ).update(is_read=True)
+            _mark_conversation_as_read(request.user, other_user)
 
     users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
     initial_conversations = []
@@ -154,14 +162,12 @@ def get_messages(request, user_id):
     other_user = _active_user_or_404(user_id)
 
     messages = _conversation_messages(request.user, other_user)
-    Message.objects.filter(
-        sender=other_user,
-        receiver=request.user,
-        is_read=False,
-    ).update(is_read=True)
+    _mark_conversation_as_read(request.user, other_user)
 
     return JsonResponse({
         'messages': [_serialize_message(msg, request.user) for msg in messages],
+        'unread_total': _unread_total_for(request.user),
+        'contact_unread': 0,
         'contact': {
             'id': other_user.id,
             'name': other_user.get_labeled_name(),
