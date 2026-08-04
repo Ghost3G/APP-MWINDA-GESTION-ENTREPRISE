@@ -1,7 +1,8 @@
 """Notifications liées aux affectations projets / commercial / livraison."""
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
-from users.permissions import COMMERCIAL_LEAD_USERNAMES
+from users.permissions import COMMERCIAL_LEAD_USERNAMES, LOGISTICS_NOTIFY_USERNAMES
 
 from .models import ProjectAssignmentNotification
 
@@ -58,16 +59,22 @@ def notify_commercial_on_project(project, *, actor=None, members=None):
 
 
 def notify_logistics_awaiting_delivery(project, *, actor=None):
-    """Notifie le département Logistique qu’un projet est en attente de livraison."""
+    """Notifie Joseph Mbuyu / département Logistique qu’un projet attend la livraison."""
     if not project:
         return 0
 
-    recipients = User.objects.filter(is_active=True, org_group='logistique')
+    recipients = User.objects.filter(is_active=True).filter(
+        Q(org_group='logistique') | Q(username__in=LOGISTICS_NOTIFY_USERNAMES)
+    )
     actor_id = getattr(actor, 'id', None)
     count = 0
+    seen = set()
     for user in recipients:
+        if not user or user.id in seen:
+            continue
         if actor_id and user.id == actor_id:
             continue
+        seen.add(user.id)
         notify_project_assignment(
             user,
             project,
