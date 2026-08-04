@@ -429,7 +429,7 @@
                     rhythm.arrival_hours || [],
                     rhythm.arrival_ref || [],
                     'rgba(96, 165, 250, 0.95)',
-                    'Réf. ' + (rhythm.work_start_label || '08:00')
+                    'Réf. ' + (rhythm.work_start_label || '08:30')
                 );
                 makeTimeLine(
                     'departureChart',
@@ -437,7 +437,7 @@
                     rhythm.departure_hours || [],
                     rhythm.departure_ref || [],
                     'rgba(251, 146, 60, 0.95)',
-                    'Réf. ' + (rhythm.work_end_label || '17:00')
+                    'Réf. ' + (rhythm.work_end_label || '17:30')
                 );
                 const absence = rhythm.absence_chart || { labels: [], values: [] };
                 makeDoughnut(
