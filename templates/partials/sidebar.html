@@ -47,12 +47,6 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
             Présence
         </a>
-        {% if is_management or is_admin %}
-        <a href="{% url 'manage_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_tasks' %}active{% endif %}">
-            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>
-            Tâches
-        </a>
-        {% endif %}
         <a href="{% url 'profile' %}" class="nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_profil.svg' %}" alt=""></span>
             Mon profil
