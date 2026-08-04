@@ -68,13 +68,16 @@ class AgentWorkEndLogoutMiddleware:
                 should_force_agent_logout_now,
             )
 
+            # Clôture la fiche présence (départ 17h30) sans effacer les connexions du jour.
+            # Déconnecte uniquement si la session Django est encore celle de la journée de travail.
             if should_force_agent_logout_now(user):
                 close_open_session_for_user(user, day=timezone.localdate())
                 logout(request)
                 messages.info(
                     request,
                     f'Journée de travail terminée à {WORK_END_LABEL}. '
-                    'Votre présence a été clôturée automatiquement.',
+                    'Vos heures de connexion du jour ont été conservées et le départ '
+                    f'a été enregistré à {WORK_END_LABEL}.',
                 )
                 return redirect('login')
 

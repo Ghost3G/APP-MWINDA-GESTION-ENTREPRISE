@@ -48,20 +48,8 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            from .presence import WORK_END, WORK_END_LABEL, is_presence_auto_close_target
-
-            if is_presence_auto_close_target(user) and timezone.localtime().time() >= WORK_END:
-                return render(
-                    request,
-                    'login.html',
-                    {
-                        'error': (
-                            f'La journée de travail est terminée ({WORK_END_LABEL}). '
-                            'Reconnectez-vous demain à partir de 08:30.'
-                        ),
-                    },
-                )
-
+            # Après 17h30 : les agents peuvent se reconnecter (consultation / urgente).
+            # La présence du jour (arrivées + départ 17h30) reste intacte en base.
             record_login_attempt(username, client_ip, True)
             clear_failed_attempts(username, client_ip)
             login(request, user)

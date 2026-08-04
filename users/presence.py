@@ -203,10 +203,18 @@ def _close_agent_time_entries(user, closed_at):
     return closed
 
 
+def _workday_login_cutoff(day):
+    """Les connexions après 17h30 sont hors journée : on ne les écrase pas."""
+    return work_end_datetime(day)
+
+
 def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
     """
-    Écrit un logout à 17h30 pour une session agent encore ouverte,
-    et ferme les timers ouverts.
+    Complète la présence : ajoute un départ à 17h30 pour chaque connexion
+    de la journée de travail encore ouverte.
+
+    Ne supprime jamais les login/logout existants (arrivées et départs réels conservés).
+    Ne touche pas aux connexions démarrées après 17h30 (soir / consultation).
     """
     if not is_presence_auto_close_target(user):
         return False
@@ -222,42 +230,65 @@ def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
     if day == local_now.date() and local_now.time() < WORK_END:
         return False
 
-    open_login = (
+    # Uniquement les connexions de la plage 00:00 → 17h30 (journée de travail).
+    workday_logins = list(
         AuditLog.objects.filter(
             user=user,
             action='login_success',
             created_at__gte=start,
-            created_at__lte=end,
+            created_at__lte=closed_at,
+        ).order_by('created_at')
+    )
+    if not workday_logins:
+        _close_agent_time_entries(user, closed_at)
+        return False
+
+    logouts = list(
+        AuditLog.objects.filter(
+            user=user,
+            action='logout',
+            created_at__gte=start,
+            created_at__lte=end + timedelta(hours=12),
+        ).order_by('created_at')
+    )
+
+    # Appariement FIFO identique à build_sessions — on n'ajoute un départ
+    # qu'aux connexions encore sans logout, sans toucher aux autres.
+    remaining_logouts = list(logouts)
+    closed_any = False
+    extra_seconds = 0
+    for login in workday_logins:
+        matched = None
+        kept = []
+        for logout in remaining_logouts:
+            if matched is None and logout.created_at >= login.created_at:
+                matched = logout
+            else:
+                kept.append(logout)
+        remaining_logouts = kept
+        if matched is not None:
+            continue
+
+        logout_at = max(closed_at, login.created_at + timedelta(minutes=1))
+        if extra_seconds:
+            logout_at = logout_at + timedelta(seconds=extra_seconds)
+        extra_seconds += 1
+        AuditLog.objects.create(
+            user=user,
+            action='logout',
+            path='/system/auto-presence-close/',
+            method='SYSTEM',
+            metadata={
+                'reason': reason,
+                'work_end': WORK_END_LABEL,
+                'preserves_login_at': login.created_at.isoformat(),
+            },
+            created_at=logout_at,
         )
-        .order_by('-created_at')
-        .first()
-    )
-    if not open_login:
-        _close_agent_time_entries(user, closed_at)
-        return False
+        closed_any = True
 
-    has_logout = AuditLog.objects.filter(
-        user=user,
-        action='logout',
-        created_at__gte=open_login.created_at,
-        created_at__lte=end + timedelta(hours=12),
-    ).exists()
-    if has_logout:
-        _close_agent_time_entries(user, closed_at)
-        return False
-
-    # Logout horodaté à 17h30 pour compléter la fiche présence.
-    logout_at = max(closed_at, open_login.created_at + timedelta(minutes=1))
-    AuditLog.objects.create(
-        user=user,
-        action='logout',
-        path='/system/auto-presence-close/',
-        method='SYSTEM',
-        metadata={'reason': reason, 'work_end': WORK_END_LABEL},
-        created_at=logout_at,
-    )
-    _close_agent_time_entries(user, logout_at)
-    return True
+    _close_agent_time_entries(user, closed_at)
+    return closed_any
 
 
 def close_open_agent_sessions_for_day(day=None):
@@ -272,11 +303,12 @@ def close_open_agent_sessions_for_day(day=None):
         return 0
 
     start, end = _day_bounds(day)
+    cutoff = _workday_login_cutoff(day)
     agent_ids = (
         AuditLog.objects.filter(
             action='login_success',
             created_at__gte=start,
-            created_at__lte=end,
+            created_at__lte=cutoff,
             user__isnull=False,
             user__role='agent',
             user__is_superuser=False,
@@ -291,10 +323,39 @@ def close_open_agent_sessions_for_day(day=None):
     return closed
 
 
-def should_force_agent_logout_now(user):
+def agent_still_in_workday_session(user, day=None):
+    """
+    True si la dernière connexion du jour a commencé avant 17h30
+    (session de travail à clôturer / déconnecter).
+    False si pas de connexion, ou reconnexion après 17h30.
+    """
     if not is_presence_auto_close_target(user):
         return False
-    return timezone.localtime().time() >= WORK_END
+    local_now = timezone.localtime()
+    day = day or local_now.date()
+    start, end = _day_bounds(day)
+    last_login = (
+        AuditLog.objects.filter(
+            user=user,
+            action='login_success',
+            created_at__gte=start,
+            created_at__lte=end,
+        )
+        .order_by('-created_at')
+        .first()
+    )
+    if not last_login:
+        return False
+    return timezone.localtime(last_login.created_at).time() < WORK_END
+
+
+def should_force_agent_logout_now(user):
+    """Déconnecte seulement une session de travail encore active après 17h30."""
+    if not is_presence_auto_close_target(user):
+        return False
+    if timezone.localtime().time() < WORK_END:
+        return False
+    return agent_still_in_workday_session(user)
 
 
 def build_agent_monthly_sessions(agent, year, month):
