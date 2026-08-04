@@ -18,6 +18,89 @@ from .pdf import build_report_pdf, build_finance_pdf
 
 User = get_user_model()
 
+FRENCH_MONTHS = (
+    '',
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+)
+
+FRENCH_WEEKDAYS = (
+    'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche',
+)
+
+
+def _month_label(year, month):
+    return f'{FRENCH_MONTHS[month]} {year}'
+
+
+def _day_label(day):
+    return f'{FRENCH_WEEKDAYS[day.weekday()]} {day.day} {FRENCH_MONTHS[day.month].lower()} {day.year}'
+
+
+def _group_reports_by_month(reports):
+    """Agents : historiques regroupés par mois (plus récents d’abord)."""
+    groups = []
+    index = {}
+    for report in reports:
+        day = report.date
+        key = f'{day.year}-{day.month:02d}'
+        if key not in index:
+            index[key] = len(groups)
+            groups.append({
+                'key': key,
+                'label': _month_label(day.year, day.month),
+                'sort_key': (day.year, day.month),
+                'reports': [],
+            })
+        groups[index[key]]['reports'].append(report)
+
+    groups.sort(key=lambda item: item['sort_key'], reverse=True)
+    for group in groups:
+        group['count'] = len(group['reports'])
+        group.pop('sort_key', None)
+    return groups
+
+
+def _group_reports_by_month_then_day(reports):
+    """Direction : mois → jours → rapports (plus récents d’abord)."""
+    months = []
+    month_index = {}
+    for report in reports:
+        day = report.date
+        month_key = f'{day.year}-{day.month:02d}'
+        if month_key not in month_index:
+            month_index[month_key] = len(months)
+            months.append({
+                'key': month_key,
+                'label': _month_label(day.year, day.month),
+                'sort_key': (day.year, day.month),
+                'days': [],
+                '_day_index': {},
+            })
+        month = months[month_index[month_key]]
+        day_key = day.isoformat()
+        if day_key not in month['_day_index']:
+            month['_day_index'][day_key] = len(month['days'])
+            month['days'].append({
+                'key': day_key,
+                'label': _day_label(day),
+                'date': day,
+                'sort_key': day,
+                'reports': [],
+            })
+        month['days'][month['_day_index'][day_key]]['reports'].append(report)
+
+    months.sort(key=lambda item: item['sort_key'], reverse=True)
+    for month in months:
+        month['days'].sort(key=lambda item: item['sort_key'], reverse=True)
+        for day_group in month['days']:
+            day_group['count'] = len(day_group['reports'])
+            day_group.pop('sort_key', None)
+        month['count'] = sum(day['count'] for day in month['days'])
+        month.pop('sort_key', None)
+        month.pop('_day_index', None)
+    return months
+
 
 def _finance_access_or_redirect(request):
     can_access = can_access_finance(request.user)
@@ -309,8 +392,14 @@ def reports_list(request):
         messages.success(request, "Rapport enregistré avec succès.")
         return redirect('reports_list')
 
+    reports_list = list(reports)
     context = {
-        'reports': reports,
+        'reports': reports_list,
+        'reports_by_month': (
+            _group_reports_by_month_then_day(reports_list) if is_management
+            else _group_reports_by_month(reports_list)
+        ),
+        'reports_total': len(reports_list),
         'default_date': timezone.localdate(),
         'is_admin': is_admin_user(request.user),
         'is_management': is_management,

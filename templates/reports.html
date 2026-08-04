@@ -118,34 +118,119 @@
             gap: 16px;
         }
 
+        .report-groups {
+            display: grid;
+            gap: 12px;
+        }
+
+        .report-month,
+        .report-day {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            background: #141416;
+            overflow: hidden;
+        }
+
+        .report-month > summary,
+        .report-day > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            font-weight: 700;
+            color: #f4f4f5;
+            background: #18181b;
+            user-select: none;
+        }
+
+        .report-month > summary::-webkit-details-marker,
+        .report-day > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .report-group-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+        }
+
+        .report-group-label::before {
+            content: '›';
+            color: #fde047;
+            font-size: 18px;
+            line-height: 1;
+            transition: transform 0.15s ease;
+        }
+
+        .report-month[open] > summary .report-group-label::before,
+        .report-day[open] > summary .report-group-label::before {
+            transform: rotate(90deg);
+        }
+
+        .report-group-count {
+            min-width: 28px;
+            height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(253, 224, 71, 0.15);
+            color: #fde047;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .report-month-body,
+        .report-day-body {
+            padding: 12px 16px 16px;
+            display: grid;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .report-day {
+            background: #111113;
+        }
+
+        .report-day > summary {
+            background: #151518;
+            padding: 12px 14px;
+            font-size: 14px;
+        }
+
         .report-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            background: #18181b;
+            border-radius: 14px;
+            padding: 16px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-left: 4px solid #fde047;
         }
 
         .report-card h4 {
-            margin: 0 0 12px 0;
-            font-size: 16px;
+            margin: 0 0 10px 0;
+            font-size: 15px;
             font-weight: 700;
-            color: #111827;
+            color: #f4f4f5;
         }
 
         .report-meta {
             display: flex;
             gap: 12px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-size: 13px;
-            color: #6b7280;
+            color: #a1a1aa;
             flex-wrap: wrap;
         }
 
         .report-content p {
             margin: 8px 0;
             font-size: 14px;
-            color: #111827;
+            color: #e4e4e7;
             line-height: 1.5;
         }
 
@@ -332,36 +417,92 @@
 
                 <!-- REPORTS HISTORY -->
                 <div class="form-section">
-                    <h3>Historique des rapports</h3>
-                    {% if reports %}
-                        <div class="reports-list">
-                            {% for report in reports %}
-                                <div class="report-card">
-                                    <h4>{{ report.project }} - {{ report.date }}</h4>
-                                    <div class="report-meta">
-                                        <span>👤 {{ report.user.get_labeled_name }}</span>
-                                        {% if report.department %}<span>📍 {{ report.get_department_display }}</span>{% endif %}
-                                        {% if report.team_agent %}<span>👥 {{ report.team_agent }}</span>{% endif %}
-                                    </div>
-                                    <div class="report-content">
-                                        {% if report.conception_brief_received or report.conception_croquis_validated or report.conception_modeling_done or report.conception_file_ready %}
-                                            <p><strong>📐 Conception:</strong> 
-                                            {% if report.conception_brief_received %}✓ Brief reçu {% endif %}
-                                            {% if report.conception_croquis_validated %}✓ Croquis validé {% endif %}
-                                            {% if report.conception_modeling_done %}✓ Modélisation {% endif %}
-                                            {% if report.conception_file_ready %}✓ Fichier prêt{% endif %}
-                                            </p>
-                                        {% endif %}
-
-                                        {% if report.observations %}
-                                            <p><strong>📝 Observations:</strong> {{ report.observations }}</p>
-                                        {% endif %}
-                                    </div>
-                                    <div class="report-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-                                        <a href="{% url 'report_a4' report.id %}" class="btn-small" style="text-decoration:none;">Voir PDF A4</a>
-                                        <a href="{% url 'report_pdf' report.id %}" class="btn-small" style="text-decoration:none; background:#111827; color:#fde047;">Télécharger PDF</a>
-                                    </div>
+                    <h3>
+                        Historique des rapports
+                        {% if reports_total %}
+                            <span class="report-group-count" style="margin-left:8px; vertical-align:middle;">{{ reports_total }}</span>
+                        {% endif %}
+                    </h3>
+                    {% if reports_by_month %}
+                        <div class="report-groups">
+                            {% for month in reports_by_month %}
+                            <details class="report-month" {% if forloop.first %}open{% endif %}>
+                                <summary>
+                                    <span class="report-group-label">{{ month.label }}</span>
+                                    <span class="report-group-count">{{ month.count }}</span>
+                                </summary>
+                                <div class="report-month-body">
+                                    {% if is_management %}
+                                        {% for day in month.days %}
+                                        <details class="report-day" {% if forloop.parentloop.first and forloop.first %}open{% endif %}>
+                                            <summary>
+                                                <span class="report-group-label">{{ day.label }}</span>
+                                                <span class="report-group-count">{{ day.count }}</span>
+                                            </summary>
+                                            <div class="report-day-body">
+                                                {% for report in day.reports %}
+                                                <div class="report-card">
+                                                    <h4>{{ report.project }}</h4>
+                                                    <div class="report-meta">
+                                                        <span>{{ report.user.get_labeled_name }}</span>
+                                                        <span>{{ report.date|date:"d/m/Y" }}</span>
+                                                        {% if report.department %}<span>{{ report.get_department_display }}</span>{% endif %}
+                                                        {% if report.team_agent %}<span>{{ report.team_agent }}</span>{% endif %}
+                                                    </div>
+                                                    <div class="report-content">
+                                                        {% if report.conception_brief_received or report.conception_croquis_validated or report.conception_modeling_done or report.conception_file_ready %}
+                                                            <p><strong>Conception :</strong>
+                                                            {% if report.conception_brief_received %}Brief reçu · {% endif %}
+                                                            {% if report.conception_croquis_validated %}Croquis validé · {% endif %}
+                                                            {% if report.conception_modeling_done %}Modélisation · {% endif %}
+                                                            {% if report.conception_file_ready %}Fichier prêt{% endif %}
+                                                            </p>
+                                                        {% endif %}
+                                                        {% if report.observations %}
+                                                            <p><strong>Observations :</strong> {{ report.observations }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="report-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                                                        <a href="{% url 'report_a4' report.id %}" class="btn-small" style="text-decoration:none;">Voir PDF A4</a>
+                                                        <a href="{% url 'report_pdf' report.id %}" class="btn-small" style="text-decoration:none; background:#111827; color:#fde047;">Télécharger PDF</a>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </details>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="reports-list">
+                                            {% for report in month.reports %}
+                                            <div class="report-card">
+                                                <h4>{{ report.project }} — {{ report.date|date:"d/m/Y" }}</h4>
+                                                <div class="report-meta">
+                                                    {% if report.department %}<span>{{ report.get_department_display }}</span>{% endif %}
+                                                    {% if report.team_agent %}<span>{{ report.team_agent }}</span>{% endif %}
+                                                </div>
+                                                <div class="report-content">
+                                                    {% if report.conception_brief_received or report.conception_croquis_validated or report.conception_modeling_done or report.conception_file_ready %}
+                                                        <p><strong>Conception :</strong>
+                                                        {% if report.conception_brief_received %}Brief reçu · {% endif %}
+                                                        {% if report.conception_croquis_validated %}Croquis validé · {% endif %}
+                                                        {% if report.conception_modeling_done %}Modélisation · {% endif %}
+                                                        {% if report.conception_file_ready %}Fichier prêt{% endif %}
+                                                        </p>
+                                                    {% endif %}
+                                                    {% if report.observations %}
+                                                        <p><strong>Observations :</strong> {{ report.observations }}</p>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="report-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                                                    <a href="{% url 'report_a4' report.id %}" class="btn-small" style="text-decoration:none;">Voir PDF A4</a>
+                                                    <a href="{% url 'report_pdf' report.id %}" class="btn-small" style="text-decoration:none; background:#111827; color:#fde047;">Télécharger PDF</a>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
+                            </details>
                             {% endfor %}
                         </div>
                     {% else %}
