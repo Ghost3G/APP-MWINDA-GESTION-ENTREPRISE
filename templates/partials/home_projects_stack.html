@@ -1,10 +1,22 @@
 {% load static %}
-<div class="home-projects-stack {% if current_projects|length > 1 %}is-multi{% endif %}">
-    {% if current_projects %}
-        {% for current_project in current_projects %}
-            {% include "partials/current_project_card.html" %}
-        {% endfor %}
-    {% else %}
-        {% include "partials/current_project_card.html" %}
+<div class="home-projects-stack {% if current_projects|length > 1 %}is-multi count-{{ current_projects|length }}{% endif %}">
+    {% if current_projects|length > 1 %}
+    <div class="home-projects-head">
+        <div>
+            <p class="home-projects-eyebrow">Accueil</p>
+            <h2 class="home-projects-title">Projets mis en avant</h2>
+        </div>
+        <span class="home-projects-count">{{ current_projects|length }}</span>
+    </div>
     {% endif %}
+
+    <div class="home-projects-grid">
+        {% if current_projects %}
+            {% for current_project in current_projects %}
+                {% include "partials/current_project_card.html" %}
+            {% endfor %}
+        {% else %}
+            {% include "partials/current_project_card.html" %}
+        {% endif %}
+    </div>
 </div>
