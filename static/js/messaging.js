@@ -5,6 +5,8 @@ let conversationsPollTimer = null;
 let sendInFlight = false;
 let messagesRequestId = 0;
 let messagesAbort = null;
+let conversationsRequestId = 0;
+let conversationsAbort = null;
 let knownMessageIds = new Set();
 let lastUnreadTotal = Number(sessionStorage.getItem('mwinda_msg_unread') || 0);
 let msgAudioCtx = null;
@@ -171,6 +173,10 @@ function stopPolling() {
         messagesAbort.abort();
         messagesAbort = null;
     }
+    if (conversationsAbort) {
+        conversationsAbort.abort();
+        conversationsAbort = null;
+    }
 }
 
 function renderAvatar(data, className = 'user-avatar') {
@@ -295,7 +301,19 @@ function updateChatHeader(contact) {
 }
 
 function loadConversations() {
-    fetch(window.MESSAGING_URLS.conversations, { credentials: 'same-origin' })
+    const requestId = ++conversationsRequestId;
+    if (conversationsAbort) conversationsAbort.abort();
+    conversationsAbort = new AbortController();
+
+    const separator = window.MESSAGING_URLS.conversations.includes('?') ? '&' : '?';
+    const conversationsUrl = `${window.MESSAGING_URLS.conversations}${separator}_ts=${Date.now()}`;
+
+    fetch(conversationsUrl, {
+        credentials: 'same-origin',
+        signal: conversationsAbort.signal,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+    })
         .then((response) => {
             if (response.redirected && response.url.includes('/login')) {
                 stopPolling();
@@ -305,11 +323,13 @@ function loadConversations() {
             return response.json();
         })
         .then((data) => {
+            if (requestId !== conversationsRequestId) return;
             const conversations = data.conversations || [];
             maybePlayUnreadSound(conversations);
             renderConversations(conversations);
         })
         .catch((error) => {
+            if (error.name === 'AbortError') return;
             if (error.message === 'auth') return;
             console.error('Conversations error:', error);
             const list = document.getElementById('usersList');
@@ -317,6 +337,52 @@ function loadConversations() {
                 list.innerHTML = '<div class="empty-state">Impossible de charger les contacts. Rechargez la page.</div>';
             }
         });
+}
+
+function buildConversationItemHtml(conversation) {
+    return `
+        ${renderAvatar(conversation)}
+        <div class="user-info">
+            <h3>${escapeHtml(conversation.short_name || conversation.name)}</h3>
+            <p class="user-meta">${escapeHtml(conversation.title || conversation.branch || '')}</p>
+            <p class="user-preview">${escapeHtml(conversation.last_message)}</p>
+        </div>
+        <div class="unread-badge ${conversation.unread_count > 0 ? 'visible' : ''}">
+            ${conversation.unread_count > 0 ? conversation.unread_count : ''}
+        </div>
+    `;
+}
+
+function applyConversationDataToItem(item, conversation) {
+    if (!item) return;
+    const currentlyFocused = document.activeElement && item.contains(document.activeElement);
+
+    const currentTitle = item.querySelector('.user-info h3')?.textContent || '';
+    const nextTitle = conversation.short_name || conversation.name || '';
+    const currentMeta = item.querySelector('.user-meta')?.textContent || '';
+    const nextMeta = conversation.title || conversation.branch || '';
+    const currentPreview = item.querySelector('.user-preview')?.textContent || '';
+    const nextPreview = conversation.last_message || '';
+    const badge = item.querySelector('.unread-badge');
+    const currentUnread = badge && badge.classList.contains('visible')
+        ? Number(badge.textContent || 0)
+        : 0;
+    const nextUnread = Number(conversation.unread_count) || 0;
+
+    // Evite de refaire tout le noeud à chaque poll (rafraîchissement discret).
+    if (
+        currentTitle === nextTitle &&
+        currentMeta === nextMeta &&
+        currentPreview === nextPreview &&
+        currentUnread === nextUnread
+    ) {
+        return;
+    }
+
+    item.innerHTML = buildConversationItemHtml(conversation);
+    if (currentlyFocused) {
+        item.focus();
+    }
 }
 
 function renderConversations(conversations) {
@@ -328,19 +394,41 @@ function renderConversations(conversations) {
         return;
     }
 
-    list.innerHTML = conversations.map((conversation) => `
-        <div class="user-item" data-user-id="${conversation.id}" onclick="openUserChat(${conversation.id}, event)">
-            ${renderAvatar(conversation)}
-            <div class="user-info">
-                <h3>${escapeHtml(conversation.short_name || conversation.name)}</h3>
-                <p class="user-meta">${escapeHtml(conversation.title || conversation.branch || '')}</p>
-                <p class="user-preview">${escapeHtml(conversation.last_message)}</p>
-            </div>
-            <div class="unread-badge ${conversation.unread_count > 0 ? 'visible' : ''}">
-                ${conversation.unread_count > 0 ? conversation.unread_count : ''}
-            </div>
-        </div>
-    `).join('');
+    const empty = list.querySelector('.empty-state');
+    if (empty) empty.remove();
+
+    const expectedIds = new Set(conversations.map((conversation) => String(conversation.id)));
+
+    // Supprime les anciens items absents côté API.
+    list.querySelectorAll('.user-item').forEach((node) => {
+        const nodeId = node.dataset.userId;
+        if (!expectedIds.has(nodeId)) {
+            node.remove();
+        }
+    });
+
+    // Met à jour / crée chaque conversation et maintient l'ordre sans "flash".
+    conversations.forEach((conversation) => {
+        const idStr = String(conversation.id);
+        let item = list.querySelector(`.user-item[data-user-id="${idStr}"]`);
+
+        if (!item) {
+            item = document.createElement('div');
+            item.className = 'user-item';
+            item.dataset.userId = idStr;
+            item.onclick = (event) => openUserChat(conversation.id, event);
+            item.innerHTML = buildConversationItemHtml(conversation);
+        } else {
+            applyConversationDataToItem(item, conversation);
+        }
+
+        // Place l'item à la bonne position si nécessaire, sans rerender global.
+        const desiredIndex = conversations.findIndex((entry) => entry.id === conversation.id);
+        const currentAtIndex = list.children[desiredIndex];
+        if (currentAtIndex !== item) {
+            list.insertBefore(item, currentAtIndex || null);
+        }
+    });
 
     if (selectedUserId) {
         const active = list.querySelector(`[data-user-id="${selectedUserId}"]`);
@@ -355,6 +443,11 @@ function openUserChat(userId, event) {
     document.querySelectorAll('.user-item').forEach((item) => item.classList.remove('active'));
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
+        const badge = event.currentTarget.querySelector('.unread-badge');
+        if (badge) {
+            badge.classList.remove('visible');
+            badge.textContent = '';
+        }
     }
 
     document.getElementById('messageForm').classList.remove('hidden');
