@@ -11,10 +11,12 @@ from django.utils import timezone
 from .models import AuditLog
 
 ILLUSTRATION_PATH = '/presence/illustration/'
-WORK_START = time(8, 0)
-WORK_END = time(17, 0)
-WORK_START_HOUR = 8.0
-WORK_END_HOUR = 17.0
+WORK_START = time(8, 30)
+WORK_END = time(17, 30)
+WORK_START_HOUR = 8.5
+WORK_END_HOUR = 17.5
+WORK_START_LABEL = '08:30'
+WORK_END_LABEL = '17:30'
 
 FRENCH_MONTHS = (
     '',
@@ -159,13 +161,150 @@ def build_sessions(*, start, end, user=None):
 
 def build_presence_sessions(selected_date):
     """Liste des sessions de connexion pour une journée."""
+    # Complète automatiquement les départs agents à 17h30 si la journée est close.
+    close_open_agent_sessions_for_day(selected_date)
     start, end = _day_bounds(selected_date)
     return build_sessions(start=start, end=end)
+
+
+def work_end_datetime(day):
+    return timezone.make_aware(datetime.combine(day, WORK_END))
+
+
+def is_presence_auto_close_target(user):
+    """Agents uniquement — les directeurs / admin restent connectés après 17h30."""
+    if not user:
+        return False
+    if getattr(user, 'is_superuser', False):
+        return False
+    role = (getattr(user, 'role', '') or '').strip().lower()
+    return role == 'agent'
+
+
+def _close_agent_time_entries(user, closed_at):
+    try:
+        from projects.models import AgentTimeEntry
+    except Exception:
+        return 0
+
+    closed = 0
+    open_entries = AgentTimeEntry.objects.filter(
+        user=user,
+        entry_type__in=['work', 'pause', 'task'],
+        ended_at__isnull=True,
+        started_at__lte=closed_at,
+    )
+    for entry in open_entries:
+        elapsed = int((closed_at - entry.started_at).total_seconds())
+        entry.duration_seconds = entry.duration_seconds + max(elapsed, 0)
+        entry.ended_at = closed_at
+        entry.save(update_fields=['duration_seconds', 'ended_at'])
+        closed += 1
+    return closed
+
+
+def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
+    """
+    Écrit un logout à 17h30 pour une session agent encore ouverte,
+    et ferme les timers ouverts.
+    """
+    if not is_presence_auto_close_target(user):
+        return False
+
+    local_now = timezone.localtime()
+    day = day or local_now.date()
+    closed_at = work_end_datetime(day)
+    start, end = _day_bounds(day)
+
+    # Ne ferme que si la fin de journée est déjà passée (ou journée antérieure).
+    if day > local_now.date():
+        return False
+    if day == local_now.date() and local_now.time() < WORK_END:
+        return False
+
+    open_login = (
+        AuditLog.objects.filter(
+            user=user,
+            action='login_success',
+            created_at__gte=start,
+            created_at__lte=end,
+        )
+        .order_by('-created_at')
+        .first()
+    )
+    if not open_login:
+        _close_agent_time_entries(user, closed_at)
+        return False
+
+    has_logout = AuditLog.objects.filter(
+        user=user,
+        action='logout',
+        created_at__gte=open_login.created_at,
+        created_at__lte=end + timedelta(hours=12),
+    ).exists()
+    if has_logout:
+        _close_agent_time_entries(user, closed_at)
+        return False
+
+    # Logout horodaté à 17h30 pour compléter la fiche présence.
+    logout_at = max(closed_at, open_login.created_at + timedelta(minutes=1))
+    AuditLog.objects.create(
+        user=user,
+        action='logout',
+        path='/system/auto-presence-close/',
+        method='SYSTEM',
+        metadata={'reason': reason, 'work_end': WORK_END_LABEL},
+        created_at=logout_at,
+    )
+    _close_agent_time_entries(user, logout_at)
+    return True
+
+
+def close_open_agent_sessions_for_day(day=None):
+    """Ferme toutes les sessions agents ouvertes pour une journée (sauf directeurs)."""
+    User = get_user_model()
+    local_now = timezone.localtime()
+    day = day or local_now.date()
+
+    if day > local_now.date():
+        return 0
+    if day == local_now.date() and local_now.time() < WORK_END:
+        return 0
+
+    start, end = _day_bounds(day)
+    agent_ids = (
+        AuditLog.objects.filter(
+            action='login_success',
+            created_at__gte=start,
+            created_at__lte=end,
+            user__isnull=False,
+            user__role='agent',
+            user__is_superuser=False,
+        )
+        .values_list('user_id', flat=True)
+        .distinct()
+    )
+    closed = 0
+    for user in User.objects.filter(id__in=agent_ids, is_active=True):
+        if close_open_session_for_user(user, day=day):
+            closed += 1
+    return closed
+
+
+def should_force_agent_logout_now(user):
+    if not is_presence_auto_close_target(user):
+        return False
+    return timezone.localtime().time() >= WORK_END
 
 
 def build_agent_monthly_sessions(agent, year, month):
     """Liste de présence mensuelle d'un agent + totaux + rythme (diagrammes)."""
     start_day, end_day, start, end = month_bounds(year, month)
+    cursor = start_day
+    today = timezone.localdate()
+    while cursor <= end_day and cursor <= today:
+        close_open_agent_sessions_for_day(cursor)
+        cursor += timedelta(days=1)
     sessions = build_sessions(start=start, end=end, user=agent)
     total_seconds = sum(s['duration_seconds'] or 0 for s in sessions)
     present_days = {
@@ -297,8 +436,8 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
         'presence_flags': presence_flags,
         'work_start': WORK_START_HOUR,
         'work_end': WORK_END_HOUR,
-        'work_start_label': '08:00',
-        'work_end_label': '17:00',
+        'work_start_label': WORK_START_LABEL,
+        'work_end_label': WORK_END_LABEL,
         'stats': {
             'present_days': present_days,
             'absent_days': absent_days,
@@ -470,7 +609,7 @@ def seed_presence_illustration(days=14):
             if logout_at <= login_at:
                 logout_at = login_at + timedelta(hours=8)
 
-            meta = {'illustration': True, 'agent_id': agent.id, 'work_hours': '08:00-17:00'}
+            meta = {'illustration': True, 'agent_id': agent.id, 'work_hours': f'{WORK_START_LABEL}-{WORK_END_LABEL}'}
             AuditLog.objects.create(
                 user=agent,
                 action='login_success',
@@ -489,4 +628,4 @@ def seed_presence_illustration(days=14):
             )
             created += 2
 
-    return {'agents': len(agents), 'logs': created, 'work_start': '08:00', 'work_end': '17:00'}
+    return {'agents': len(agents), 'logs': created, 'work_start': WORK_START_LABEL, 'work_end': WORK_END_LABEL}

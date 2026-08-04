@@ -98,6 +98,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'users.middleware.AuditLogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'users.middleware.AgentWorkEndLogoutMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

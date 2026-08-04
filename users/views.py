@@ -48,6 +48,20 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            from .presence import WORK_END, WORK_END_LABEL, is_presence_auto_close_target
+
+            if is_presence_auto_close_target(user) and timezone.localtime().time() >= WORK_END:
+                return render(
+                    request,
+                    'login.html',
+                    {
+                        'error': (
+                            f'La journée de travail est terminée ({WORK_END_LABEL}). '
+                            'Reconnectez-vous demain à partir de 08:30.'
+                        ),
+                    },
+                )
+
             record_login_attempt(username, client_ip, True)
             clear_failed_attempts(username, client_ip)
             login(request, user)
@@ -570,10 +584,10 @@ def presence_dashboard(request):
         'arrival_ref': [],
         'departure_ref': [],
         'presence_flags': [],
-        'work_start': 8,
-        'work_end': 17,
-        'work_start_label': '08:00',
-        'work_end_label': '17:00',
+        'work_start': 8.5,
+        'work_end': 17.5,
+        'work_start_label': '08:30',
+        'work_end_label': '17:30',
         'stats': {},
         'absence_chart': {'labels': ['Présents', 'Absents'], 'values': [0, 0]},
     }
@@ -597,8 +611,8 @@ def presence_dashboard(request):
         'absent_count': absent_count,
         'chart_data': chart_data,
         'rhythm_data': rhythm_data,
-        'work_start_label': '08:00',
-        'work_end_label': '17:00',
+        'work_start_label': '08:30',
+        'work_end_label': '17:30',
         'can_view_all_presence': can_view_all,
     })
 
