@@ -87,7 +87,6 @@ def _build_conversations(current_user):
             sender=user,
             receiver=current_user,
             is_read=False,
-            message_type='text',
         ).count()
         meta = _last_message_meta(current_user, user)
         conversations.append({

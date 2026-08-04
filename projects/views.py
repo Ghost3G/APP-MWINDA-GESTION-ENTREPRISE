@@ -155,9 +155,16 @@ def _apply_home_feature(project, show_on_home, home_order=1):
     return True, note
 
 
-def _resolve_home_project_cards(fallback_candidates, *, empty_title='Aucun projet en cours', empty_description=''):
+def _resolve_home_project_cards(
+    user,
+    fallback_candidates,
+    *,
+    empty_title='Aucun projet en cours',
+    empty_description='',
+):
     """
     Cartes Accueil : projets épinglés (1–3), sinon repli automatique (1 carte).
+    Les agents ne voient que les projets auxquels ils ont accès.
     """
     featured = list(
         Project.objects.filter(show_on_home=True)
@@ -165,6 +172,8 @@ def _resolve_home_project_cards(fallback_candidates, *, empty_title='Aucun proje
         .prefetch_related('members')
         .order_by('home_order', 'created_at', 'id')[:HOME_FEATURED_MAX]
     )
+    if featured and user is not None and not is_management_user(user):
+        featured = [p for p in featured if can_access_project(user, p)][:HOME_FEATURED_MAX]
     if featured:
         cards = []
         for index, project in enumerate(featured, start=1):
@@ -503,6 +512,7 @@ def dashboard(request):
             | Q(commercial_agent=request.user)
         ).distinct().order_by('created_at', 'id')
         current_projects, current_project = _resolve_home_project_cards(
+            request.user,
             [
                 assigned_projects.filter(status='progress'),
                 assigned_projects,
@@ -570,6 +580,7 @@ def dashboard(request):
 
     assigned_projects = Project.objects.filter(members=request.user).order_by('created_at', 'id')
     current_projects, current_project = _resolve_home_project_cards(
+        request.user,
         [
             assigned_projects.filter(status='progress'),
             assigned_projects,
@@ -774,7 +785,9 @@ def projects_list(request):
                 messages.success(request, f'Projet « {project.name} » marqué comme terminé.')
             elif action == 'awaiting_delivery':
                 project.status = 'awaiting_delivery'
-                project.save(update_fields=['status'])
+                project.show_on_home = False
+                project.home_order = 0
+                project.save(update_fields=['status', 'show_on_home', 'home_order'])
                 messages.success(
                     request,
                     f'Projet « {project.name} » passé en attente de livraison.',
@@ -968,6 +981,12 @@ def project_detail(request, project_id):
     is_manager_role = _is_management_user(request.user)
     if not can_access_project(request.user, project):
         return HttpResponseForbidden("Vous n'avez pas la permission d'accéder à ce projet.")
+
+    ProjectAssignmentNotification.objects.filter(
+        user=request.user,
+        project=project,
+        is_read=False,
+    ).update(is_read=True)
 
     if request.method == 'POST' and is_manager_role:
         _handle_task_management_post(request, default_project_id=project.id)

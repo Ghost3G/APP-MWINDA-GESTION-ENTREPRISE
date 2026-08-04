@@ -99,7 +99,12 @@ def notifications_feed(request):
             'created_at': item['created_at'].strftime('%d/%m %H:%M'),
             'created_iso': item['created_at'].isoformat(),
         })
-    unread = sum(1 for item in payload if not item['is_read'])
+    # Badge = total réel en base (pas la somme des 30 derniers items du fil).
+    unread = (
+        Message.objects.filter(receiver=request.user, is_read=False).count()
+        + ProjectAssignmentNotification.objects.filter(user=request.user, is_read=False).count()
+        + TaskAssignmentNotification.objects.filter(user=request.user, is_read=False).count()
+    )
     return JsonResponse({'ok': True, 'items': payload, 'unread': unread})
 
 

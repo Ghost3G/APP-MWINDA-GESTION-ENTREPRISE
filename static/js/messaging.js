@@ -206,10 +206,11 @@ function renderMessage(msg) {
     const messageClass = msg.is_sent ? 'sent' : 'received';
     const callClass = msg.message_type === 'call' ? ' call' : '';
     const idAttr = msg.id != null ? ` data-message-id="${msg.id}"` : '';
+    const pendingAttr = msg.pending ? ' data-pending="1"' : '';
     const readAttr = msg.is_sent ? ` data-is-read="${msg.is_read ? '1' : '0'}"` : '';
     const ticks = renderReadTicks(msg);
     return `
-        <div class="message ${messageClass}${callClass}"${idAttr}${readAttr}>
+        <div class="message ${messageClass}${callClass}"${idAttr}${pendingAttr}${readAttr}>
             <div class="message-body">
                 <div class="message-bubble">${escapeHtml(msg.content)}</div>
                 <div class="message-meta">
@@ -623,6 +624,7 @@ function startMessagePolling() {
 function handleKeyPress(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
+        event.stopPropagation();
         sendMessage(event);
     }
 }
@@ -674,8 +676,17 @@ function updateConversationPreview(userId, preview) {
     lastConversationsFingerprint = '';
 }
 
+function removePendingOptimisticMessages() {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+    container.querySelectorAll('.message[data-pending="1"]').forEach((node) => node.remove());
+}
+
 async function sendMessage(event) {
-    if (event) event.preventDefault();
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     if (!selectedUserId) {
         showToast('Sélectionnez un contact d\'abord');
         return;
@@ -684,20 +695,33 @@ async function sendMessage(event) {
 
     unlockMessageAudio();
     const messageInput = document.getElementById('messageInput');
-    const content = messageInput.value.trim();
+    const sendBtn = document.querySelector('#messageForm .chat-send-btn');
+    const content = (messageInput?.value || '').trim();
     if (!content) return;
 
     sendInFlight = true;
+    if (sendBtn) sendBtn.disabled = true;
     messageInput.value = '';
     messageInput.style.height = 'auto';
 
-    appendMessage({
-        content,
-        is_sent: true,
-        is_read: false,
-        message_type: 'text',
-        time_short: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-    });
+    // Aperçu local unique (marqué pending) — remplacé par la réponse serveur.
+    const container = document.getElementById('messagesContainer');
+    if (container) {
+        const empty = container.querySelector('.empty-state');
+        if (empty) empty.remove();
+        container.insertAdjacentHTML(
+            'beforeend',
+            renderMessage({
+                content,
+                is_sent: true,
+                is_read: false,
+                pending: true,
+                message_type: 'text',
+                time_short: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            }),
+        );
+        scrollMessagesToBottom({ force: true });
+    }
     updateConversationPreview(selectedUserId, content);
 
     const formData = new FormData();
@@ -708,21 +732,26 @@ async function sendMessage(event) {
             urlForUser(window.MESSAGING_URLS.send, selectedUserId),
             formData,
         );
+        removePendingOptimisticMessages();
         if (data.ok && data.message) {
-            appendMessage(data.message);
+            appendMessage(data.message, { forceScroll: true });
             updateConversationPreview(selectedUserId, data.message.content);
-            loadMessages(selectedUserId, false);
-            loadConversations();
+            lastMessagesFingerprint = '';
+            // Pas de reload immédiat : évite un 2e affichage / flash.
         } else if (data.error) {
             showToast(data.error);
             loadMessages(selectedUserId, false);
         }
     } catch (e) {
+        removePendingOptimisticMessages();
         showToast('Erreur lors de l\'envoi');
+        // Remet le texte pour ne pas perdre le message
+        if (messageInput && !messageInput.value) messageInput.value = content;
         loadMessages(selectedUserId, false);
     } finally {
         sendInFlight = false;
-        messageInput.focus();
+        if (sendBtn) sendBtn.disabled = false;
+        messageInput?.focus();
     }
 }
 
