@@ -11,6 +11,7 @@ class Project(models.Model):
         ('pending', 'En attente'),
         ('progress', 'En cours'),
         ('urgent', 'Urgence'),
+        ('awaiting_delivery', 'En attente de livraison'),
         ('done', 'Terminé'),
     )
 

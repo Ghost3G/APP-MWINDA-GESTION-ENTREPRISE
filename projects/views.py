@@ -396,6 +396,7 @@ def dashboard(request):
             'pending': projects_qs.filter(status='pending').count(),
             'progress': projects_qs.filter(status='progress').count(),
             'urgent': projects_qs.filter(status='urgent').count(),
+            'awaiting_delivery': projects_qs.filter(status='awaiting_delivery').count(),
             'done': projects_qs.filter(status='done').count(),
         }
         total_projects = sum(project_status_counts.values())
@@ -732,7 +733,7 @@ def projects_list(request):
 
         action = request.POST.get('action', 'create').strip() or 'create'
 
-        if action in {'complete', 'reopen'}:
+        if action in {'complete', 'reopen', 'awaiting_delivery'}:
             project_id = request.POST.get('project_id', '').strip()
             project = get_object_or_404(Project, id=project_id)
             if action == 'complete':
@@ -744,6 +745,13 @@ def projects_list(request):
                 project.home_order = 0
                 project.save(update_fields=['status', 'show_on_home', 'home_order'])
                 messages.success(request, f'Projet « {project.name} » marqué comme terminé.')
+            elif action == 'awaiting_delivery':
+                project.status = 'awaiting_delivery'
+                project.save(update_fields=['status'])
+                messages.success(
+                    request,
+                    f'Projet « {project.name} » passé en attente de livraison.',
+                )
             else:
                 project.status = 'progress'
                 project.save(update_fields=['status'])
