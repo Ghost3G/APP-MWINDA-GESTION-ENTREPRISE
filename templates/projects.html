@@ -102,8 +102,8 @@
         }
 
         .project-cover {
-            height: 150px;
-            background: linear-gradient(135deg, #fde047 0%, #f59e0b 55%, #111827 140%);
+            height: 168px;
+            background: linear-gradient(135deg, #2a2a2a 0%, #111 100%);
             position: relative;
             overflow: hidden;
         }
@@ -121,74 +121,103 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(17, 24, 39, 0.55);
+            color: rgba(248, 250, 252, 0.45);
             font-weight: 700;
             font-size: 13px;
             letter-spacing: 0.02em;
         }
 
+        .project-cover-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 2;
+        }
+
+        .project-cover-home {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 2;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: rgba(5, 5, 5, 0.72);
+            border: 1px solid rgba(253, 224, 71, 0.45);
+            color: #fde047;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
         .project-body {
-            padding: 18px 20px 20px;
+            padding: 18px 18px 16px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 14px;
             flex: 1;
         }
 
         .project-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 12px;
+            display: block;
+            margin: 0;
         }
 
         .project-title {
             margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #111827;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: -0.01em;
+            color: #f8fafc;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 5px 11px;
             border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            backdrop-filter: blur(8px);
         }
 
         .status-pending {
-            background: #fef3c7;
-            color: #92400e;
+            background: rgba(253, 224, 71, 0.92);
+            color: #111827;
         }
 
         .status-in-progress {
-            background: #dbeafe;
-            color: #1e40af;
+            background: rgba(59, 130, 246, 0.95);
+            color: #fff;
         }
 
         .status-completed {
-            background: #dcfce7;
-            color: #166534;
+            background: rgba(34, 197, 94, 0.92);
+            color: #052e16;
         }
 
         .status-urgent {
             background: #dc2626 !important;
             color: #fff !important;
-            box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.55);
+            box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
             font-weight: 800;
         }
 
         .status-awaiting-delivery {
-            background: #ffedd5;
-            color: #9a3412;
+            background: rgba(234, 88, 12, 0.95);
+            color: #fff;
             font-weight: 800;
         }
 
         .project-item.is-urgent {
             border-color: #ef4444 !important;
-            background: linear-gradient(180deg, rgba(127, 29, 29, 0.55) 0%, rgba(17, 17, 17, 0.98) 42%) !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.55), 0 12px 28px rgba(220, 38, 38, 0.28) !important;
+            background: #141416 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.55), 0 12px 28px rgba(220, 38, 38, 0.18) !important;
         }
 
         .project-item.is-urgent .project-title {
@@ -222,50 +251,6 @@
             background: rgba(253, 224, 71, 0.15);
             color: #fde047;
             font-size: 12px;
-        }
-
-        .btn-complete {
-            width: 100%;
-            padding: 10px 14px;
-            border: 0;
-            border-radius: 10px;
-            background: #16a34a;
-            color: #fff;
-            font-weight: 800;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .btn-complete:hover {
-            background: #15803d;
-        }
-
-        .btn-awaiting-delivery {
-            width: 100%;
-            padding: 10px 14px;
-            border: 0;
-            border-radius: 10px;
-            background: #ea580c;
-            color: #fff;
-            font-weight: 800;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .btn-awaiting-delivery:hover {
-            background: #c2410c;
-        }
-
-        .btn-reopen {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid rgba(253, 224, 71, 0.45);
-            border-radius: 10px;
-            background: transparent;
-            color: #fde047;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
         }
 
         .project-item.is-done {
@@ -355,69 +340,215 @@
         }
 
         .project-desc {
-            color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 12px;
-            line-height: 1.5;
-        }
-
-        .project-meta {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 12px;
+            margin: 0;
+            color: #a1a1aa;
             font-size: 13px;
-            color: #6b7280;
+            line-height: 1.55;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
-        .project-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
+        .project-info {
+            display: grid;
+            gap: 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+        }
+
+        .project-info-row {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            gap: 10px;
+            align-items: start;
+            padding: 10px 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .project-info-row:first-child {
+            border-top: 0;
+        }
+
+        .project-info-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #71717a;
+            padding-top: 1px;
+        }
+
+        .project-info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e4e4e7;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .project-info-value .muted-role {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #71717a;
         }
 
         .project-members {
-            margin-bottom: 12px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .project-members-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #71717a;
         }
 
         .members-list {
             display: flex;
-            gap: 4px;
+            align-items: center;
         }
 
         .member-avatar {
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #27272a;
+            border: 2px solid #141416;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: 700;
+            color: #f4f4f5;
+            font-size: 11px;
+            font-weight: 800;
+            margin-left: -6px;
+        }
+
+        .member-avatar:first-child {
+            margin-left: 0;
+        }
+
+        .member-avatar.is-more {
+            background: #3f3f46;
+            color: #d4d4d8;
         }
 
         .project-footer {
-            display: flex;
+            display: grid;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 4px;
+        }
+
+        .project-footer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
         }
 
         .btn-small {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: white;
-            color: #111827;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #f4f4f5;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
+            font-weight: 700;
+            font-size: 13px;
             transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
         }
 
         .btn-small:hover {
-            background: #f3f4f6;
-            border-color: #9ca3af;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(253, 224, 71, 0.45);
+            color: #fde047;
+        }
+
+        .btn-card-primary {
+            width: 100%;
+            padding: 11px 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #fde047;
+            color: #111827;
+            font-weight: 800;
+            font-size: 13px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        .btn-card-primary:hover {
+            background: #facc15;
+        }
+
+        .btn-card-ghost {
+            width: 100%;
+            padding: 8px 10px;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #a1a1aa;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .btn-card-ghost:hover {
+            color: #fde047;
+        }
+
+        .btn-complete,
+        .btn-awaiting-delivery,
+        .btn-reopen {
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .btn-complete {
+            background: rgba(22, 163, 74, 0.18);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.35);
+        }
+
+        .btn-complete:hover {
+            background: rgba(22, 163, 74, 0.28);
+        }
+
+        .btn-awaiting-delivery {
+            background: rgba(234, 88, 12, 0.16);
+            color: #fb923c;
+            border: 1px solid rgba(251, 146, 60, 0.35);
+        }
+
+        .btn-awaiting-delivery:hover {
+            background: rgba(234, 88, 12, 0.26);
+        }
+
+        .btn-reopen {
+            background: transparent;
+            color: #fde047;
+            border: 1px solid rgba(253, 224, 71, 0.35);
         }
 
         .messages-section {
@@ -609,121 +740,149 @@
                                     {% else %}
                                         <div class="project-cover-empty">Photo du projet</div>
                                     {% endif %}
-                                </div>
-                                <div class="project-body">
-                                <div class="project-header">
-                                    <h3 class="project-title">{{ project.name }}</h3>
-                                    <span class="status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% elif project.status == 'urgent' %}urgent{% elif project.status == 'awaiting_delivery' %}awaiting-delivery{% else %}completed{% endif %}">
+                                    {% if project.show_on_home %}
+                                        <span class="project-cover-home">Accueil · {{ project.home_order }}</span>
+                                    {% endif %}
+                                    <span class="project-cover-badge status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% elif project.status == 'urgent' %}urgent{% elif project.status == 'awaiting_delivery' %}awaiting-delivery{% else %}completed{% endif %}">
                                         {{ project.get_status_display }}
                                     </span>
                                 </div>
-                                <p class="project-desc">{{ project.description|truncatewords:15 }}</p>
-                                <div class="project-meta">
-                                    <div class="project-meta-item">🏷 {{ project.get_branch_display }}</div>
-                                    <div class="project-meta-item">➕ Ajouté le {{ project.created_at|date:"d/m/Y" }}</div>
-                                    <div class="project-meta-item">📅 {{ project.start_date }} → {{ project.end_date }}</div>
-                                    <div class="project-meta-item">👤 {{ project.manager.get_labeled_name }}</div>
-                                    {% if project.commercial_agent %}
-                                    <div class="project-meta-item">💼 {{ project.commercial_agent.get_labeled_name }}</div>
+                                <div class="project-body">
+                                    <div class="project-header">
+                                        <h3 class="project-title">{{ project.name }}</h3>
+                                    </div>
+                                    {% if project.description %}
+                                        <p class="project-desc">{{ project.description|truncatewords:22 }}</p>
                                     {% endif %}
-                                    {% if project.show_on_home %}
-                                    <div class="project-meta-item" style="color:#ca8a04; font-weight:700;">⭐ Accueil · position {{ project.home_order }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="project-members">
-                                    <div class="members-list">
-                                        {% for member in project.members.all|slice:":3" %}
-                                            <div class="member-avatar" title="{{ member.get_labeled_name }}">{{ member.first_name|default:member.username|slice:":1"|upper }}</div>
-                                        {% endfor %}
-                                        {% if project.members.count > 3 %}
-                                            <div class="member-avatar" style="background: #9ca3af;">+{{ project.members.count|add:"-3" }}</div>
+                                    <div class="project-info">
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Branche</span>
+                                            <span class="project-info-value">{{ project.get_branch_display }}</span>
+                                        </div>
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Période</span>
+                                            <span class="project-info-value">{{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</span>
+                                        </div>
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Créé le</span>
+                                            <span class="project-info-value">{{ project.created_at|date:"d/m/Y" }}</span>
+                                        </div>
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Suivi</span>
+                                            <span class="project-info-value">
+                                                {{ project.manager.get_display_name }}
+                                                <span class="muted-role">{{ project.manager.get_title_label }}</span>
+                                            </span>
+                                        </div>
+                                        {% if project.commercial_agent %}
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Commercial</span>
+                                            <span class="project-info-value">
+                                                {{ project.commercial_agent.get_display_name }}
+                                                <span class="muted-role">{{ project.commercial_agent.get_title_label }}</span>
+                                            </span>
+                                        </div>
                                         {% endif %}
                                     </div>
-                                </div>
-                                <div class="project-footer" style="display:grid; gap:8px;">
-                                    <a class="btn-small" href="{% url 'project_detail' project.id %}" style="text-align: center; text-decoration: none;">Voir les détails</a>
-                                    {% if can_create_project %}
-                                    {% if project.status != 'awaiting_delivery' %}
-                                    <form method="POST" style="margin:0;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="awaiting_delivery">
-                                        <input type="hidden" name="project_id" value="{{ project.id }}">
-                                        <button type="submit" class="btn-awaiting-delivery">En attente de livraison</button>
-                                    </form>
-                                    {% else %}
-                                    <form method="POST" style="margin:0;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="reopen">
-                                        <input type="hidden" name="project_id" value="{{ project.id }}">
-                                        <button type="submit" class="btn-reopen">Remettre en cours</button>
-                                    </form>
-                                    {% endif %}
-                                    <form method="POST" class="complete-project-form" style="margin:0;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="complete">
-                                        <input type="hidden" name="project_id" value="{{ project.id }}">
-                                        <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
-                                        <button type="submit" class="btn-complete">Terminer le projet</button>
-                                    </form>
-                                    <button type="button" class="btn-small" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier</button>
-                                    <div id="edit-{{ project.id }}" style="display:none; margin-top:8px;">
-                                        <form method="POST" enctype="multipart/form-data" class="project-status-form" style="display:grid; gap:8px;">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="update">
-                                            <input type="hidden" name="project_id" value="{{ project.id }}">
-                                            <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
-                                            <input type="text" name="name" value="{{ project.name }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                            <textarea name="description" rows="2" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">{{ project.description }}</textarea>
-                                            <input type="date" name="start_date" value="{{ project.start_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                            <input type="date" name="end_date" value="{{ project.end_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                            <select name="status" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                                {% for value, label in status_choices %}
-                                                    {% if value != 'done' %}
-                                                    <option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </select>
-                                            <select name="branch" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                                {% for value, label in branch_choices %}
-                                                    <option value="{{ value }}" {% if project.branch == value %}selected{% endif %}>{{ label }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <select name="commercial_agent" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                                {% for user in commercial_agents %}
-                                                    <option value="{{ user.id }}" {% if project.commercial_agent_id == user.id %}selected{% endif %}>{{ user.get_labeled_name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <select name="members" multiple size="4" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                                {% for user in available_users %}
-                                                    <option value="{{ user.id }}" {% if user in project.members.all %}selected{% endif %}>{{ user.get_labeled_name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <div>
-                                                <label style="display:block; margin-bottom:6px; font-weight:600; font-size:13px;">Photo d’illustration</label>
-                                                {% if project.cover_url %}
-                                                <img src="{{ project.cover_url }}" alt="" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">
-                                                <label style="display:flex; gap:6px; align-items:center; font-size:12px; color:#6b7280; margin-bottom:6px;">
-                                                    <input type="checkbox" name="remove_cover" value="1"> Supprimer la photo actuelle
-                                                </label>
-                                                {% endif %}
-                                                <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
-                                            </div>
-                                            <div class="home-feature-panel home-feature-panel--compact">
-                                                <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px;">
-                                                    <input type="checkbox" name="show_on_home" value="1" {% if project.show_on_home %}checked{% endif %}>
-                                                    Afficher sur l’Accueil
-                                                </label>
-                                                <select name="home_order">
-                                                    <option value="1" {% if project.home_order == 1 or not project.home_order %}selected{% endif %}>Position 1</option>
-                                                    <option value="2" {% if project.home_order == 2 %}selected{% endif %}>Position 2</option>
-                                                    <option value="3" {% if project.home_order == 3 %}selected{% endif %}>Position 3</option>
-                                                </select>
-                                            </div>
-                                            <button type="submit" style="padding:8px; border:0; border-radius:8px; background:#22c55e; color:white; font-weight:700;">Enregistrer</button>
-                                        </form>
+                                    <div class="project-members">
+                                        <span class="project-members-label">Équipe</span>
+                                        <div class="members-list">
+                                            {% for member in project.members.all|slice:":4" %}
+                                                <div class="member-avatar" title="{{ member.get_labeled_name }}">{{ member.first_name|default:member.username|slice:":1"|upper }}</div>
+                                            {% empty %}
+                                                <span class="project-info-value" style="font-size:12px;color:#71717a;">—</span>
+                                            {% endfor %}
+                                            {% if project.members.count > 4 %}
+                                                <div class="member-avatar is-more" title="Autres membres">+{{ project.members.count|add:"-4" }}</div>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                    {% endif %}
-                                </div>
+                                    <div class="project-footer">
+                                        <a class="btn-card-primary" href="{% url 'project_detail' project.id %}">Voir le projet</a>
+                                        {% if can_create_project %}
+                                        <div class="project-footer-actions">
+                                            {% if project.status != 'awaiting_delivery' %}
+                                            <form method="POST" style="margin:0;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="awaiting_delivery">
+                                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                <button type="submit" class="btn-awaiting-delivery">Livraison</button>
+                                            </form>
+                                            {% else %}
+                                            <form method="POST" style="margin:0;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="reopen">
+                                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                <button type="submit" class="btn-reopen">En cours</button>
+                                            </form>
+                                            {% endif %}
+                                            <form method="POST" class="complete-project-form" style="margin:0;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="complete">
+                                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
+                                                <button type="submit" class="btn-complete">Terminer</button>
+                                            </form>
+                                        </div>
+                                        <button type="button" class="btn-card-ghost" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier le projet</button>
+                                        <div id="edit-{{ project.id }}" style="display:none;">
+                                            <form method="POST" enctype="multipart/form-data" class="project-status-form" style="display:grid; gap:8px;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update">
+                                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
+                                                <input type="text" name="name" value="{{ project.name }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <textarea name="description" rows="2" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">{{ project.description }}</textarea>
+                                                <input type="date" name="start_date" value="{{ project.start_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <input type="date" name="end_date" value="{{ project.end_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <select name="status" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    {% for value, label in status_choices %}
+                                                        {% if value != 'done' %}
+                                                        <option value="{{ value }}" {% if project.status == value %}selected{% endif %}>{{ label }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                                <select name="branch" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    {% for value, label in branch_choices %}
+                                                        <option value="{{ value }}" {% if project.branch == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <select name="commercial_agent" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    {% for user in commercial_agents %}
+                                                        <option value="{{ user.id }}" {% if project.commercial_agent_id == user.id %}selected{% endif %}>{{ user.get_labeled_name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <select name="members" multiple size="4" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    {% for user in available_users %}
+                                                        <option value="{{ user.id }}" {% if user in project.members.all %}selected{% endif %}>{{ user.get_labeled_name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <div>
+                                                    <label style="display:block; margin-bottom:6px; font-weight:600; font-size:13px;">Photo d’illustration</label>
+                                                    {% if project.cover_url %}
+                                                    <img src="{{ project.cover_url }}" alt="" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">
+                                                    <label style="display:flex; gap:6px; align-items:center; font-size:12px; color:#6b7280; margin-bottom:6px;">
+                                                        <input type="checkbox" name="remove_cover" value="1"> Supprimer la photo actuelle
+                                                    </label>
+                                                    {% endif %}
+                                                    <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                </div>
+                                                <div class="home-feature-panel home-feature-panel--compact">
+                                                    <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px;">
+                                                        <input type="checkbox" name="show_on_home" value="1" {% if project.show_on_home %}checked{% endif %}>
+                                                        Afficher sur l’Accueil
+                                                    </label>
+                                                    <select name="home_order">
+                                                        <option value="1" {% if project.home_order == 1 or not project.home_order %}selected{% endif %}>Position 1</option>
+                                                        <option value="2" {% if project.home_order == 2 %}selected{% endif %}>Position 2</option>
+                                                        <option value="3" {% if project.home_order == 3 %}selected{% endif %}>Position 3</option>
+                                                    </select>
+                                                </div>
+                                                <button type="submit" style="padding:8px; border:0; border-radius:8px; background:#22c55e; color:white; font-weight:700;">Enregistrer</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}
@@ -758,29 +917,40 @@
                                             {% else %}
                                                 <div class="project-cover-empty">Photo du projet</div>
                                             {% endif %}
+                                            <span class="project-cover-badge status-badge status-completed">Terminé</span>
                                         </div>
                                         <div class="project-body">
-                                        <div class="project-header">
-                                            <h3 class="project-title">{{ project.name }}</h3>
-                                            <span class="status-badge status-completed">Terminé</span>
-                                        </div>
-                                        <p class="project-desc">{{ project.description|truncatewords:15 }}</p>
-                                        <div class="project-meta">
-                                            <div class="project-meta-item">🏷 {{ project.get_branch_display }}</div>
-                                            <div class="project-meta-item">📅 {{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</div>
-                                            <div class="project-meta-item">👤 {{ project.manager.get_labeled_name }}</div>
-                                        </div>
-                                        <div class="project-footer" style="display:grid; gap:8px;">
-                                            <a class="btn-small" href="{% url 'project_detail' project.id %}" style="text-align: center; text-decoration: none;">Voir les détails</a>
-                                            {% if can_create_project %}
-                                            <form method="POST" style="margin:0;">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="reopen">
-                                                <input type="hidden" name="project_id" value="{{ project.id }}">
-                                                <button type="submit" class="btn-reopen">Réouvrir le projet</button>
-                                            </form>
+                                            <div class="project-header">
+                                                <h3 class="project-title">{{ project.name }}</h3>
+                                            </div>
+                                            {% if project.description %}
+                                                <p class="project-desc">{{ project.description|truncatewords:18 }}</p>
                                             {% endif %}
-                                        </div>
+                                            <div class="project-info">
+                                                <div class="project-info-row">
+                                                    <span class="project-info-label">Branche</span>
+                                                    <span class="project-info-value">{{ project.get_branch_display }}</span>
+                                                </div>
+                                                <div class="project-info-row">
+                                                    <span class="project-info-label">Période</span>
+                                                    <span class="project-info-value">{{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</span>
+                                                </div>
+                                                <div class="project-info-row">
+                                                    <span class="project-info-label">Suivi</span>
+                                                    <span class="project-info-value">{{ project.manager.get_display_name }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="project-footer">
+                                                <a class="btn-card-primary" href="{% url 'project_detail' project.id %}">Voir le projet</a>
+                                                {% if can_create_project %}
+                                                <form method="POST" style="margin:0;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="reopen">
+                                                    <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                    <button type="submit" class="btn-reopen">Réouvrir</button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                     {% endfor %}

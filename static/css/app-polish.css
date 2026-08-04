@@ -1201,12 +1201,13 @@ body {
 .project-item.is-urgent,
 .projects-page .project-item.is-urgent {
     border-color: #ef4444 !important;
-    background: linear-gradient(165deg, rgba(127, 29, 29, 0.72) 0%, #141416 48%) !important;
-    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5), 0 14px 32px rgba(220, 38, 38, 0.25) !important;
+    background: #141416 !important;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.55), 0 14px 32px rgba(220, 38, 38, 0.18) !important;
 }
 
 .project-item.is-urgent .status-badge.status-urgent,
-.status-badge.status-urgent {
+.status-badge.status-urgent,
+.project-cover-badge.status-urgent {
     background: #dc2626 !important;
     color: #ffffff !important;
     border: 1px solid #fca5a5 !important;
@@ -1215,7 +1216,7 @@ body {
 .current-project-card.is-urgent {
     border: 2px solid #ef4444 !important;
     box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.45), 0 18px 40px rgba(220, 38, 38, 0.22) !important;
-    background: linear-gradient(165deg, rgba(127, 29, 29, 0.55) 0%, var(--mw-surface, #111111) 45%) !important;
+    background: #111111 !important;
 }
 
 .current-project-status.is-urgent {
@@ -1231,12 +1232,30 @@ body {
 .project-detail-card.is-urgent {
     border: 2px solid #ef4444 !important;
     box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 16px 36px rgba(220, 38, 38, 0.18) !important;
-    background: linear-gradient(180deg, rgba(127, 29, 29, 0.35) 0%, #141416 40%) !important;
+    background: #141416 !important;
 }
 
 .project-detail-page .status-badge.status-urgent {
     background: #dc2626 !important;
     color: #ffffff !important;
+}
+
+.projects-page .project-info,
+.projects-page .project-info-row {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.projects-page .project-info-label {
+    color: #71717a !important;
+}
+
+.projects-page .project-info-value {
+    color: #e4e4e7 !important;
+}
+
+.projects-page .btn-card-primary {
+    background: #fde047 !important;
+    color: #111827 !important;
 }
 
 .create-project-btn,
