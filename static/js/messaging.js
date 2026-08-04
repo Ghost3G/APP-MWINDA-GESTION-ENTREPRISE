@@ -308,7 +308,7 @@ function loadConversations() {
     const separator = window.MESSAGING_URLS.conversations.includes('?') ? '&' : '?';
     const conversationsUrl = `${window.MESSAGING_URLS.conversations}${separator}_ts=${Date.now()}`;
 
-    fetch(conversationsUrl, {
+    return fetch(conversationsUrl, {
         credentials: 'same-origin',
         signal: conversationsAbort.signal,
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -327,6 +327,7 @@ function loadConversations() {
             const conversations = data.conversations || [];
             maybePlayUnreadSound(conversations);
             renderConversations(conversations);
+            return conversations;
         })
         .catch((error) => {
             if (error.name === 'AbortError') return;
@@ -336,6 +337,7 @@ function loadConversations() {
             if (list && !list.querySelector('.user-item')) {
                 list.innerHTML = '<div class="empty-state">Impossible de charger les contacts. Rechargez la page.</div>';
             }
+            return [];
         });
 }
 
@@ -654,7 +656,16 @@ function closeCallModal() {
 
 document.addEventListener('DOMContentLoaded', () => {
     refreshCsrfToken();
-    loadConversations();
+    const initialUserId = Number(new URLSearchParams(window.location.search).get('user') || 0);
+    loadConversations().then(() => {
+        if (!initialUserId || selectedUserId) return;
+        const item = document.querySelector(`.user-item[data-user-id="${initialUserId}"]`);
+        if (!item) return;
+        openUserChat(initialUserId, { currentTarget: item });
+        const url = new URL(window.location.href);
+        url.searchParams.delete('user');
+        window.history.replaceState({}, '', url.toString());
+    });
     conversationsPollTimer = setInterval(loadConversations, 15000);
 
     document.addEventListener('click', unlockMessageAudio, { once: true });

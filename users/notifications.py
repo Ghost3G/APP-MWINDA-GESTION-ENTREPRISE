@@ -57,7 +57,7 @@ def build_notification_feed(user, limit=30):
             'kind': 'message',
             'title': f'Message de {msg.sender.get_labeled_name()}',
             'body': preview,
-            'url': '/messaging/',
+            'url': f'/messaging/?user={msg.sender_id}',
             'is_read': msg.is_read,
             'created_at': msg.created_at,
         })

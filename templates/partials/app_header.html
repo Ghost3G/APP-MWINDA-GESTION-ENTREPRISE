@@ -190,14 +190,23 @@
 
     if (markBtn) {
         markBtn.addEventListener('click', async () => {
-            await fetch('{% url "notifications_mark_read" %}', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-            });
-            lastUnread = 0;
-            sessionStorage.setItem(STORAGE_KEY, '0');
-            setNagging(false);
-            loadFeed();
+            markBtn.disabled = true;
+            try {
+                const res = await fetch('{% url "notifications_mark_read" %}', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                lastUnread = 0;
+                sessionStorage.setItem(STORAGE_KEY, '0');
+                setNagging(false);
+                loadFeed();
+            } catch (e) {
+                console.error('notifications_mark_read error:', e);
+            } finally {
+                markBtn.disabled = false;
+            }
         });
     }
 
