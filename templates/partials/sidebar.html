@@ -35,10 +35,6 @@
             Finance
         </a>
         {% endif %}
-        <a href="{% url 'task_board' %}" class="nav-item {% if request.resolver_match.url_name == 'task_board' %}active{% endif %}">
-            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_tableau.svg' %}" alt=""></span>
-            Tableau
-        </a>
         <a href="{% url 'users_list' %}" class="nav-item {% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements
@@ -47,6 +43,12 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
             Présence
         </a>
+        {% if is_management or is_admin %}
+        <a href="{% url 'manage_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_tasks' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>
+            Tâches
+        </a>
+        {% endif %}
         <a href="{% url 'profile' %}" class="nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_profil.svg' %}" alt=""></span>
             Mon profil
