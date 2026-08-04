@@ -50,12 +50,15 @@ DIRECTOR_GRADES = {
     'ASSISTANT DIRECTEUR TECHNIQUE',
     'ASSISTANT DIRECTEUR FINANCIER',
     'RESPONSABLE COMMERCIAL',
+    'CHEF RESPONSABLE COMMERCIAL',
 }
 
 # Directeurs (leadership) — Hans (Comptable) est au département Finance
 # Michelle Bukebo : accès large sauf Finance (voir can_access_finance)
+# michael.kabale : même personne que le DG, 2e rôle Chef Responsable Commercial (même accès)
 DIRECTOR_USERNAMES = {
     'michael.ilunga',
+    'michael.kabale',
     'archirey.muhongaya',
     'ibrahim.japhete',
     'emmanuel.maki',
@@ -74,6 +77,19 @@ PERSONNEL = [
         'password': 'Ilunga2026',
         'is_superuser': True,
         'is_staff': True,
+    },
+    {
+        'username': 'michael.kabale',
+        'first_name': 'Michael',
+        'last_name': 'Kabale Ilunga',
+        'function': 'Chef Responsable Commercial',
+        'department': 'Direction Commercial',
+        'grade': 'CHEF RESPONSABLE COMMERCIAL',
+        'direction': 'branding',
+        'password': 'Kabale2026',
+        'is_superuser': True,
+        'is_staff': True,
+        'org_group': 'commercial',
     },
     {
         'username': 'archirey.muhongaya',

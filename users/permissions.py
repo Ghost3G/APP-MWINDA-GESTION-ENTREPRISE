@@ -9,8 +9,18 @@ PROJECT_MANAGER_USERNAMES = frozenset({
     'emmanuel.maki',     # Ass. Directeur Technique — Emmanuel Maki
 })
 
-# Responsable Commercial — accès large sauf Finance ; informée à chaque projet commercial
+# Responsables Commercial — notifiés à chaque projet avec agent commercial
+COMMERCIAL_LEAD_USERNAMES = frozenset({
+    'michelle.bukebo',   # Responsable Commercial (sans Finance)
+    'michael.kabale',    # Chef Responsable Commercial (= accès DG)
+})
+# Alias rétrocompatibilité
 COMMERCIAL_LEAD_USERNAME = 'michelle.bukebo'
+
+# Accès Finance retiré uniquement pour ces comptes (pas le Chef / DG)
+COMMERCIAL_NO_FINANCE_USERNAMES = frozenset({
+    'michelle.bukebo',
+})
 
 
 def is_admin_user(user):
@@ -31,14 +41,14 @@ def can_manage_projects(user):
 def is_commercial_lead(user):
     if not user or not user.is_authenticated:
         return False
-    return (user.username or '').strip().lower() == COMMERCIAL_LEAD_USERNAME
+    return (user.username or '').strip().lower() in COMMERCIAL_LEAD_USERNAMES
 
 
 def can_access_finance(user):
     """Direction + équipe Finance (comptable, etc.). Michelle Bukebo : exclue."""
     if not user or not user.is_authenticated:
         return False
-    if is_commercial_lead(user):
+    if (user.username or '').strip().lower() in COMMERCIAL_NO_FINANCE_USERNAMES:
         return False
     if is_management_user(user):
         return True
