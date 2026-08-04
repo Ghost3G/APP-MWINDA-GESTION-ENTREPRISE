@@ -101,8 +101,27 @@ def _parse_home_feature(post_data):
     return show, order
 
 
+def _next_free_home_order(exclude_project_id=None, preferred=1):
+    """Choisit une position Accueil libre (1–3), en préférant preferred si dispo."""
+    qs = Project.objects.filter(show_on_home=True)
+    if exclude_project_id:
+        qs = qs.exclude(pk=exclude_project_id)
+    taken = set(qs.values_list('home_order', flat=True))
+    preferred = max(1, min(HOME_FEATURED_MAX, int(preferred or 1)))
+    if preferred not in taken:
+        return preferred
+    for order in range(1, HOME_FEATURED_MAX + 1):
+        if order not in taken:
+            return order
+    return preferred
+
+
 def _apply_home_feature(project, show_on_home, home_order=1):
-    """Épingler / retirer un projet de l’Accueil (max 3). Retourne (ok, message_erreur)."""
+    """
+    Épingler / retirer un projet de l’Accueil (max 3 affichés).
+    Ne bloque jamais la création du projet : si l’Accueil est plein,
+    remplace uniquement la position demandée.
+    """
     if not show_on_home:
         if project.show_on_home or project.home_order:
             project.show_on_home = False
@@ -111,21 +130,29 @@ def _apply_home_feature(project, show_on_home, home_order=1):
         return True, None
 
     others = Project.objects.filter(show_on_home=True).exclude(pk=project.pk)
-    if not project.show_on_home and others.count() >= HOME_FEATURED_MAX:
-        return False, (
-            f"Maximum {HOME_FEATURED_MAX} projets sur l’Accueil. "
-            "Décochez un autre projet avant d’en ajouter un."
-        )
+    others_count = others.count()
+    preferred = max(1, min(HOME_FEATURED_MAX, int(home_order or 1)))
 
-    home_order = max(1, min(HOME_FEATURED_MAX, int(home_order or 1)))
-    Project.objects.filter(show_on_home=True, home_order=home_order).exclude(pk=project.pk).update(
-        show_on_home=False,
-        home_order=0,
-    )
+    if others_count >= HOME_FEATURED_MAX:
+        # Accueil plein : on remplace la position choisie (le projet reste créé).
+        Project.objects.filter(show_on_home=True, home_order=preferred).exclude(pk=project.pk).update(
+            show_on_home=False,
+            home_order=0,
+        )
+        final_order = preferred
+        note = (
+            f"L’Accueil est limité à {HOME_FEATURED_MAX} projets : "
+            f"la position {final_order} a été mise à jour."
+        )
+    else:
+        # Des places libres : on n’enlève personne, on prend un créneau libre.
+        final_order = _next_free_home_order(exclude_project_id=project.pk, preferred=preferred)
+        note = None
+
     project.show_on_home = True
-    project.home_order = home_order
+    project.home_order = final_order
     project.save(update_fields=['show_on_home', 'home_order'])
-    return True, None
+    return True, note
 
 
 def _resolve_home_project_cards(fallback_candidates, *, empty_title='Aucun projet en cours', empty_description=''):
@@ -815,10 +842,9 @@ def projects_list(request):
 
             if project_status != 'done':
                 show_on_home, home_order = _parse_home_feature(request.POST)
-                ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
-                if not ok:
-                    messages.error(request, feature_error)
-                    return redirect('projects_list')
+                ok, feature_note = _apply_home_feature(project, show_on_home, home_order)
+                if feature_note:
+                    messages.info(request, feature_note)
             else:
                 # Déjà retiré de l’Accueil ci-dessus
                 pass
@@ -869,12 +895,9 @@ def projects_list(request):
         )
 
         show_on_home, home_order = _parse_home_feature(request.POST)
-        ok, feature_error = _apply_home_feature(project, show_on_home, home_order)
-        if not ok:
-            messages.warning(
-                request,
-                f"Projet créé, mais non mis en avant sur l’Accueil : {feature_error}",
-            )
+        _ok, feature_note = _apply_home_feature(project, show_on_home, home_order)
+        if feature_note:
+            messages.info(request, feature_note)
 
         members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
         for stakeholder in (technical_director, manager, commercial_agent):
@@ -930,6 +953,7 @@ def projects_list(request):
         'is_management': request.user.is_superuser or request.user.role in ['admin', 'directeur'],
         'home_featured_max': HOME_FEATURED_MAX,
         'home_featured_count': Project.objects.filter(show_on_home=True).count(),
+        'home_next_order': _next_free_home_order(),
     }
     return render(request, 'projects.html', context)
 

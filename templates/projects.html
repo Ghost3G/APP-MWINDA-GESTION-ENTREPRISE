@@ -466,13 +466,17 @@
                                     Afficher sur l’Accueil
                                 </label>
                                 <div>
-                                    <label style="display:block; margin-bottom:6px; font-weight:600;">Position (1 à {{ home_featured_max }})</label>
+                                    <label style="display:block; margin-bottom:6px; font-weight:600;">Position Accueil (1 à {{ home_featured_max }})</label>
                                     <select name="home_order" style="width:100%;">
-                                        <option value="1">1 — en haut</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
+                                        <option value="1" {% if home_next_order == 1 %}selected{% endif %}>1 — en haut</option>
+                                        <option value="2" {% if home_next_order == 2 %}selected{% endif %}>2</option>
+                                        <option value="3" {% if home_next_order == 3 %}selected{% endif %}>3</option>
                                     </select>
-                                    <small class="field-hint">Max {{ home_featured_max }} projets ({{ home_featured_count }} déjà en avant)</small>
+                                    <small class="field-hint">
+                                        Créez autant de projets que vous voulez.
+                                        Seuls {{ home_featured_max }} apparaissent sur l’Accueil
+                                        ({{ home_featured_count }}/{{ home_featured_max }} en avant).
+                                    </small>
                                 </div>
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
