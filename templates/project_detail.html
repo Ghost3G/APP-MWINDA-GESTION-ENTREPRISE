@@ -68,7 +68,7 @@
         }
         .status-pending { background: #fef3c7; color: #92400e; }
         .status-progress { background: #dbeafe; color: #1e40af; }
-        .status-urgent { background: #fee2e2; color: #991b1b; }
+        .status-urgent { background: #dc2626 !important; color: #ffffff !important; }
         .status-awaiting_delivery { background: #ffedd5; color: #9a3412; }
         .status-done { background: #dcfce7; color: #166534; }
         .task-status-pending { background: #fef3c7; color: #92400e; }
@@ -173,7 +173,7 @@
                     {% endfor %}
                 {% endif %}
 
-                <div class="project-detail-card">
+                <div class="project-detail-card {% if project.status == 'urgent' %}is-urgent{% endif %}">
                     <h1 style="margin:0 0 8px 0;">{{ project.name }}</h1>
                     <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
                     <span class="status-badge" style="background:#fde047;color:#111827;margin-left:8px;">{{ project.get_branch_display }}</span>

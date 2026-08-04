@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, When
 from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
@@ -92,6 +92,7 @@ def _build_current_project_card(project, empty_title='Aucun projet en cours', em
             'title': empty_title,
             'description': empty_description or 'Aucun projet actif pour le moment.',
             'button_text': 'VOIR LES PROJETS',
+            'status': '',
             'status_display': '',
             'cover_url': '',
             'branch': '',
@@ -113,6 +114,7 @@ def _build_current_project_card(project, empty_title='Aucun projet en cours', em
         'title': project.name,
         'description': description or 'Aucune description.',
         'button_text': 'OUVRIR',
+        'status': project.status,
         'status_display': project.get_status_display(),
         'cover_url': project.cover_url,
         'branch': project.get_branch_display_label(),

@@ -173,9 +173,9 @@
         }
 
         .status-urgent {
-            background: #fee2e2;
-            color: #991b1b;
-            box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35);
+            background: #dc2626 !important;
+            color: #fff !important;
+            box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.55);
             font-weight: 800;
         }
 
@@ -186,8 +186,13 @@
         }
 
         .project-item.is-urgent {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35), 0 10px 24px rgba(239, 68, 68, 0.12);
+            border-color: #ef4444 !important;
+            background: linear-gradient(180deg, rgba(127, 29, 29, 0.55) 0%, rgba(17, 17, 17, 0.98) 42%) !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.55), 0 12px 28px rgba(220, 38, 38, 0.28) !important;
+        }
+
+        .project-item.is-urgent .project-title {
+            color: #fecaca !important;
         }
 
         .project-item.is-awaiting-delivery {
