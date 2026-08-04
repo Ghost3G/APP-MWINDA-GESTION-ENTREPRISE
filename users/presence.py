@@ -16,6 +16,16 @@ WORK_END = time(17, 0)
 WORK_START_HOUR = 8.0
 WORK_END_HOUR = 17.0
 
+FRENCH_MONTHS = (
+    '',
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+)
+
+
+def french_month_year(day):
+    return f'{FRENCH_MONTHS[day.month]} {day.year}'
+
 
 def _day_bounds(day):
     start = timezone.make_aware(datetime.combine(day, time.min))
@@ -170,8 +180,8 @@ def build_agent_monthly_sessions(agent, year, month):
         'month': month,
         'start_day': start_day,
         'end_day': end_day,
-        'month_label': f'{start_day.month:02d}/{year}',
-        'period_label': f'{start_day.strftime("%m/%Y")}',
+        'month_label': french_month_year(start_day),
+        'period_label': french_month_year(start_day),
         'sessions': sessions,
         'session_count': len(sessions),
         'present_days': len(present_days),

@@ -424,7 +424,8 @@ function renderCalendar() {
     const current = boardState.calendarDate;
     const year = current.getFullYear();
     const month = current.getMonth();
-    title.textContent = current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const monthLabel = current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    title.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
 
     const firstDay = new Date(year, month, 1);
     const startOffset = (firstDay.getDay() + 6) % 7;

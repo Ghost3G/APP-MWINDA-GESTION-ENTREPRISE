@@ -170,6 +170,14 @@ TIME_ZONE = 'Africa/Kinshasa'
 USE_I18N = True
 USE_TZ = True
 
+# Affichage des dates en français : jour / mois / année
+DATE_FORMAT = 'd/m/Y'
+DATETIME_FORMAT = 'd/m/Y H:i'
+SHORT_DATE_FORMAT = 'd/m/Y'
+SHORT_DATETIME_FORMAT = 'd/m/Y H:i'
+MONTH_DAY_FORMAT = 'j F'
+YEAR_MONTH_FORMAT = 'F Y'
+
 # ========================
 # FICHIERS STATIQUES (FIX CRITIQUE)
 # ========================

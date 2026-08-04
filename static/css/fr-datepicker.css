@@ -1,0 +1,261 @@
+/* Sélecteur de date français — JJ/MM/AAAA */
+
+.fr-dp {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 220px;
+    vertical-align: middle;
+}
+
+.fr-dp-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.fr-dp-display {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-right: 0;
+    border-radius: 8px 0 0 8px;
+    background: #fff;
+    color: #111827;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.fr-dp-display:focus {
+    outline: none;
+    border-color: #ca8a04;
+    box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.18);
+    z-index: 1;
+}
+
+.fr-dp-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    border: 1px solid #d1d5db;
+    border-radius: 0 8px 8px 0;
+    background: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+}
+
+.fr-dp-toggle:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.fr-dp.is-open .fr-dp-display,
+.fr-dp.is-open .fr-dp-toggle {
+    border-color: #ca8a04;
+}
+
+.fr-dp-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 80;
+    width: 288px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+
+.fr-dp-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.fr-dp-nav {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    color: #111827;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.fr-dp-selectors {
+    flex: 1;
+    display: flex;
+    gap: 6px;
+}
+
+.fr-dp-month,
+.fr-dp-year {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    color: #111827;
+    font: inherit;
+    font-size: 13px;
+}
+
+.fr-dp-weekdays,
+.fr-dp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.fr-dp-weekdays span {
+    padding: 6px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.fr-dp-day {
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #111827;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.fr-dp-day:not(.is-empty):hover {
+    background: #f3f4f6;
+}
+
+.fr-dp-day.is-empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.fr-dp-day.is-today {
+    box-shadow: inset 0 0 0 1px #ca8a04;
+}
+
+.fr-dp-day.is-selected {
+    background: #ca8a04;
+    color: #111827;
+    font-weight: 700;
+}
+
+.fr-dp-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.fr-dp-today,
+.fr-dp-clear {
+    border: 0;
+    background: transparent;
+    color: #374151;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 2px;
+}
+
+.fr-dp-today:hover,
+.fr-dp-clear:hover {
+    color: #111827;
+    text-decoration: underline;
+}
+
+/* Thèmes sombres (messagerie / finance / board) */
+.dark-shell .fr-dp-display,
+.finance-page .fr-dp-display,
+.board-page .fr-dp-display,
+.task-board-page .fr-dp-display,
+body.dark .fr-dp-display {
+    background: #18181b;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f4f4f5;
+}
+
+.dark-shell .fr-dp-toggle,
+.finance-page .fr-dp-toggle,
+.board-page .fr-dp-toggle,
+.task-board-page .fr-dp-toggle,
+body.dark .fr-dp-toggle {
+    background: #27272a;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+}
+
+.dark-shell .fr-dp-panel,
+.finance-page .fr-dp-panel,
+.board-page .fr-dp-panel,
+.task-board-page .fr-dp-panel,
+body.dark .fr-dp-panel {
+    background: #18181b;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f4f4f5;
+}
+
+.dark-shell .fr-dp-month,
+.dark-shell .fr-dp-year,
+.dark-shell .fr-dp-nav,
+.finance-page .fr-dp-month,
+.finance-page .fr-dp-year,
+.finance-page .fr-dp-nav,
+.board-page .fr-dp-month,
+.board-page .fr-dp-year,
+.board-page .fr-dp-nav,
+.task-board-page .fr-dp-month,
+.task-board-page .fr-dp-year,
+.task-board-page .fr-dp-nav,
+body.dark .fr-dp-month,
+body.dark .fr-dp-year,
+body.dark .fr-dp-nav {
+    background: #27272a;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f4f4f5;
+}
+
+.dark-shell .fr-dp-day,
+.finance-page .fr-dp-day,
+.board-page .fr-dp-day,
+.task-board-page .fr-dp-day,
+body.dark .fr-dp-day {
+    color: #f4f4f5;
+}
+
+.dark-shell .fr-dp-day:not(.is-empty):hover,
+.finance-page .fr-dp-day:not(.is-empty):hover,
+.board-page .fr-dp-day:not(.is-empty):hover,
+.task-board-page .fr-dp-day:not(.is-empty):hover,
+body.dark .fr-dp-day:not(.is-empty):hover {
+    background: rgba(255, 255, 255, 0.08);
+}
