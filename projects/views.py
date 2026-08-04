@@ -25,7 +25,7 @@ from .task_services import (
     notify_task_assignment,
 )
 from .assignment import ai_available, apply_smart_project_plan
-from .project_notifications import notify_commercial_on_project
+from .project_notifications import notify_commercial_on_project, notify_logistics_awaiting_delivery
 from reports.models import DailyReport
 from messaging.models import Message
 from django.contrib.auth import get_user_model
@@ -829,10 +829,19 @@ def projects_list(request):
                 project.show_on_home = False
                 project.home_order = 0
                 project.save(update_fields=['status', 'show_on_home', 'home_order'])
-                messages.success(
-                    request,
-                    f'Projet « {project.name} » passé en attente de livraison.',
-                )
+                notified = notify_logistics_awaiting_delivery(project, actor=request.user)
+                if notified:
+                    messages.success(
+                        request,
+                        f'Projet « {project.name} » passé en attente de livraison. '
+                        f'Logistique notifiée ({notified}).',
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f'Projet « {project.name} » passé en attente de livraison. '
+                        'Aucun compte Logistique actif à notifier.',
+                    )
             else:
                 project.status = 'progress'
                 project.save(update_fields=['status'])
@@ -870,11 +879,12 @@ def projects_list(request):
             project.description = description
             project.start_date = start_date
             project.end_date = end_date
+            previous_status = project.status
             project.status = project_status
             project.branch = branch
             project.commercial_agent = commercial_agent
 
-            if project_status == 'done':
+            if project_status in {'done', 'awaiting_delivery'}:
                 project.show_on_home = False
                 project.home_order = 0
 
@@ -894,14 +904,11 @@ def projects_list(request):
 
             project.save()
 
-            if project_status != 'done':
+            if project_status not in {'done', 'awaiting_delivery'}:
                 show_on_home, home_order = _parse_home_feature(request.POST)
                 ok, feature_note = _apply_home_feature(project, show_on_home, home_order)
                 if feature_note:
                     messages.info(request, feature_note)
-            else:
-                # Déjà retiré de l’Accueil ci-dessus
-                pass
 
             members = list(User.objects.filter(id__in=member_ids)) if member_ids else []
             for stakeholder in (project.technical_director, project.manager, commercial_agent):
@@ -909,7 +916,20 @@ def projects_list(request):
                     members.append(stakeholder)
             project.members.set(members)
             notify_commercial_on_project(project, actor=request.user, members=members)
-            messages.success(request, "Projet mis à jour.")
+            if project_status == 'awaiting_delivery' and previous_status != 'awaiting_delivery':
+                notified = notify_logistics_awaiting_delivery(project, actor=request.user)
+                if notified:
+                    messages.success(
+                        request,
+                        f'Projet mis à jour. Logistique notifiée ({notified}).',
+                    )
+                else:
+                    messages.success(
+                        request,
+                        'Projet mis à jour. Aucun compte Logistique actif à notifier.',
+                    )
+            else:
+                messages.success(request, "Projet mis à jour.")
             return redirect('projects_list')
 
         if not all([name, description, start_date, end_date]):

@@ -32,17 +32,23 @@ def build_notification_feed(user, limit=30):
     for notif in ProjectAssignmentNotification.objects.filter(user=user).select_related(
         'project', 'project__commercial_agent'
     )[:limit]:
-        if is_commercial_lead(user) and notif.project.commercial_agent_id:
+        if notif.notification_type == ProjectAssignmentNotification.TYPE_DELIVERY:
+            title = 'En attente de livraison'
+            body = notif.project.name
+            kind = 'delivery'
+        elif is_commercial_lead(user) and notif.project.commercial_agent_id:
             agent = notif.project.commercial_agent
             agent_label = agent.get_labeled_name() if agent else 'Commercial'
             title = 'Commercial affecté'
             body = f'{notif.project.name} — {agent_label}'
+            kind = 'project'
         else:
             title = 'Nouveau projet'
             body = notif.project.name
+            kind = 'project'
         items.append({
             'id': f'project-{notif.id}',
-            'kind': 'project',
+            'kind': kind,
             'title': title,
             'body': body,
             'url': f'/projects/{notif.project_id}/',

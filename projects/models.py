@@ -145,6 +145,13 @@ class AgentTimeEntry(models.Model):
 
 
 class ProjectAssignmentNotification(models.Model):
+    TYPE_ASSIGNMENT = 'assignment'
+    TYPE_DELIVERY = 'delivery'
+    TYPE_CHOICES = (
+        (TYPE_ASSIGNMENT, 'Affectation'),
+        (TYPE_DELIVERY, 'Livraison'),
+    )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -155,15 +162,21 @@ class ProjectAssignmentNotification(models.Model):
         on_delete=models.CASCADE,
         related_name='assignment_notifications',
     )
+    notification_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default=TYPE_ASSIGNMENT,
+        db_index=True,
+    )
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'project')
+        unique_together = ('user', 'project', 'notification_type')
         ordering = ('-created_at',)
 
     def __str__(self):
-        return f"{self.user.username} assigned to {self.project.name}"
+        return f"{self.user.username} · {self.notification_type} · {self.project.name}"
 
 
 class TaskAssignmentNotification(models.Model):
