@@ -979,14 +979,24 @@ def projects_list(request):
     ).update(is_read=True)
 
     # Séparer actifs / terminés pour l’affichage (sauf filtre statut explicite)
+    # Les urgences remontent en tête pour être immédiatement visibles.
+    urgency_order = Case(
+        When(status='urgent', then=0),
+        default=1,
+        output_field=IntegerField(),
+    )
     if status == 'done':
         active_projects = Project.objects.none()
         completed_projects = projects
     elif status:
-        active_projects = projects
+        active_projects = projects.annotate(_urgency_rank=urgency_order).order_by('_urgency_rank', 'created_at', 'id')
         completed_projects = Project.objects.none()
     else:
-        active_projects = projects.exclude(status='done')
+        active_projects = (
+            projects.exclude(status='done')
+            .annotate(_urgency_rank=urgency_order)
+            .order_by('_urgency_rank', 'created_at', 'id')
+        )
         completed_projects = projects.filter(status='done')
 
     completed_by_month = _group_completed_projects_by_month(completed_projects)
