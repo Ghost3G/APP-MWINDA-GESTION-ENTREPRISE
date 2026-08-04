@@ -139,6 +139,17 @@ PERSONNEL = [
         'org_group': 'design_communication',
     },
     {
+        'username': 'david.kabamba',
+        'first_name': 'David',
+        'last_name': 'Kabamba',
+        'function': 'Architecte intérieur',
+        'department': 'Design et Communication',
+        'grade': 'AGENT',
+        'direction': 'branding',
+        'password': 'Kabamba2026',
+        'org_group': 'design_communication',
+    },
+    {
         'username': 'christenvie.bitumba',
         'first_name': 'Christenvie',
         'last_name': 'Besomono Bitumba',
