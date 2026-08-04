@@ -63,6 +63,23 @@ def csrf_token_view(request):
 @login_required
 @ensure_csrf_cookie
 def messaging_view(request):
+    # Ouverture depuis la cloche : /messaging/?user=<id>
+    # Marque immédiatement comme lus les messages du contact ciblé,
+    # afin que le compteur de notifications soit cohérent dès le rendu.
+    target_user_id = request.GET.get('user')
+    if target_user_id:
+        try:
+            other_user = User.objects.get(id=int(target_user_id), is_active=True)
+        except (TypeError, ValueError, User.DoesNotExist):
+            other_user = None
+        if other_user:
+            Message.objects.filter(
+                sender=other_user,
+                receiver=request.user,
+                is_read=False,
+                message_type='text',
+            ).update(is_read=True)
+
     users = User.objects.exclude(id=request.user.id).filter(is_active=True).order_by('first_name', 'username')
     initial_conversations = []
 
