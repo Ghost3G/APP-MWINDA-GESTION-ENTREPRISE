@@ -17,6 +17,11 @@ COMMERCIAL_LEAD_USERNAMES = frozenset({
 # Alias rétrocompatibilité
 COMMERCIAL_LEAD_USERNAME = 'michelle.bukebo'
 
+# Agents Logistique — notifiés quand un projet passe en attente de livraison
+LOGISTICS_NOTIFY_USERNAMES = frozenset({
+    'joseph.mbuyu',  # Joseph Mbuyu — Agent Logistique
+})
+
 # Accès Finance retiré uniquement pour ces comptes (pas le Chef / DG)
 COMMERCIAL_NO_FINANCE_USERNAMES = frozenset({
     'michelle.bukebo',
