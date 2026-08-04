@@ -45,6 +45,45 @@ def _format_seconds(total_seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
+FRENCH_MONTHS = (
+    '',
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+)
+
+
+def _group_completed_projects_by_month(projects):
+    """Regroupe les projets terminés par mois (date de fin), plus récents d’abord."""
+    ordered = list(projects.order_by('-end_date', '-id'))
+    groups = []
+    index = {}
+    for project in ordered:
+        end = project.end_date
+        if end:
+            key = f'{end.year}-{end.month:02d}'
+            label = f'{FRENCH_MONTHS[end.month]} {end.year}'
+            sort_key = (end.year, end.month)
+        else:
+            key = 'sans-date'
+            label = 'Sans date de fin'
+            sort_key = (0, 0)
+        if key not in index:
+            index[key] = len(groups)
+            groups.append({
+                'key': key,
+                'label': label,
+                'sort_key': sort_key,
+                'projects': [],
+            })
+        groups[index[key]]['projects'].append(project)
+
+    groups.sort(key=lambda item: item['sort_key'], reverse=True)
+    for group in groups:
+        group['count'] = len(group['projects'])
+        group.pop('sort_key', None)
+    return groups
+
+
 def _build_current_project_card(project, empty_title='Aucun projet en cours', empty_description='', kicker='Projet en cours'):
     """Payload Accueil : aperçu + photo du projet en cours."""
     if not project:
@@ -946,12 +985,17 @@ def projects_list(request):
         completed_projects = Project.objects.none()
     else:
         active_projects = projects.exclude(status='done')
-        completed_projects = projects.filter(status='done').order_by('-end_date', '-id')
+        completed_projects = projects.filter(status='done')
+
+    completed_by_month = _group_completed_projects_by_month(completed_projects)
+    completed_total = sum(group['count'] for group in completed_by_month)
 
     context = {
         'projects': projects,
         'active_projects': active_projects,
         'completed_projects': completed_projects,
+        'completed_by_month': completed_by_month,
+        'completed_total': completed_total,
         'status_choices': Project.STATUS_CHOICES,
         'branch_choices': TECH_BRANCH_CHOICES,
         'tech_department_label': TECH_DEPARTMENT_LABEL,
