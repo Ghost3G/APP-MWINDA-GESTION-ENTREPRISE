@@ -11,6 +11,11 @@ python manage.py migrate --noinput
 echo "[release] Vérification compte admin (sans écraser le mot de passe)..."
 python manage.py create_admin
 
+echo "[release] Synchronisation profils direction / noms agents (sans toucher aux mots de passe)..."
+python manage.py ensure_archirey_muwonga || true
+python manage.py ensure_hans_mangi || true
+python manage.py ensure_agent_display_names || true
+
 # Optionnel : une seule fois, mettre ALLOW_DEMO_SEED=1 dans Render Environment puis redeploy,
 # puis retirer la variable (évite de réécrire les mots de passe à chaque deploy).
 if [ "${ALLOW_DEMO_SEED:-}" = "1" ] || [ "${ALLOW_DEMO_SEED:-}" = "true" ] || [ "${ALLOW_DEMO_SEED:-}" = "yes" ]; then
