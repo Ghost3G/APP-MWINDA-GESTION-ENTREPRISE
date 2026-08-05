@@ -59,7 +59,7 @@ DIRECTOR_GRADES = {
 DIRECTOR_USERNAMES = {
     'michael.ilunga',
     'michael.kabale',
-    'archirey.muhongaya',
+    'archirey.muwunga',
     'ibrahim.japhete',
     'emmanuel.maki',
     'michelle.bukebo',
@@ -92,14 +92,15 @@ PERSONNEL = [
         'org_group': 'commercial',
     },
     {
-        'username': 'archirey.muhongaya',
+        'username': 'archirey.muwunga',
         'first_name': 'Archirey',
-        'last_name': 'Mowunga',
+        'last_name': 'Muwunga',
         'function': 'Directeur Financier et Administratif',
         'department': 'Direction Administratif et Financier',
         'grade': 'DIRECTEUR FINANCIER',
         'direction': 'design_rd_innovation',
-        'password': 'Muhongaya2026',
+        'password': 'Muwunga2026',
+        'org_group': 'finance',
     },
     {
         'username': 'ibrahim.japhete',
