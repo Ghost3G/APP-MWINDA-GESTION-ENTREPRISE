@@ -35,6 +35,7 @@
 </header>
 {% if request.user.is_authenticated %}
     {% include "partials/deadline_ticker.html" %}
+    {% include "partials/logout_countdown_banner.html" %}
 {% endif %}
 <script>
 (() => {

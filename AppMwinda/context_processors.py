@@ -10,6 +10,16 @@ def app_notifications(request):
             'is_finance': False,
             'current_user_profile': None,
             'project_deadline_alerts': [],
+            'agent_logout_warning': {
+                'enabled': False,
+                'active': False,
+                'warn_label': '17:30',
+                'logout_label': '18:00',
+                'seconds_remaining': 0,
+                'server_now_iso': '',
+                'logout_at_iso': '',
+                'warn_at_iso': '',
+            },
         }
 
     from datetime import timedelta
@@ -21,6 +31,7 @@ def app_notifications(request):
     from messaging.models import Message
     from projects.models import Project, ProjectAssignmentNotification, TaskAssignmentNotification
     from users.permissions import is_admin_user, is_management_user, can_access_finance
+    from users.presence import agent_logout_warning_payload
 
     unread_messages_count = 0
     unread_project_assignments = 0
@@ -31,6 +42,7 @@ def app_notifications(request):
     is_management = is_management_user(user)
     is_admin = is_admin_user(user)
     is_finance = can_access_finance(user)
+    agent_logout_warning = agent_logout_warning_payload(user)
 
     try:
         unread_messages_count = (
@@ -108,6 +120,7 @@ def app_notifications(request):
         'is_admin': is_admin,
         'is_finance': is_finance,
         'project_deadline_alerts': project_deadline_alerts,
+        'agent_logout_warning': agent_logout_warning,
         'current_user_profile': {
             'display_name': user.get_labeled_name(),
             'short_name': user.get_display_name(),

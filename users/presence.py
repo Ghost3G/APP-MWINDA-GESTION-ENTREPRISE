@@ -12,11 +12,13 @@ from .models import AuditLog
 
 ILLUSTRATION_PATH = '/presence/illustration/'
 WORK_START = time(8, 30)
-WORK_END = time(17, 30)
+WORK_END = time(18, 0)
+WORK_WARN = time(17, 30)  # Alerte 30 min avant déconnexion auto
 WORK_START_HOUR = 8.5
-WORK_END_HOUR = 17.5
+WORK_END_HOUR = 18.0
 WORK_START_LABEL = '08:30'
-WORK_END_LABEL = '17:30'
+WORK_END_LABEL = '18:00'
+WORK_WARN_LABEL = '17:30'
 
 FRENCH_MONTHS = (
     '',
@@ -161,7 +163,7 @@ def build_sessions(*, start, end, user=None):
 
 def build_presence_sessions(selected_date):
     """Liste des sessions de connexion pour une journée."""
-    # Complète automatiquement les départs agents à 17h30 si la journée est close.
+    # Complète automatiquement les départs agents à 18h00 si la journée est close.
     close_open_agent_sessions_for_day(selected_date)
     start, end = _day_bounds(selected_date)
     return build_sessions(start=start, end=end)
@@ -171,8 +173,12 @@ def work_end_datetime(day):
     return timezone.make_aware(datetime.combine(day, WORK_END))
 
 
+def work_warn_datetime(day):
+    return timezone.make_aware(datetime.combine(day, WORK_WARN))
+
+
 def is_presence_auto_close_target(user):
-    """Agents uniquement — les directeurs / admin restent connectés après 17h30."""
+    """Agents uniquement — les directeurs / admin restent connectés après 18h00."""
     if not user:
         return False
     if getattr(user, 'is_superuser', False):
@@ -204,17 +210,17 @@ def _close_agent_time_entries(user, closed_at):
 
 
 def _workday_login_cutoff(day):
-    """Les connexions après 17h30 sont hors journée : on ne les écrase pas."""
+    """Les connexions après 18h00 sont hors journée : on ne les écrase pas."""
     return work_end_datetime(day)
 
 
 def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
     """
-    Complète la présence : ajoute un départ à 17h30 pour chaque connexion
+    Complète la présence : ajoute un départ à 18h00 pour chaque connexion
     de la journée de travail encore ouverte.
 
     Ne supprime jamais les login/logout existants (arrivées et départs réels conservés).
-    Ne touche pas aux connexions démarrées après 17h30 (soir / consultation).
+    Ne touche pas aux connexions démarrées après 18h00 (soir / consultation).
     """
     if not is_presence_auto_close_target(user):
         return False
@@ -230,7 +236,7 @@ def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
     if day == local_now.date() and local_now.time() < WORK_END:
         return False
 
-    # Uniquement les connexions de la plage 00:00 → 17h30 (journée de travail).
+    # Uniquement les connexions de la plage 00:00 → 18h00 (journée de travail).
     workday_logins = list(
         AuditLog.objects.filter(
             user=user,
@@ -325,9 +331,9 @@ def close_open_agent_sessions_for_day(day=None):
 
 def agent_still_in_workday_session(user, day=None):
     """
-    True si la dernière connexion du jour a commencé avant 17h30
+    True si la dernière connexion du jour a commencé avant 18h00
     (session de travail à clôturer / déconnecter).
-    False si pas de connexion, ou reconnexion après 17h30.
+    False si pas de connexion, ou reconnexion après 18h00.
     """
     if not is_presence_auto_close_target(user):
         return False
@@ -350,12 +356,48 @@ def agent_still_in_workday_session(user, day=None):
 
 
 def should_force_agent_logout_now(user):
-    """Déconnecte seulement une session de travail encore active après 17h30."""
+    """Déconnecte seulement une session de travail encore active après 18h00."""
     if not is_presence_auto_close_target(user):
         return False
     if timezone.localtime().time() < WORK_END:
         return False
     return agent_still_in_workday_session(user)
+
+
+def agent_logout_warning_payload(user=None):
+    """
+    Données pour l'alerte UI : visible dès 17h30, déconnexion à 18h00.
+    """
+    if user is not None and not is_presence_auto_close_target(user):
+        return {
+            'enabled': False,
+            'active': False,
+            'warn_label': WORK_WARN_LABEL,
+            'logout_label': WORK_END_LABEL,
+            'seconds_remaining': 0,
+            'server_now_iso': timezone.localtime().isoformat(),
+            'logout_at_iso': '',
+            'warn_at_iso': '',
+        }
+
+    local_now = timezone.localtime()
+    day = local_now.date()
+    warn_at = work_warn_datetime(day)
+    logout_at = work_end_datetime(day)
+    seconds_remaining = max(0, int((logout_at - local_now).total_seconds()))
+    active = local_now >= warn_at and local_now < logout_at and (
+        user is None or agent_still_in_workday_session(user, day=day)
+    )
+    return {
+        'enabled': True,
+        'active': active,
+        'warn_label': WORK_WARN_LABEL,
+        'logout_label': WORK_END_LABEL,
+        'seconds_remaining': seconds_remaining,
+        'server_now_iso': local_now.isoformat(),
+        'logout_at_iso': logout_at.isoformat(),
+        'warn_at_iso': warn_at.isoformat(),
+    }
 
 
 def build_agent_monthly_sessions(agent, year, month):

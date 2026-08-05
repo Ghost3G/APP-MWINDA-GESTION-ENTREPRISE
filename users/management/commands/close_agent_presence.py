@@ -1,5 +1,5 @@
 """
-Clôture automatique des sessions agents à 17h30 (présence).
+Clôture automatique des sessions agents à 18h00 (présence).
 
 Usage :
   python manage.py close_agent_presence

@@ -45,7 +45,7 @@ class AuditLogMiddleware:
 class AgentSessionWorkdayMiddleware:
     """
     Empêche l'expiration de session des agents pendant la journée de travail.
-    Une connexion du matin reste valide jusqu'à la clôture (17h30),
+    Une connexion du matin reste valide jusqu'à la clôture (18h00),
     même sans activité.
     """
 
@@ -61,8 +61,7 @@ class AgentSessionWorkdayMiddleware:
             if is_presence_auto_close_target(user):
                 local_now = timezone.localtime()
                 work_end_dt = timezone.make_aware(datetime.combine(local_now.date(), WORK_END))
-                # Laisser une petite marge pour que la requête de 17h30
-                # puisse déclencher la déconnexion automatique métier.
+                # Petite marge pour que la requête de 18h00 déclenche la déconnexion métier.
                 keep_until = int((work_end_dt - local_now).total_seconds()) + 300
                 if keep_until > 0:
                     request.session.set_expiry(keep_until)
@@ -72,7 +71,7 @@ class AgentSessionWorkdayMiddleware:
 
 class AgentWorkEndLogoutMiddleware:
     """
-    À partir de 17h30 (Africa/Kinshasa) : déconnecte les agents,
+    À partir de 18h00 (Africa/Kinshasa) : déconnecte les agents,
     complète leur présence, laisse les directeurs connectés.
     """
 
@@ -98,8 +97,7 @@ class AgentWorkEndLogoutMiddleware:
                 should_force_agent_logout_now,
             )
 
-            # Clôture la fiche présence (départ 17h30) sans effacer les connexions du jour.
-            # Déconnecte uniquement si la session Django est encore celle de la journée de travail.
+            # Clôture la fiche présence (départ 18h00) sans effacer les connexions du jour.
             if should_force_agent_logout_now(user):
                 close_open_session_for_user(user, day=timezone.localdate())
                 logout(request)

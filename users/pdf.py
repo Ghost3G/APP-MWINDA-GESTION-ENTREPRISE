@@ -140,7 +140,7 @@ def build_presence_monthly_pdf(payload) -> bytes:
     small = ParagraphStyle('PresSmall', parent=styles['Normal'], fontSize=8, leading=11)
 
     work_start = payload.get('work_start') or rhythm.get('work_start_label') or '08:30'
-    work_end = payload.get('work_end') or rhythm.get('work_end_label') or '17:30'
+    work_end = payload.get('work_end') or rhythm.get('work_end_label') or '18:00'
 
     story = [
         Paragraph('Agence Mwinda — Liste de présence', title),
