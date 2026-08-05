@@ -1,25 +1,32 @@
 """
-Crée / corrige le compte Archirey Muwunga
+Crée / corrige le compte Archirey Muwonga
 (Directeur Financier et Administratif).
 
-Migre aussi l'ancien identifiant archirey.muhongaya si présent.
+Migre aussi les anciens identifiants :
+  - archirey.muhongaya
+  - archirey.muwunga
+  - archirey.mowunga
 
 Usage Render Shell :
-  python manage.py ensure_archirey_muwunga
-  python manage.py ensure_archirey_muwunga --reset-password
+  python manage.py ensure_archirey_muwonga
+  python manage.py ensure_archirey_muwonga --reset-password
 """
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-USERNAME = 'archirey.muwunga'
-LEGACY_USERNAMES = ('archirey.muhongaya', 'archirey.mowunga')
-DEFAULT_PASSWORD = 'Muwunga2026'
+USERNAME = 'archirey.muwonga'
+LEGACY_USERNAMES = (
+    'archirey.muhongaya',
+    'archirey.muwunga',
+    'archirey.mowunga',
+)
+DEFAULT_PASSWORD = 'Muwonga2026'
 
 
 class Command(BaseCommand):
-    help = "Assure / corrige le compte archirey.muwunga (Directeur Financier et Administratif)."
+    help = "Assure / corrige le compte archirey.muwonga (Directeur Financier et Administratif)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -39,9 +46,9 @@ class Command(BaseCommand):
         reset = options['reset_password']
 
         defaults = {
-            'email': 'archirey.muwunga@agencemwinda.com',
+            'email': 'archirey.muwonga@agencemwinda.com',
             'first_name': 'Archirey',
-            'last_name': 'Muwunga',
+            'last_name': 'Muwonga',
             'role': 'directeur',
             'org_group': 'finance',
             'direction': 'design_rd_innovation',
@@ -102,6 +109,6 @@ class Command(BaseCommand):
             ))
 
         self.stdout.write(
-            'Profil : Archirey Muwunga / Directeur Financier et Administratif '
+            'Profil : Archirey Muwonga / Directeur Financier et Administratif '
             '(département Finance, rôle directeur).'
         )
