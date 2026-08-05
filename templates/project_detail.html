@@ -52,6 +52,11 @@
             font-size: 13px;
             color: #111827;
         }
+        .member-competency {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 600;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 16px;
@@ -223,7 +228,10 @@
                     <h3 style="margin: 18px 0 6px 0;">Membres assignés</h3>
                     <div class="members-wrap">
                         {% for member in project.members.all %}
-                            <span class="member-chip">{{ member.get_labeled_name }}</span>
+                            <span class="member-chip">
+                                {{ member.get_labeled_name }}
+                                <span class="member-competency">· {{ member.get_competency_profile_display }}</span>
+                            </span>
                         {% empty %}
                             <span style="color:#a1a1aa;">Aucun membre assigné.</span>
                         {% endfor %}
@@ -243,7 +251,7 @@
                                 <select name="assigned_to_id" required>
                                     <option value="">— Choisir —</option>
                                     {% for member in project_members %}
-                                        <option value="{{ member.id }}">{{ member.get_labeled_name }} ({{ member.get_direction_display }})</option>
+                                        <option value="{{ member.id }}">{{ member.get_labeled_name }} ({{ member.get_competency_profile_display }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -280,7 +288,7 @@
                                 <label>Agent (modèle)</label>
                                 <select name="assigned_to_id" required>
                                     {% for member in project_members %}
-                                        <option value="{{ member.id }}">{{ member.get_labeled_name }}</option>
+                                        <option value="{{ member.id }}">{{ member.get_labeled_name }} ({{ member.get_competency_profile_display }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -307,7 +315,10 @@
                     {% for group in tasks_by_member %}
                     <div class="member-task-block">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                            <strong>{{ group.member.get_labeled_name }}</strong>
+                            <strong>
+                                {{ group.member.get_labeled_name }}
+                                <span class="member-competency">· {{ group.member.get_competency_profile_display }}</span>
+                            </strong>
                             <span style="color:#a1a1aa; font-size:13px;">
                                 {{ group.done }}/{{ group.tasks|length }} terminées
                                 · {{ group.in_progress }} en cours · {{ group.pending }} à faire

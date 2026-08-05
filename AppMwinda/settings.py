@@ -96,6 +96,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.AgentSessionWorkdayMiddleware',
     'users.middleware.AuditLogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'users.middleware.AgentWorkEndLogoutMiddleware',

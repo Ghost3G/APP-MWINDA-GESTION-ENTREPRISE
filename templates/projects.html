@@ -718,7 +718,7 @@
                             <label style="display: block; margin-bottom: 8px; font-weight: 600;"><strong>Équipe technique</strong></label>
                             <select id="members" name="members" multiple style="width: 100%; margin: 0 0 12px; min-height: 100px;">
                                 {% for user in available_users %}
-                                    <option value="{{ user.id }}">{{ user.get_labeled_name }} — {{ user.get_direction_display }}</option>
+                                    <option value="{{ user.id }}">{{ user.get_labeled_name }} — {{ user.get_competency_profile_display }}</option>
                                 {% endfor %}
                             </select>
                             <button type="submit" class="btn-create-project">Créer le projet</button>
@@ -852,7 +852,7 @@
                                                 </select>
                                                 <select name="members" multiple size="4" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                                     {% for user in available_users %}
-                                                        <option value="{{ user.id }}" {% if user in project.members.all %}selected{% endif %}>{{ user.get_labeled_name }}</option>
+                                                        <option value="{{ user.id }}" {% if user in project.members.all %}selected{% endif %}>{{ user.get_labeled_name }} — {{ user.get_competency_profile_display }}</option>
                                                     {% endfor %}
                                                 </select>
                                                 <div>

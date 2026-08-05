@@ -24,7 +24,7 @@ from .task_services import (
     update_project_task,
     notify_task_assignment,
 )
-from .assignment import ai_available, apply_smart_project_plan
+from .assignment import ai_available, apply_member_competency_tasks, apply_smart_project_plan
 from .project_notifications import notify_commercial_on_project, notify_logistics_awaiting_delivery
 from reports.models import DailyReport
 from messaging.models import Message
@@ -866,6 +866,7 @@ def projects_list(request):
         if action == 'update':
             project_id = request.POST.get('project_id', '').strip()
             project = get_object_or_404(Project, id=project_id)
+            previous_member_ids = set(project.members.values_list('id', flat=True))
             if not all([name, description, start_date, end_date]):
                 messages.error(request, "Tous les champs du projet sont requis.")
                 return redirect('projects_list')
@@ -915,6 +916,11 @@ def projects_list(request):
                 if stakeholder and stakeholder not in members:
                     members.append(stakeholder)
             project.members.set(members)
+            added_members = [member for member in members if member.id not in previous_member_ids]
+            added_tasks = 0
+            for member in added_members:
+                result = apply_member_competency_tasks(project, member, actor=request.user, use_ai=True)
+                added_tasks += int((result or {}).get('created') or 0)
             notify_commercial_on_project(project, actor=request.user, members=members)
             if project_status == 'awaiting_delivery' and previous_status != 'awaiting_delivery':
                 notified = notify_logistics_awaiting_delivery(project, actor=request.user)
@@ -929,7 +935,13 @@ def projects_list(request):
                         'Projet mis à jour. Aucun compte Logistique actif à notifier.',
                     )
             else:
-                messages.success(request, "Projet mis à jour.")
+                if added_tasks:
+                    messages.success(
+                        request,
+                        f"Projet mis à jour. {added_tasks} tâche(s) créée(s) selon la compétence des nouveaux agents.",
+                    )
+                else:
+                    messages.success(request, "Projet mis à jour.")
             return redirect('projects_list')
 
         if not all([name, description, start_date, end_date]):
@@ -979,6 +991,10 @@ def projects_list(request):
                 members.append(stakeholder)
         project.members.set(members)
         plan_result = ensure_project_tasks(project, actor=request.user, use_ai=True)
+        competency_created = 0
+        for member in members:
+            result = apply_member_competency_tasks(project, member, actor=request.user, use_ai=True)
+            competency_created += int((result or {}).get('created') or 0)
         notify_commercial_on_project(project, actor=request.user, members=members)
 
         created_n = (plan_result or {}).get('created') or 0
@@ -987,7 +1003,7 @@ def projects_list(request):
             via = 'IA' if source == 'ai' else 'règles métier'
             messages.success(
                 request,
-                f"Projet créé avec succès. {created_n} tâche(s) planifiée(s) automatiquement ({via}).",
+                f"Projet créé avec succès. {created_n + competency_created} tâche(s) planifiée(s) automatiquement ({via}).",
             )
         else:
             messages.success(request, "Projet créé avec succès.")

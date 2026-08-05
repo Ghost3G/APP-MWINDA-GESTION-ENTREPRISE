@@ -23,6 +23,24 @@ from .task_services import (
 
 User = get_user_model()
 
+COMPETENCY_TASK_TEMPLATES = {
+    'commercial': [
+        'Brief commercial / suivi client',
+        'Validation besoins client',
+        'Suivi relation client',
+    ],
+    'finance': [
+        'Suivi budget projet',
+        'Contrôle coûts et devis',
+        'Validation facturation projet',
+    ],
+    'logistique': [
+        'Préparation logistique projet',
+        'Planification livraison / transport',
+        'Contrôle livraison finale',
+    ],
+}
+
 # Mots-clés tâche → profils ciblés
 TASK_KEYWORD_PROFILES = (
     (('commercial', 'client', 'brief branding', 'validation client', 'devis commercial'), ('commercial',)),
@@ -89,6 +107,17 @@ def _required_profiles_for_task(title: str, project_branch: str):
     if not profiles and project_branch:
         profiles = [project_branch]
     return tuple(dict.fromkeys(profiles))
+
+
+def _member_primary_profile(member, project_branch):
+    competency = (getattr(member, 'competency_profile', 'auto') or 'auto').strip().lower()
+    if competency != 'auto':
+        return competency
+
+    org = (getattr(member, 'org_group', '') or '').strip().lower()
+    if org in {'commercial', 'finance', 'logistique'}:
+        return org
+    return normalize_branch(getattr(member, 'direction', None) or project_branch)
 
 
 def _user_matches_any_profile(user, profiles):
@@ -394,6 +423,56 @@ def apply_smart_project_plan(project, actor=None, use_ai=True, replace_empty_onl
             'Aucune nouvelle tâche à créer (plan déjà couvert).'
         ),
     }
+
+
+def apply_member_competency_tasks(project, member, *, actor=None, use_ai=True):
+    """
+    À l'ajout d'un agent dans un projet, crée des tâches alignées
+    à sa compétence principale (sans dupliquer les titres).
+    """
+    if project.tasks.filter(assigned_to=member).exists():
+        return {'created': 0, 'source': 'existing'}
+
+    project_branch = normalize_branch(getattr(project, 'branch', None) or 'metal_design')
+    profile = _member_primary_profile(member, project_branch)
+
+    if profile in COMPETENCY_TASK_TEMPLATES:
+        existing_titles = set(project.tasks.values_list('title', flat=True))
+        created = 0
+        for title in COMPETENCY_TASK_TEMPLATES[profile]:
+            if title in existing_titles:
+                continue
+            create_project_task(
+                project,
+                member,
+                title,
+                department=resolve_task_branch(project, member, project_branch),
+                actor=actor,
+                notify=True,
+            )
+            existing_titles.add(title)
+            created += 1
+        return {'created': created, 'source': 'competency_rules', 'profile': profile}
+
+    # Profils techniques / design: plan IA/règles contraint sur ce seul membre.
+    plan, source = build_assignment_plan(project, use_ai=use_ai, members=[member])
+    existing_titles = set(project.tasks.values_list('title', flat=True))
+    created = 0
+    for item in plan:
+        title = item['title']
+        if title in existing_titles:
+            continue
+        create_project_task(
+            project,
+            member,
+            title,
+            department=item.get('department'),
+            actor=actor,
+            notify=True,
+        )
+        existing_titles.add(title)
+        created += 1
+    return {'created': created, 'source': source, 'profile': profile}
 
 
 def ai_available():

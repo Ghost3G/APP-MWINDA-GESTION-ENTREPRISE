@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from .security import write_audit_log
 
 # Endpoints à haute fréquence : on évite le bruit dans l'audit générique
@@ -38,6 +40,34 @@ class AuditLogMiddleware:
                 metadata={"status_code": response.status_code},
             )
         return response
+
+
+class AgentSessionWorkdayMiddleware:
+    """
+    Empêche l'expiration de session des agents pendant la journée de travail.
+    Une connexion du matin reste valide jusqu'à la clôture (17h30),
+    même sans activité.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, 'user', None)
+        if user is not None and getattr(user, 'is_authenticated', False):
+            from django.utils import timezone
+            from .presence import WORK_END, is_presence_auto_close_target
+
+            if is_presence_auto_close_target(user):
+                local_now = timezone.localtime()
+                work_end_dt = timezone.make_aware(datetime.combine(local_now.date(), WORK_END))
+                # Laisser une petite marge pour que la requête de 17h30
+                # puisse déclencher la déconnexion automatique métier.
+                keep_until = int((work_end_dt - local_now).total_seconds()) + 300
+                if keep_until > 0:
+                    request.session.set_expiry(keep_until)
+
+        return self.get_response(request)
 
 
 class AgentWorkEndLogoutMiddleware:
