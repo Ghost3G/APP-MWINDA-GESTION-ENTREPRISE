@@ -259,6 +259,10 @@ def users_directory(request):
                 or user.org_group
             )
             direction = request.POST.get('direction', user.direction).strip() or user.direction
+            competency_profile = (
+                request.POST.get('competency_profile', user.competency_profile).strip()
+                or user.competency_profile
+            )
             password = request.POST.get('password', '')
             is_active = request.POST.get('is_active') == 'on'
 
@@ -271,12 +275,15 @@ def users_directory(request):
             valid_roles = [value for value, _ in User.ROLE_CHOICES]
             valid_departments = [value for value, _ in User.DEPARTMENT_CHOICES]
             valid_directions = [value for value, _ in User.DIRECTION_CHOICES]
+            valid_competencies = [value for value, _ in User.COMPETENCY_PROFILE_CHOICES]
             if role not in valid_roles:
                 errors.append("Le rôle sélectionné est invalide.")
             if org_group not in valid_departments:
                 errors.append("Le département sélectionné est invalide.")
             if direction not in valid_directions:
                 errors.append("La branche sélectionnée est invalide.")
+            if competency_profile not in valid_competencies:
+                errors.append("La compétence principale sélectionnée est invalide.")
 
             if user.id == request.user.id and role != 'admin':
                 errors.append("Vous ne pouvez pas retirer votre propre rôle administrateur.")
@@ -302,6 +309,7 @@ def users_directory(request):
             user.role = role
             user.org_group = org_group
             user.direction = direction
+            user.competency_profile = competency_profile
             user.is_active = is_active
             if password:
                 user.set_password(password)
@@ -323,6 +331,7 @@ def users_directory(request):
             or 'technique'
         )
         direction = request.POST.get('direction', 'metal_design').strip() or 'metal_design'
+        competency_profile = request.POST.get('competency_profile', 'auto').strip() or 'auto'
 
         errors = []
         if not username:
@@ -338,12 +347,15 @@ def users_directory(request):
         valid_roles = [value for value, _ in User.ROLE_CHOICES]
         valid_departments = [value for value, _ in User.DEPARTMENT_CHOICES]
         valid_directions = [value for value, _ in User.DIRECTION_CHOICES]
+        valid_competencies = [value for value, _ in User.COMPETENCY_PROFILE_CHOICES]
         if role not in valid_roles:
             errors.append("Le rôle sélectionné est invalide.")
         if org_group not in valid_departments:
             errors.append("Le département sélectionné est invalide.")
         if direction not in valid_directions:
             errors.append("La branche sélectionnée est invalide.")
+        if competency_profile not in valid_competencies:
+            errors.append("La compétence principale sélectionnée est invalide.")
         if not password:
             errors.append("Le mot de passe est requis.")
         elif len(password) < 10:
@@ -371,6 +383,7 @@ def users_directory(request):
             role=role,
             org_group=org_group,
             direction=direction,
+            competency_profile=competency_profile,
         )
         messages.success(request, "Utilisateur créé avec succès.")
         write_audit_log(
@@ -503,6 +516,7 @@ def users_directory(request):
         'org_group_tabs': department_tabs,
         'total_agents_count': total_agents_count,
         'direction_choices': User.DIRECTION_CHOICES,
+        'competency_profile_choices': User.COMPETENCY_PROFILE_CHOICES,
         'full_name': full_name,
         'profile_progress': profile_progress,
         'current_project': current_project,

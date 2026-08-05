@@ -533,6 +533,14 @@
                                         {% endfor %}
                                     </select>
                                 </div>
+                                <div class="form-group">
+                                    <label>Compétence principale (IA)</label>
+                                    <select name="competency_profile" required>
+                                        {% for value, label in competency_profile_choices %}
+                                            <option value="{{ value }}" {% if value == 'auto' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-cancel" onclick="toggleCreateForm()">Annuler</button>
@@ -599,6 +607,16 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Compétence principale (IA)</label>
+                                    <select name="competency_profile" id="edit_competency_profile" required>
+                                        {% for value, label in competency_profile_choices %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                             <div class="form-row full">
                                 <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
                                     <input type="checkbox" name="is_active" id="edit_is_active">
@@ -624,6 +642,7 @@
                                         <th>Rôle</th>
                                         <th>Département</th>
                                         <th>Branche</th>
+                                        <th>Compétence IA</th>
                                         <th>Tâches</th>
                                         <th>En cours</th>
                                         <th>Statut</th>
@@ -654,6 +673,7 @@
                                             </td>
                                             <td>{{ user.get_org_group_display }}</td>
                                             <td>{{ user.get_direction_display }}</td>
+                                            <td>{{ user.get_competency_profile_display }}</td>
                                             <td>{{ user.task_done }}/{{ user.task_total }}</td>
                                             <td>
                                                 {% if user.current_task %}
@@ -686,6 +706,7 @@
                                                             data-role="{{ user.role }}"
                                                             data-department="{{ user.org_group }}"
                                                             data-direction="{{ user.direction }}"
+                                                            data-competency-profile="{{ user.competency_profile }}"
                                                             data-phone="{{ user.phone }}"
                                                             data-is-active="{{ user.is_active|yesno:'true,false' }}"
                                                             onclick="openEditForm(this)"
@@ -744,6 +765,7 @@
             document.getElementById('edit_role').value = button.dataset.role || 'agent';
             document.getElementById('edit_department').value = button.dataset.department || 'technique';
             document.getElementById('edit_direction').value = button.dataset.direction || 'metal_design';
+            document.getElementById('edit_competency_profile').value = button.dataset.competencyProfile || 'auto';
             document.getElementById('edit_phone').value = button.dataset.phone || '';
             document.getElementById('edit_is_active').checked = button.dataset.isActive === 'true';
             document.getElementById('edit_password').value = '';

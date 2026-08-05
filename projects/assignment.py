@@ -37,6 +37,30 @@ TASK_KEYWORD_PROFILES = (
     (('qualité', 'contrôle', 'clôture'), ('technique', 'metal_design', 'wood_design')),
 )
 
+PROFILE_COMPETENCY_HINTS = {
+    'commercial': ('commercial', 'client', 'vente', 'business'),
+    'finance': ('finance', 'comptable', 'budget', 'facture', 'paiement'),
+    'logistique': ('logistique', 'livraison', 'transport', 'stock'),
+    'metal_design': ('metal', 'métal', 'soudure', 'pliage', 'plasma', 'laser'),
+    'wood_design': ('wood', 'bois', 'menuiserie', 'cnc', 'vernis'),
+    'branding': (
+        'branding',
+        'graphique',
+        'graphic',
+        'graphisme',
+        'designer',
+        'design',
+        'communication',
+        'identité visuelle',
+    ),
+    'signaletique': ('signalétique', 'signaletique', 'panneau', 'pose'),
+    'gravure': ('gravure', 'engraving'),
+    'design_rd_innovation': ('innovation', 'r&d', 'recherche', 'prototype'),
+    'technique': ('technique', 'technicien', 'production'),
+    'design_communication': ('design', 'graphique', 'branding', 'communication'),
+    'rd': ('r&d', 'innovation', 'prototype', 'recherche'),
+}
+
 
 def _text_blob(user):
     parts = [
@@ -58,6 +82,33 @@ def _profiles_for_task(title: str):
         if any(k in title_l for k in keywords):
             profiles.extend(profs)
     return tuple(dict.fromkeys(profiles))
+
+
+def _required_profiles_for_task(title: str, project_branch: str):
+    profiles = list(_profiles_for_task(title))
+    if not profiles and project_branch:
+        profiles = [project_branch]
+    return tuple(dict.fromkeys(profiles))
+
+
+def _user_matches_any_profile(user, profiles):
+    if not profiles:
+        return True
+    blob = _text_blob(user)
+    user_direction = normalize_branch(getattr(user, 'direction', None) or '')
+    org = (getattr(user, 'org_group', '') or '').lower()
+    competency = (getattr(user, 'competency_profile', 'auto') or 'auto').lower()
+    # Si la compétence est explicitement définie, elle devient prioritaire et stricte.
+    if competency != 'auto' and competency not in profiles:
+        return False
+
+    for profile in profiles:
+        if profile in {org, user_direction, competency}:
+            return True
+        for hint in PROFILE_COMPETENCY_HINTS.get(profile, (profile,)):
+            if hint and hint in blob:
+                return True
+    return False
 
 
 def _score_agent_for_task(user, title, project_branch, workload):
@@ -126,8 +177,11 @@ def build_rules_plan(project, members=None):
 
     plan = []
     for title in titles:
+        required_profiles = _required_profiles_for_task(title, branch)
+        eligible_members = [m for m in members if _user_matches_any_profile(m, required_profiles)]
+        candidate_pool = eligible_members or members
         ranked = sorted(
-            members,
+            candidate_pool,
             key=lambda user: _score_agent_for_task(user, title, branch, workload),
             reverse=True,
         )
@@ -142,7 +196,11 @@ def build_rules_plan(project, members=None):
             'title': title,
             'user': best,
             'username': best.username,
-            'reason': 'Règles métier (titre / département / charge)',
+            'reason': (
+                'Règles métier (compétence / titre / département / charge)'
+                if eligible_members else
+                'Règles métier (secours charge, aucune compétence stricte trouvée)'
+            ),
             'department': resolve_task_branch(project, best, branch),
         })
         workload[best.id] += 1
@@ -227,6 +285,11 @@ def _call_openai_plan(project, members, template_titles):
 
     by_username = {m.username: m for m in members}
     branch = normalize_branch(getattr(project, 'branch', None) or 'metal_design')
+    workload = Counter(
+        project.tasks.filter(assigned_to__in=members)
+        .exclude(status='done')
+        .values_list('assigned_to_id', flat=True)
+    )
     plan = []
     for item in tasks:
         if not isinstance(item, dict):
@@ -237,6 +300,14 @@ def _call_openai_plan(project, members, template_titles):
         user = by_username.get(username)
         if not title or not user:
             continue
+        required_profiles = _required_profiles_for_task(title, branch)
+        if not _user_matches_any_profile(user, required_profiles):
+            eligible = [m for m in members if _user_matches_any_profile(m, required_profiles)]
+            pool = eligible or members
+            user = max(pool, key=lambda m: _score_agent_for_task(m, title, branch, workload))
+            reason = (
+                f"{reason} | Réaffectée automatiquement selon compétence de l'agent."
+            )
         plan.append({
             'title': title[:200],
             'user': user,
@@ -244,6 +315,7 @@ def _call_openai_plan(project, members, template_titles):
             'reason': reason[:240],
             'department': resolve_task_branch(project, user, branch),
         })
+        workload[user.id] += 1
     if not plan:
         raise RuntimeError('Aucun item IA valide')
     return plan

@@ -26,6 +26,18 @@ class User(AbstractUser):
     # Branche au sein du département technique
     DIRECTION_CHOICES = TECH_BRANCH_CHOICES
     BRANCH_CHOICES = TECH_BRANCH_CHOICES
+    COMPETENCY_PROFILE_CHOICES = (
+        ('auto', 'Auto (déduit du profil)'),
+        ('commercial', 'Commercial'),
+        ('finance', 'Finance'),
+        ('logistique', 'Logistique'),
+        ('metal_design', 'Metal Design'),
+        ('wood_design', 'Wood Design'),
+        ('branding', 'Design Graphique / Branding'),
+        ('signaletique', 'Signalétique'),
+        ('gravure', 'Gravure'),
+        ('design_rd_innovation', 'R&D / Innovation'),
+    )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     org_group = models.CharField(
@@ -41,6 +53,11 @@ class User(AbstractUser):
     phone = models.CharField(max_length=40, blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     has_seen_guide = models.BooleanField(default=False)
+    competency_profile = models.CharField(
+        max_length=40,
+        choices=COMPETENCY_PROFILE_CHOICES,
+        default='auto',
+    )
 
     def get_display_name(self):
         full_name = self.get_full_name().strip()
