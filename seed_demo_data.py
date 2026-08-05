@@ -63,6 +63,7 @@ DIRECTOR_USERNAMES = {
     'ibrahim.japhete',
     'emmanuel.maki',
     'michelle.bukebo',
+    'hans.mangi',
 }
 
 PERSONNEL = [
@@ -100,7 +101,7 @@ PERSONNEL = [
         'grade': 'DIRECTEUR FINANCIER',
         'direction': 'design_rd_innovation',
         'password': 'Muwonga2026',
-        'org_group': 'finance',
+        'org_group': 'direction',
     },
     {
         'username': 'ibrahim.japhete',
@@ -131,7 +132,7 @@ PERSONNEL = [
         'grade': 'COMPTABLE',
         'direction': 'design_rd_innovation',
         'password': 'Mangi2026',
-        'org_group': 'finance',
+        'org_group': 'direction',
     },
     {
         'username': 'joseph.mbuyu',

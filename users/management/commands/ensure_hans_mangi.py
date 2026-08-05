@@ -1,32 +1,22 @@
 """
-Crée / corrige le compte Archirey Muwonga
-(Directeur Financier et Administratif).
-
-Migre aussi les anciens identifiants :
-  - archirey.muhongaya
-  - archirey.muwunga
-  - archirey.mowunga
+Crée / met à jour le compte Hans Kabasele (Comptable)
+avec accès total direction.
 
 Usage Render Shell :
-  python manage.py ensure_archirey_muwonga
-  python manage.py ensure_archirey_muwonga --reset-password
+  python manage.py ensure_hans_mangi
+  python manage.py ensure_hans_mangi --reset-password
 """
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 User = get_user_model()
 
-USERNAME = 'archirey.muwonga'
-LEGACY_USERNAMES = (
-    'archirey.muhongaya',
-    'archirey.muwunga',
-    'archirey.mowunga',
-)
-DEFAULT_PASSWORD = 'Muwonga2026'
+USERNAME = 'hans.mangi'
+DEFAULT_PASSWORD = 'Mangi2026'
 
 
 class Command(BaseCommand):
-    help = "Assure / corrige le compte archirey.muwonga (Directeur Financier et Administratif)."
+    help = "Assure le compte hans.mangi (Comptable, rang Directeurs, accès total)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -46,38 +36,26 @@ class Command(BaseCommand):
         reset = options['reset_password']
 
         defaults = {
-            'email': 'archirey.muwonga@agencemwinda.com',
-            'first_name': 'Archirey',
-            'last_name': 'Muwonga',
+            'email': 'hans.mangi@agencemwinda.com',
+            'first_name': 'Hans',
+            'last_name': 'Kabasele',
             'role': 'directeur',
             'org_group': 'direction',
             'direction': 'design_rd_innovation',
-            'job_title': 'Directeur Financier et Administratif',
-            'grade': 'DIRECTEUR FINANCIER',
+            'job_title': 'Comptable',
+            'grade': 'COMPTABLE',
             'department_name': 'Direction Administratif et Financier',
             'is_staff': False,
             'is_superuser': False,
             'is_active': True,
         }
 
-        user = User.objects.filter(username=USERNAME).first()
-        renamed_from = None
-        if user is None:
-            for legacy in LEGACY_USERNAMES:
-                legacy_user = User.objects.filter(username=legacy).first()
-                if legacy_user:
-                    user = legacy_user
-                    renamed_from = legacy
-                    break
+        user, created = User.objects.get_or_create(
+            username=USERNAME,
+            defaults=defaults,
+        )
 
-        created = False
-        if user is None:
-            user = User(username=USERNAME)
-            created = True
-        elif renamed_from:
-            user.username = USERNAME
-
-        changed = created or bool(renamed_from)
+        changed = False
         for field, value in defaults.items():
             if getattr(user, field) != value:
                 setattr(user, field, value)
@@ -94,11 +72,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(
                 f'[OK] Compte créé : {user.username} / mdp initial : {password}'
             ))
-        elif renamed_from:
-            msg = f'[OK] Compte renommé {renamed_from} → {user.username} et corrigé'
-            if reset:
-                msg += f' (mdp : {password})'
-            self.stdout.write(self.style.SUCCESS(msg))
         elif reset:
             self.stdout.write(self.style.SUCCESS(
                 f'[OK] Compte mis à jour + mot de passe réinitialisé : {user.username}'
@@ -109,6 +82,6 @@ class Command(BaseCommand):
             ))
 
         self.stdout.write(
-            'Profil : Archirey Muwonga / Directeur Financier et Administratif '
-            '(rang Directeurs, accès direction + Finance).'
+            'Profil : Hans Kabasele / Comptable — rang Directeurs, accès total '
+            '(modules direction + Finance).'
         )
