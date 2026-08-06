@@ -9,9 +9,9 @@ PROJECT_MANAGER_USERNAMES = frozenset({
     'emmanuel.maki',     # Ass. Directeur Technique — Emmanuel Maki
 })
 
-# Responsables Commercial — notifiés à chaque projet avec agent commercial
+# Responsables Commercial — voient TOUS les portefeuilles CRM + réassignation
 COMMERCIAL_LEAD_USERNAMES = frozenset({
-    'michelle.bukebo',   # Responsable Commercial (sans Finance)
+    'michelle.bukebo',   # Responsable Commercial — tous les CRM
     'michael.kabale',    # Chef Responsable Commercial (= accès DG)
 })
 # Alias rétrocompatibilité
@@ -58,6 +58,88 @@ def can_access_finance(user):
     if is_management_user(user):
         return True
     return getattr(user, "org_group", "") == "finance"
+
+
+def is_finance_staff(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and getattr(user, "org_group", "") == "finance"
+    )
+
+
+def can_edit_finance(user):
+    """Saisie / modification : équipe Finance, admin et tous les directeurs."""
+    if not can_access_finance(user):
+        return False
+    if is_admin_user(user) or is_management_user(user):
+        return True
+    return is_finance_staff(user)
+
+
+def can_manage_finance_closure(user):
+    """Clôturer ou rouvrir une journée de caisse."""
+    if not can_access_finance(user):
+        return False
+    return can_edit_finance(user) or is_management_user(user)
+
+
+def is_commercial_staff(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and getattr(user, "org_group", "") == "commercial"
+    )
+
+
+def can_access_crm(user):
+    """CRM portefeuille : commerciaux, responsables, direction, finance."""
+    if not user or not user.is_authenticated:
+        return False
+    if is_management_user(user) or is_commercial_lead(user) or is_commercial_staff(user):
+        return True
+    return can_access_finance(user)
+
+
+def can_view_all_crm_clients(user):
+    """
+    Voir tous les portefeuilles.
+    - Responsable Commercial (Michelle, etc.) : oui
+    - Direction / Finance : oui
+    - Agent commercial : non (uniquement le sien)
+    """
+    if not can_access_crm(user):
+        return False
+    if is_commercial_lead(user):
+        return True
+    if is_management_user(user):
+        return True
+    return can_access_finance(user)
+
+
+def can_reassign_crm_client(user):
+    """Changer le commercial propriétaire d'un client."""
+    if not can_access_crm(user):
+        return False
+    return is_management_user(user) or is_commercial_lead(user) or is_admin_user(user)
+
+
+def can_edit_crm_clients(user):
+    """Créer / modifier des fiches clients CRM."""
+    if not can_access_crm(user):
+        return False
+    if can_view_all_crm_clients(user):
+        return True
+    return is_commercial_staff(user)
+
+
+def can_edit_crm_client(user, client):
+    """Modifier une fiche : propriétaire, ou vue globale (lead / direction / finance)."""
+    if not can_edit_crm_clients(user):
+        return False
+    if can_view_all_crm_clients(user):
+        return True
+    return bool(client and client.commercial_owner_id == user.id)
 
 
 def admin_required(view_func):

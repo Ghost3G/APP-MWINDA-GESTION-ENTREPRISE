@@ -658,6 +658,7 @@
                             <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                 <input type="text" name="name" placeholder="Nom du projet" required>
+                                <input type="number" step="0.01" min="0" name="contract_amount" placeholder="Montant total ($)" value="0">
                                 <input type="date" name="start_date" required>
                                 <input type="date" name="end_date" required>
                                 <select name="status">
@@ -698,6 +699,18 @@
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
                                 <div>
+                                    <label style="display:block; margin-bottom:6px; font-weight:600;">Client CRM</label>
+                                    <select name="client_id" class="js-crm-client-select" style="width:100%;">
+                                        <option value="">— Optionnel —</option>
+                                        {% for client in crm_clients %}
+                                            <option value="{{ client.id }}" data-owner-id="{{ client.commercial_owner_id|default:'' }}">
+                                                {{ client.name }}{% if client.commercial_owner %} — {{ client.commercial_owner.get_display_name }}{% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="field-hint">Si choisi, l’agent commercial est repris automatiquement.</small>
+                                </div>
+                                <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Directeur Technique</label>
                                     <input type="text" value="{% if default_technical_director %}{{ default_technical_director.get_labeled_name }}{% else %}Japhete Kuta{% endif %}" readonly class="input-readonly" style="width:100%;">
                                 </div>
@@ -707,7 +720,7 @@
                                 </div>
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Agent commercial *</label>
-                                    <select name="commercial_agent" required style="width:100%;">
+                                    <select name="commercial_agent" class="js-commercial-agent-select" required style="width:100%;">
                                         <option value="">— Choisir —</option>
                                         {% for user in commercial_agents %}
                                             <option value="{{ user.id }}">{{ user.get_labeled_name }}</option>
@@ -774,6 +787,16 @@
                                                 <span class="muted-role">{{ project.manager.get_title_label }}</span>
                                             </span>
                                         </div>
+                                        {% if project.client %}
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Client</span>
+                                            <span class="project-info-value">{{ project.client.name }}</span>
+                                        </div>
+                                        {% endif %}
+                                        <div class="project-info-row">
+                                            <span class="project-info-label">Montant</span>
+                                            <span class="project-info-value">{{ project.contract_amount }} $</span>
+                                        </div>
                                         {% if project.commercial_agent %}
                                         <div class="project-info-row">
                                             <span class="project-info-label">Commercial</span>
@@ -830,6 +853,7 @@
                                                 <input type="hidden" name="project_id" value="{{ project.id }}">
                                                 <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
                                                 <input type="text" name="name" value="{{ project.name }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <input type="number" step="0.01" min="0" name="contract_amount" value="{{ project.contract_amount }}" placeholder="Montant ($)" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                                 <textarea name="description" rows="2" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">{{ project.description }}</textarea>
                                                 <input type="date" name="start_date" value="{{ project.start_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                                 <input type="date" name="end_date" value="{{ project.end_date|date:'Y-m-d' }}" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
@@ -845,7 +869,15 @@
                                                         <option value="{{ value }}" {% if project.branch == value %}selected{% endif %}>{{ label }}</option>
                                                     {% endfor %}
                                                 </select>
-                                                <select name="commercial_agent" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                <select name="client_id" class="js-crm-client-select" style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    <option value="">— Client CRM (optionnel) —</option>
+                                                    {% for client in crm_clients %}
+                                                        <option value="{{ client.id }}" data-owner-id="{{ client.commercial_owner_id|default:'' }}" {% if project.client_id == client.id %}selected{% endif %}>
+                                                            {{ client.name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <select name="commercial_agent" class="js-commercial-agent-select" required style="padding:8px; border:1px solid #d1d5db; border-radius:8px;">
                                                     {% for user in commercial_agents %}
                                                         <option value="{{ user.id }}" {% if project.commercial_agent_id == user.id %}selected{% endif %}>{{ user.get_labeled_name }}</option>
                                                     {% endfor %}
@@ -970,6 +1002,20 @@
 
     <script src="{% static 'js/dashboard.js' %}"></script>
     <script>
+    document.querySelectorAll('.js-crm-client-select').forEach((select) => {
+        select.addEventListener('change', () => {
+            const form = select.closest('form');
+            if (!form) return;
+            const commercial = form.querySelector('.js-commercial-agent-select');
+            if (!commercial) return;
+            const option = select.options[select.selectedIndex];
+            const ownerId = option ? (option.getAttribute('data-owner-id') || '') : '';
+            if (ownerId) {
+                commercial.value = ownerId;
+            }
+        });
+    });
+
     document.querySelectorAll('.project-status-form').forEach((form) => {
         form.addEventListener('submit', (event) => {
             const statusSelect = form.querySelector('select[name="status"]');

@@ -30,9 +30,15 @@
             Rapports
         </a>
         {% if is_finance %}
-        <a href="{% url 'finance_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %}">
+        <a href="{% url 'finance_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'finance_dashboard' or request.resolver_match.url_name == 'finance_clients' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_finance.svg' %}" alt=""></span>
             Finance
+        </a>
+        {% endif %}
+        {% if is_crm %}
+        <a href="{% url 'crm_portfolio' %}" class="nav-item {% if request.resolver_match.url_name == 'crm_portfolio' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
+            CRM
         </a>
         {% endif %}
         <a href="{% url 'users_list' %}" class="nav-item {% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">

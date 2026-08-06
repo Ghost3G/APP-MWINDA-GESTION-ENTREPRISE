@@ -8,6 +8,7 @@ def app_notifications(request):
             'is_management': False,
             'is_admin': False,
             'is_finance': False,
+            'is_crm': False,
             'current_user_profile': None,
             'project_deadline_alerts': [],
             'agent_logout_warning': {
@@ -30,7 +31,12 @@ def app_notifications(request):
 
     from messaging.models import Message
     from projects.models import Project, ProjectAssignmentNotification, TaskAssignmentNotification
-    from users.permissions import is_admin_user, is_management_user, can_access_finance
+    from users.permissions import (
+        is_admin_user,
+        is_management_user,
+        can_access_finance,
+        can_access_crm,
+    )
     from users.presence import agent_logout_warning_payload
 
     unread_messages_count = 0
@@ -42,6 +48,7 @@ def app_notifications(request):
     is_management = is_management_user(user)
     is_admin = is_admin_user(user)
     is_finance = can_access_finance(user)
+    is_crm = can_access_crm(user)
     agent_logout_warning = agent_logout_warning_payload(user)
 
     try:
@@ -119,6 +126,7 @@ def app_notifications(request):
         'is_management': is_management,
         'is_admin': is_admin,
         'is_finance': is_finance,
+        'is_crm': is_crm,
         'project_deadline_alerts': project_deadline_alerts,
         'agent_logout_warning': agent_logout_warning,
         'current_user_profile': {

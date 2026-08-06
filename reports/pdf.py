@@ -161,7 +161,7 @@ def build_report_pdf(report) -> bytes:
     return buffer.getvalue()
 
 
-def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by_command_incomes=None, by_command_expenses=None) -> bytes:
+def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by_command_incomes=None, by_command_expenses=None, project_margins=None) -> bytes:
     """PDF A4 — rapport finance (journalier / mensuel / semestriel)."""
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -234,28 +234,30 @@ def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by
         if not rows:
             story.append(Paragraph('Aucune écriture sur cette période.', small))
             return
-        data = [['Date', 'Commande', 'Libellé', 'Montant']]
+        data = [['Date', 'Projet', 'Catégorie', 'Paiement', 'Libellé', 'Montant']]
         for row in rows:
             data.append([
                 row['date'].strftime('%d/%m/%Y'),
-                Paragraph(str(row['command_reference']), small),
+                Paragraph(str(row.get('project') or row['command_reference']), small),
+                Paragraph(str(row.get('category') or '—'), small),
+                Paragraph(str(row.get('payment_method') or '—'), small),
                 Paragraph(str(row['label']), small),
                 f"{row['amount']} $",
             ])
-        table = Table(data, colWidths=[22 * mm, 40 * mm, 80 * mm, 28 * mm])
+        table = Table(data, colWidths=[20 * mm, 36 * mm, 28 * mm, 24 * mm, 42 * mm, 22 * mm])
         table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('ALIGN', (3, 1), (3, -1), 'RIGHT'),
-            ('TEXTCOLOR', (3, 1), (3, -1), amount_color),
+            ('ALIGN', (5, 1), (5, -1), 'RIGHT'),
+            ('TEXTCOLOR', (5, 1), (5, -1), amount_color),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
         ]))
         story.append(table)
@@ -264,6 +266,9 @@ def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by
         {
             'date': item.income_date,
             'command_reference': item.command_reference,
+            'project': item.project.name if item.project_id else '',
+            'category': item.get_category_display(),
+            'payment_method': item.get_payment_method_display(),
             'label': item.label,
             'amount': item.amount,
         }
@@ -273,6 +278,9 @@ def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by
         {
             'date': item.expense_date,
             'command_reference': item.command_reference,
+            'project': item.project.name if item.project_id else '',
+            'category': item.get_category_display(),
+            'payment_method': item.get_payment_method_display(),
             'label': item.label,
             'amount': item.amount,
         }
@@ -281,9 +289,34 @@ def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by
     _lines_table('Entrées', income_rows, colors.HexColor('#166534'))
     _lines_table('Sorties', expense_rows, colors.HexColor('#991b1b'))
 
+    if project_margins:
+        story.append(Paragraph('Marge par projet', section))
+        margin_data = [['Projet', 'Entrées', 'Sorties', 'Marge']]
+        for item in project_margins:
+            margin_data.append([
+                Paragraph(str(item['name']), small),
+                f"{item['entrees']} $",
+                f"{item['sorties']} $",
+                f"{item['marge']} $",
+            ])
+        margin_table = Table(margin_data, colWidths=[80 * mm, 30 * mm, 30 * mm, 30 * mm])
+        margin_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+            ('ALIGN', (1, 1), (3, -1), 'RIGHT'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        story.append(margin_table)
+
     if by_command_incomes is not None or by_command_expenses is not None:
-        story.append(Paragraph('Totaux par commande', section))
-        cmd_data = [['Type', 'Commande', 'Nb', 'Total']]
+        story.append(Paragraph('Totaux par référence (hors / avec texte)', section))
+        cmd_data = [['Type', 'Référence', 'Nb', 'Total']]
         for item in (by_command_incomes or []):
             cmd_data.append(['Entrée', item['command_reference'], str(item['count']), f"{item['total']} $"])
         for item in (by_command_expenses or []):

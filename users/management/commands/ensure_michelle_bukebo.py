@@ -80,6 +80,6 @@ class Command(BaseCommand):
             ))
 
         self.stdout.write(
-            'Accès : direction (tous modules) sauf Finance. '
-            'Notifiée à chaque projet avec agent commercial.'
+            'Accès : CRM (tous les portefeuilles commerciaux) + direction, '
+            'sauf Finance. Notifiée à chaque projet avec agent commercial.'
         )

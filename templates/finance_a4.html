@@ -100,7 +100,9 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Commande</th>
+                    <th>Projet</th>
+                    <th>Catégorie</th>
+                    <th>Paiement</th>
                     <th>Libellé</th>
                     <th>Montant</th>
                 </tr>
@@ -109,7 +111,9 @@
                 {% for item in incomes %}
                 <tr>
                     <td>{{ item.income_date|date:"d/m/Y" }}</td>
-                    <td>{{ item.command_reference }}</td>
+                    <td>{% if item.project %}{{ item.project.name }}{% else %}{{ item.command_reference }}{% endif %}</td>
+                    <td>{{ item.get_category_display }}</td>
+                    <td>{{ item.get_payment_method_display }}</td>
                     <td>{{ item.label }}</td>
                     <td class="amount positive">{{ item.amount }} $</td>
                 </tr>
@@ -126,7 +130,9 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Commande</th>
+                    <th>Projet</th>
+                    <th>Catégorie</th>
+                    <th>Paiement</th>
                     <th>Libellé</th>
                     <th>Montant</th>
                 </tr>
@@ -135,7 +141,9 @@
                 {% for item in expenses %}
                 <tr>
                     <td>{{ item.expense_date|date:"d/m/Y" }}</td>
-                    <td>{{ item.command_reference }}</td>
+                    <td>{% if item.project %}{{ item.project.name }}{% else %}{{ item.command_reference }}{% endif %}</td>
+                    <td>{{ item.get_category_display }}</td>
+                    <td>{{ item.get_payment_method_display }}</td>
                     <td>{{ item.label }}</td>
                     <td class="amount negative">{{ item.amount }} $</td>
                 </tr>
@@ -144,6 +152,30 @@
         </table>
         {% else %}
         <p class="empty">Aucune sortie sur cette période.</p>
+        {% endif %}
+
+        {% if project_margins %}
+        <h2>Marge par projet</h2>
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Projet</th>
+                    <th>Entrées</th>
+                    <th>Sorties</th>
+                    <th>Marge</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in project_margins %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td class="amount positive">{{ row.entrees }} $</td>
+                    <td class="amount negative">{{ row.sorties }} $</td>
+                    <td class="amount {% if row.is_gain %}positive{% else %}negative{% endif %}">{{ row.marge }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% endif %}
 
         {% if by_command_incomes %}

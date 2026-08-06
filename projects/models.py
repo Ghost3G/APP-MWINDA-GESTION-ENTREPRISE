@@ -50,6 +50,23 @@ class Project(models.Model):
         null=True,
     )
 
+    client = models.ForeignKey(
+        'reports.FinanceClient',
+        on_delete=models.SET_NULL,
+        related_name='projects',
+        blank=True,
+        null=True,
+        verbose_name='Client CRM',
+    )
+
+    contract_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name='Montant total du projet ($)',
+        help_text='Montant contrat / devis accepté pour ce projet.',
+    )
+
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         related_name='projects'

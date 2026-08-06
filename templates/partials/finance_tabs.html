@@ -1,0 +1,4 @@
+<nav class="finance-tabs" aria-label="Sections Finance">
+    <a href="{% url 'finance_dashboard' %}" class="finance-tab {% if finance_section == 'caisse' %}active{% endif %}">Caisse</a>
+    <a href="{% url 'finance_clients' %}" class="finance-tab {% if finance_section == 'clients' and not crm_mode %}active{% endif %}">Clients</a>
+</nav>

@@ -34,7 +34,14 @@ from projects.models import (
     TaskComment,
     TaskLabel,
 )
-from reports.models import DailyReport, FinanceExpense, FinanceIncome
+from reports.models import (
+    CrmFollowUp,
+    DailyReport,
+    FinanceClient,
+    FinanceDayClosure,
+    FinanceExpense,
+    FinanceIncome,
+)
 from users.models import AuditLog, LoginAttempt, User
 
 
@@ -71,6 +78,9 @@ class Command(BaseCommand):
             counts['daily_reports'] = DailyReport.objects.all().delete()[0]
             counts['finance_expenses'] = FinanceExpense.objects.all().delete()[0]
             counts['finance_incomes'] = FinanceIncome.objects.all().delete()[0]
+            counts['finance_day_closures'] = FinanceDayClosure.objects.all().delete()[0]
+            counts['crm_follow_ups'] = CrmFollowUp.objects.all().delete()[0]
+            counts['finance_clients'] = FinanceClient.objects.all().delete()[0]
             counts['login_attempts'] = LoginAttempt.objects.all().delete()[0]
             counts['audit_logs'] = AuditLog.objects.all().delete()[0]
             counts['sessions'] = Session.objects.all().delete()[0]

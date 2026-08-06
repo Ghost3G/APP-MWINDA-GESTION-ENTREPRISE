@@ -1,0 +1,739 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{% if crm_mode %}CRM Portefeuille{% else %}Clients Finance{% endif %} - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/finance.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="finance-page">
+                <div class="page-header">
+                    <h1>{% if crm_mode %}CRM — Portefeuille clients{% else %}Base clients{% endif %}</h1>
+                    <p>
+                        {% if is_commercial_lead_user %}
+                            Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
+                        {% elif can_view_all_crm %}
+                            Vue globale des portefeuilles commerciaux.
+                        {% elif crm_mode %}
+                            Vous ne voyez que <strong>votre portefeuille</strong> — les clients qui vous sont assignés.
+                        {% else %}
+                            Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
+                        {% endif %}
+                    </p>
+                </div>
+
+                {% if is_commercial_lead_user %}
+                    <div class="finance-banner finance-banner-lead">
+                        Responsable Commercial — vous voyez et gérez les clients de tous les commerciaux.
+                    </div>
+                {% endif %}
+
+                {% if is_finance %}
+                    {% include "partials/finance_tabs.html" %}
+                {% endif %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if overdue_clients or due_today_clients %}
+                <div class="panel crm-agenda-panel" style="margin-bottom:16px;">
+                    <h3>Agenda relances</h3>
+                    <div class="crm-agenda-grid">
+                        <div class="crm-agenda-col crm-agenda-col--overdue">
+                            <h4>En retard ({{ overdue_clients|length }})</h4>
+                            {% if overdue_clients %}
+                                <ul class="crm-agenda-list">
+                                    {% for c in overdue_clients %}
+                                        <li>
+                                            <a href="?edit={{ c.id }}{% if selected_owner %}&owner={{ selected_owner }}{% endif %}">{{ c.name }}</a>
+                                            <span class="crm-reste">{{ c.next_action_date|date:"d/m/Y" }}</span>
+                                            <span class="muted">{{ c.next_action|default:"—" }}</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="muted">Aucune relance en retard.</p>
+                            {% endif %}
+                        </div>
+                        <div class="crm-agenda-col crm-agenda-col--today">
+                            <h4>Aujourd’hui ({{ due_today_clients|length }})</h4>
+                            {% if due_today_clients %}
+                                <ul class="crm-agenda-list">
+                                    {% for c in due_today_clients %}
+                                        <li>
+                                            <a href="?edit={{ c.id }}{% if selected_owner %}&owner={{ selected_owner }}{% endif %}">{{ c.name }}</a>
+                                            <span class="muted">{{ c.next_action|default:"—" }}</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="muted">Rien de prévu pour aujourd’hui.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="summary-card crm-summary">
+                    <div class="summary-item income">
+                        <small>
+                            {% if selected_owner_user %}
+                                Clients de {{ selected_owner_user.get_display_name }}
+                            {% elif can_view_all_crm %}
+                                Clients visibles
+                            {% else %}
+                                Mon portefeuille
+                            {% endif %}
+                        </small>
+                        <strong>{{ portfolio_count }}</strong>
+                    </div>
+                    <div class="summary-item balance gain">
+                        <small>
+                            {% if selected_owner_user %}
+                                Assignés à {{ selected_owner_user.get_display_name }}
+                            {% else %}
+                                Mes clients
+                            {% endif %}
+                        </small>
+                        <strong>{{ my_portfolio_count }}</strong>
+                    </div>
+                    <div class="summary-item income">
+                        <small>Total projets</small>
+                        <strong>{{ portfolio_total }} $</strong>
+                    </div>
+                    <div class="summary-item expense">
+                        <small>Payé</small>
+                        <strong>{{ portfolio_paid }} $</strong>
+                    </div>
+                    <div class="summary-item balance loss">
+                        <small>Reste à encaisser</small>
+                        <strong class="crm-reste">{{ portfolio_remaining }} $</strong>
+                    </div>
+                </div>
+
+                {% if not can_edit_crm %}
+                    <div class="finance-banner finance-banner-readonly">
+                        Mode lecture seule sur les fiches clients.
+                    </div>
+                {% endif %}
+
+                {% if can_edit_crm %}
+                {% if can_reassign_crm and active_clients_for_project and commercial_agents %}
+                <div class="panel crm-reassign-panel" style="margin-bottom:16px;">
+                    <h3>Affecter un client à un commercial</h3>
+                    <p class="muted panel-hint">
+                        Réservé à la Responsable Commercial / direction : choisissez le client puis le commercial qui en aura la charge.
+                    </p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reassign">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Client *</label>
+                                <select name="client_id" required>
+                                    <option value="">— Sélectionner un client —</option>
+                                    {% for c in active_clients_for_project %}
+                                        <option value="{{ c.id }}">
+                                            {{ c.name }}{% if c.commercial_owner %} → {{ c.commercial_owner.get_display_name }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Affecter à *</label>
+                                <select name="commercial_owner_id" required>
+                                    <option value="">— Choisir le commercial —</option>
+                                    {% for agent in commercial_agents %}
+                                        <option value="{{ agent.id }}">{{ agent.get_display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-crm btn-crm--primary">Affecter le client</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if not edit_client and active_clients_for_project %}
+                <div class="panel crm-add-project-panel" style="margin-bottom:16px;">
+                    <h3>Ajouter un projet à un client existant</h3>
+                    <p class="muted panel-hint">
+                        Le client existe déjà ? Ne créez pas une 2ᵉ fiche. Choisissez-le ici :
+                        chaque projet a son propre montant / payé / reste.
+                    </p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_project">
+                        <div class="form-grid two-cols">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Client existant *</label>
+                                <select name="client_id" required>
+                                    <option value="">— Sélectionner un client —</option>
+                                    {% for c in active_clients_for_project %}
+                                        <option value="{{ c.id }}">
+                                            {{ c.name }}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nom du projet *</label>
+                                <input type="text" name="project_name" required placeholder="Ex: Enseigne LED siège">
+                            </div>
+                            <div class="form-group">
+                                <label>Montant de ce projet ($)</label>
+                                <input type="number" step="0.01" min="0" name="project_amount" value="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Date début</label>
+                                <input type="date" name="project_start_date">
+                            </div>
+                            <div class="form-group">
+                                <label>Date fin</label>
+                                <input type="date" name="project_end_date">
+                            </div>
+                            <div class="form-group">
+                                <label>Branche</label>
+                                <select name="project_branch">
+                                    {% for value, label in branch_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Description</label>
+                                <textarea name="project_description" placeholder="Optionnel"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto;">Ajouter le projet au client</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3>{% if edit_client %}Modifier — {{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
+                    {% if not edit_client %}
+                    <p class="muted panel-hint">
+                        Uniquement pour un <strong>nouveau</strong> client. S’il existe déjà, utilisez le formulaire ci-dessus.
+                    </p>
+                    {% endif %}
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="{% if edit_client %}update{% else %}create{% endif %}">
+                        {% if edit_client %}
+                            <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+                        {% endif %}
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Nom / Société *</label>
+                                <input type="text" name="name" value="{{ edit_client.name|default:'' }}" required placeholder="Ex: Société ABC">
+                            </div>
+                            <div class="form-group">
+                                <label>Personne de contact</label>
+                                <input type="text" name="contact_name" value="{{ edit_client.contact_name|default:'' }}" placeholder="Ex: Jean Mukendi">
+                            </div>
+                            {% if can_reassign_crm %}
+                            <div class="form-group">
+                                <label>Commercial responsable *</label>
+                                <select name="commercial_owner_id" required>
+                                    {% for agent in commercial_agents %}
+                                        <option value="{{ agent.id }}"
+                                            {% if edit_client and edit_client.commercial_owner_id == agent.id %}selected
+                                            {% elif not edit_client and agent.id == request.user.id %}selected{% endif %}>
+                                            {{ agent.get_display_name }}
+                                        </option>
+                                    {% empty %}
+                                        <option value="{{ request.user.id }}">{{ request.user.get_display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% else %}
+                            <div class="form-group">
+                                <label>Commercial responsable</label>
+                                <input type="text" value="{% if edit_client and edit_client.commercial_owner %}{{ edit_client.commercial_owner.get_display_name }}{% else %}{{ request.user.get_display_name }} (vous){% endif %}" disabled>
+                            </div>
+                            {% endif %}
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="text" name="phone" value="{{ edit_client.phone|default:'' }}" placeholder="+243 ...">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" name="email" value="{{ edit_client.email|default:'' }}" placeholder="contact@exemple.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Adresse</label>
+                                <input type="text" name="address" value="{{ edit_client.address|default:'' }}" placeholder="Avenue / commune">
+                            </div>
+                            <div class="form-group">
+                                <label>Ville</label>
+                                <input type="text" name="city" value="{{ edit_client.city|default:'' }}" placeholder="Kinshasa">
+                            </div>
+                            <div class="form-group">
+                                <label>Pays</label>
+                                <input type="text" name="country" value="{{ edit_client.country|default:'RDC' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>NIF / RCCM</label>
+                                <input type="text" name="tax_id" value="{{ edit_client.tax_id|default:'' }}" placeholder="Optionnel">
+                            </div>
+                            <div class="form-group">
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in client_status_choices %}
+                                        <option value="{{ value }}" {% if edit_client and edit_client.status == value %}selected{% elif not edit_client and value == 'prospect' %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Prochaine action</label>
+                                <input type="text" name="next_action" value="{{ edit_client.next_action|default:'' }}" placeholder="Ex: Relancer devis, RDV...">
+                            </div>
+                            <div class="form-group">
+                                <label>Date prochaine action</label>
+                                <input type="date" name="next_action_date" value="{% if edit_client and edit_client.next_action_date %}{{ edit_client.next_action_date|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Notes</label>
+                                <textarea name="notes" placeholder="Informations utiles, historique commercial...">{{ edit_client.notes|default:'' }}</textarea>
+                            </div>
+                            {% if not edit_client %}
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="crm-first-project-box">
+                                    <strong>Premier projet (optionnel)</strong>
+                                    <p class="muted">Si vous avez déjà un chantier pour ce nouveau client, renseignez-le ici. Sinon laissez vide.</p>
+                                    <div class="form-grid two-cols">
+                                        <div class="form-group">
+                                            <label>Nom du projet</label>
+                                            <input type="text" name="project_name" placeholder="Ex: Signalétique entrée">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Montant de ce projet ($)</label>
+                                            <input type="number" step="0.01" min="0" name="project_amount" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Branche</label>
+                                            <select name="project_branch">
+                                                {% for value, label in branch_choices %}
+                                                    <option value="{{ value }}">{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="grid-column: 1 / -1;">
+                                            <label>Description projet</label>
+                                            <textarea name="project_description" placeholder="Optionnel"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="client-form-actions">
+                            <button type="submit" class="btn-primary" style="width:auto;">
+                                {% if edit_client %}Enregistrer les modifications{% else %}Créer le client{% endif %}
+                            </button>
+                            {% if edit_client %}
+                                <a href="{% if crm_mode %}{% url 'crm_portfolio' %}{% else %}{% url 'finance_clients' %}{% endif %}" class="btn-mini" style="text-decoration:none; display:inline-block;">Annuler</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+
+                {% if edit_client %}
+                {% if edit_finance and edit_finance.projects %}
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3>Encaissement sur un projet — {{ edit_client.name }}</h3>
+                    <p class="muted panel-hint">Le paiement est rattaché à un projet précis : le reste de ce projet se met à jour immédiatement.</p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_payment">
+                        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Projet *</label>
+                                <select name="project_id" required>
+                                    <option value="">— Choisir le projet —</option>
+                                    {% for row in edit_finance.projects %}
+                                        <option value="{{ row.project.id }}">
+                                            {{ row.project.name }} — reste {{ row.remaining }} $
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Montant ($)*</label>
+                                <input type="number" step="0.01" min="0.01" name="amount" required placeholder="Ex: 500">
+                            </div>
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" name="income_date" value="{{ today|date:'Y-m-d' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Type</label>
+                                <select name="category">
+                                    {% for value, label in income_category_choices %}
+                                        <option value="{{ value }}" {% if value == 'acompte' %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Mode de paiement</label>
+                                <select name="payment_method">
+                                    {% for value, label in payment_method_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Libellé</label>
+                                <input type="text" name="label" placeholder="Ex: Acompte 1">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Notes</label>
+                                <textarea name="notes" placeholder="Optionnel"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto;">Enregistrer l’encaissement</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if merge_candidates %}
+                <div class="panel crm-merge-panel" style="margin-bottom:16px;">
+                    <h3>Fusionner un doublon dans « {{ edit_client.name }} »</h3>
+                    <p class="muted panel-hint">
+                        La fiche choisie sera archivée. Ses projets, paiements et suivis passeront sur cette fiche.
+                    </p>
+                    <form method="POST" onsubmit="return confirm('Confirmer la fusion ? La fiche doublon sera archivée.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="merge_clients">
+                        <input type="hidden" name="keep_id" value="{{ edit_client.id }}">
+                        <div class="form-grid two-cols">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Doublon à fusionner (sera archivé) *</label>
+                                <select name="absorb_id" required>
+                                    <option value="">— Choisir la fiche en double —</option>
+                                    {% for c in merge_candidates %}
+                                        <option value="{{ c.id }}">
+                                            #{{ c.id }} — {{ c.name }}{% if c.phone %} · {{ c.phone }}{% endif %}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto;">Fusionner dans cette fiche</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3>Suivis — {{ edit_client.name }}</h3>
+                    <form method="POST" style="margin-bottom:16px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_followup">
+                        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Type</label>
+                                <select name="follow_type">
+                                    {% for value, label in followup_type_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Contenu</label>
+                                <textarea name="content" required placeholder="Compte-rendu, note de relance..."></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto;">Ajouter un suivi</button>
+                    </form>
+                    {% if edit_follow_ups %}
+                        <ul class="crm-followup-list">
+                            {% for fu in edit_follow_ups %}
+                                <li>
+                                    <strong>{{ fu.get_follow_type_display }}</strong>
+                                    · {{ fu.created_at|date:"d/m/Y H:i" }}
+                                    {% if fu.author %}· {{ fu.author.get_display_name }}{% endif %}
+                                    <div>{{ fu.content }}</div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="muted">Aucun suivi pour ce client.</p>
+                    {% endif %}
+                </div>
+
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3>Projets du client — {{ edit_client.name }}</h3>
+                    <p class="muted panel-hint">
+                        Même fiche client. Chaque projet a son montant, son payé et son reste (en rouge) séparément.
+                    </p>
+                    {% if edit_finance %}
+                        <div class="crm-money-grid">
+                            <div class="crm-money-chip">
+                                <span class="crm-money-chip__label">Nb projets</span>
+                                <strong>{{ edit_finance.project_count }}</strong>
+                            </div>
+                            <div class="crm-money-chip">
+                                <span class="crm-money-chip__label">Total (somme)</span>
+                                <strong>{{ edit_finance.total_contract }} $</strong>
+                            </div>
+                            <div class="crm-money-chip crm-money-chip--paid">
+                                <span class="crm-money-chip__label">Payé (somme)</span>
+                                <strong>{{ edit_finance.paid }} $</strong>
+                            </div>
+                            <div class="crm-money-chip crm-money-chip--reste">
+                                <span class="crm-money-chip__label">Reste (somme)</span>
+                                <strong class="crm-reste">{{ edit_finance.remaining }} $</strong>
+                            </div>
+                        </div>
+                        {% if edit_finance.projects %}
+                            <h4 class="crm-section-subtitle">Détail par projet</h4>
+                            <table class="table crm-projects-table" style="margin-bottom:16px;">
+                                <thead>
+                                    <tr>
+                                        <th>Projet</th>
+                                        <th>Statut</th>
+                                        <th>Montant</th>
+                                        <th>Payé</th>
+                                        <th>Reste</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in edit_finance.projects %}
+                                        <tr>
+                                            <td>{{ row.project.name }}</td>
+                                            <td>{{ row.project.get_status_display }}</td>
+                                            <td>{{ row.contract }} $</td>
+                                            <td class="positive">{{ row.paid }} $</td>
+                                            <td class="crm-reste">{{ row.remaining }} $</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="muted">Aucun projet lié. Ajoutez-en un ci-dessous.</p>
+                        {% endif %}
+                    {% endif %}
+                    <h4 class="crm-section-subtitle">Nouveau projet sur ce client</h4>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_project">
+                        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Nom du projet *</label>
+                                <input type="text" name="project_name" required placeholder="Ex: Enseigne LED siège">
+                            </div>
+                            <div class="form-group">
+                                <label>Montant de ce projet ($)</label>
+                                <input type="number" step="0.01" min="0" name="project_amount" value="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Date début</label>
+                                <input type="date" name="project_start_date">
+                            </div>
+                            <div class="form-group">
+                                <label>Date fin</label>
+                                <input type="date" name="project_end_date">
+                            </div>
+                            <div class="form-group">
+                                <label>Branche</label>
+                                <select name="project_branch">
+                                    {% for value, label in branch_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Description</label>
+                                <textarea name="project_description" placeholder="Optionnel"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto;">Ajouter ce projet au client</button>
+                    </form>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <div class="panel">
+                    <div class="clients-panel-header">
+                        <h3>{% if show_archived %}Clients archivés{% else %}{% if can_view_all_crm %}Portefeuilles{% else %}Mon portefeuille{% endif %}{% endif %}</h3>
+                        <div class="clients-panel-links">
+                            {% if show_archived %}
+                                <a href="{% if crm_mode %}{% url 'crm_portfolio' %}{% else %}{% url 'finance_clients' %}{% endif %}">Voir les actifs</a>
+                            {% else %}
+                                <a href="?archived=1{% if selected_owner %}&owner={{ selected_owner }}{% endif %}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}">Voir les archivés</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <form method="GET" class="crm-filters">
+                        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+                        <div class="form-group">
+                            <label>Recherche</label>
+                            <input type="search" name="q" value="{{ search_q }}" placeholder="Nom, téléphone, email…">
+                        </div>
+                        <div class="form-group">
+                            <label>Statut</label>
+                            <select name="status">
+                                <option value="">Tous</option>
+                                {% for value, label in client_status_choices %}
+                                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if can_view_all_crm %}
+                        <div class="form-group">
+                            <label>Commercial</label>
+                            <select name="owner">
+                                <option value="">Tous</option>
+                                {% for agent in commercial_agents %}
+                                    <option value="{{ agent.id }}" {% if selected_owner == agent.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ agent.get_display_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="form-group crm-filter-check">
+                            <label class="crm-check-label">
+                                <input type="checkbox" name="reste" value="1" {% if reste_filter %}checked{% endif %}>
+                                Reste à payer &gt; 0
+                            </label>
+                        </div>
+                        <div class="form-group crm-filter-actions">
+                            <button type="submit" class="btn-crm btn-crm--primary">Filtrer</button>
+                            <a class="btn-crm btn-crm--ghost" href="{% if crm_mode %}{% url 'crm_portfolio' %}{% else %}{% url 'finance_clients' %}{% endif %}{% if show_archived %}?archived=1{% endif %}">Réinitialiser</a>
+                        </div>
+                    </form>
+
+                    {% if clients_with_finance %}
+                        <div class="crm-client-cards">
+                            {% for row in clients_with_finance %}
+                                <article class="crm-client-card">
+                                    <div class="crm-client-card__head">
+                                        <div>
+                                            <h4>{{ row.client.name }}</h4>
+                                            <div class="crm-client-card__meta">
+                                                {% if row.client.commercial_owner %}
+                                                    <span>{{ row.client.commercial_owner.get_display_name }}</span>
+                                                {% endif %}
+                                                <span class="crm-status">{{ row.client.get_status_display }}</span>
+                                                {% if row.client.phone %}<span>{{ row.client.phone }}</span>{% endif %}
+                                            </div>
+                                        </div>
+                                        {% if can_edit_crm %}
+                                        <div class="crm-card-actions">
+                                            {% if can_reassign_crm and commercial_agents %}
+                                            <form method="POST" class="crm-inline-reassign">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="reassign">
+                                                <input type="hidden" name="client_id" value="{{ row.client.id }}">
+                                                <select name="commercial_owner_id" aria-label="Commercial" required>
+                                                    {% for agent in commercial_agents %}
+                                                        <option value="{{ agent.id }}" {% if row.client.commercial_owner_id == agent.id %}selected{% endif %}>
+                                                            {{ agent.get_display_name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit" class="btn-crm btn-crm--ghost">Affecter</button>
+                                            </form>
+                                            {% endif %}
+                                            <a href="?edit={{ row.client.id }}{% if show_archived %}&archived=1{% endif %}{% if selected_owner %}&owner={{ selected_owner }}{% endif %}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" class="btn-crm btn-crm--ghost">Gérer</a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="crm-money-grid">
+                                        <div class="crm-money-chip">
+                                            <span class="crm-money-chip__label">Projets</span>
+                                            <strong>{{ row.project_count }}</strong>
+                                        </div>
+                                        <div class="crm-money-chip">
+                                            <span class="crm-money-chip__label">Total</span>
+                                            <strong>{{ row.total_contract }} $</strong>
+                                        </div>
+                                        <div class="crm-money-chip crm-money-chip--paid">
+                                            <span class="crm-money-chip__label">Payé</span>
+                                            <strong>{{ row.paid }} $</strong>
+                                        </div>
+                                        <div class="crm-money-chip crm-money-chip--reste">
+                                            <span class="crm-money-chip__label">Reste</span>
+                                            <strong class="crm-reste">{{ row.remaining }} $</strong>
+                                        </div>
+                                    </div>
+
+                                    {% if row.projects %}
+                                        <div class="crm-projects-wrap">
+                                            <div class="crm-projects-caption">Montants séparés par projet</div>
+                                            <table class="table crm-projects-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Projet</th>
+                                                        <th>Montant</th>
+                                                        <th>Payé</th>
+                                                        <th>Reste</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for p in row.projects %}
+                                                        <tr>
+                                                            <td>
+                                                                {{ p.project.name }}
+                                                                <span class="muted">({{ p.project.get_status_display }})</span>
+                                                            </td>
+                                                            <td>{{ p.contract }} $</td>
+                                                            <td class="positive">{{ p.paid }} $</td>
+                                                            <td class="crm-reste">{{ p.remaining }} $</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% else %}
+                                        <p class="crm-empty-projects">Aucun projet lié — ouvrir « Gérer » ou utiliser « Ajouter un projet à un client existant ».</p>
+                                    {% endif %}
+
+                                    {% if row.client.next_action or row.client.next_action_date %}
+                                        <div class="crm-next-action">
+                                            <span class="crm-next-action__label">Prochaine action</span>
+                                            <span>
+                                                {{ row.client.next_action|default:"—" }}
+                                                {% if row.client.next_action_date %} · {{ row.client.next_action_date|date:"d/m/Y" }}{% endif %}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="muted">
+                            {% if show_archived %}
+                                Aucun client archivé.
+                            {% else %}
+                                Aucun client dans ce portefeuille. Ajoutez une fiche ci-dessus.
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

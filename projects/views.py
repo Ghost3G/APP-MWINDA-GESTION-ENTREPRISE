@@ -33,16 +33,29 @@ from users.models import AuditLog
 from users.notifications import get_due_soon_tasks, get_overdue_tasks
 from users.permissions import admin_required, is_admin_user, is_management_user, management_required, can_manage_projects
 from users.security import write_audit_log
+from reports.models import FinanceClient
 from users.uploads import validate_image_upload
 
 User = get_user_model()
 
 
-def _format_seconds(total_seconds):
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+def _resolve_project_client_and_commercial(request):
+    """Client CRM optionnel ; commercial auto = propriétaire du client si présent."""
+    client_id = request.POST.get('client_id', '').strip()
+    commercial_agent_id = request.POST.get('commercial_agent', '').strip()
+    client = None
+    if client_id:
+        try:
+            client = FinanceClient.objects.filter(pk=int(client_id), is_active=True).first()
+        except (TypeError, ValueError):
+            client = None
+
+    commercial_agent = None
+    if client and client.commercial_owner_id:
+        commercial_agent = client.commercial_owner
+    elif commercial_agent_id:
+        commercial_agent = User.objects.filter(id=commercial_agent_id).first()
+    return client, commercial_agent
 
 
 FRENCH_MONTHS = (
@@ -243,6 +256,14 @@ def _resolve_home_project_cards(
         empty_description=empty_description,
     )
     return [card], card
+
+
+def _format_seconds(total_seconds):
+    total_seconds = max(int(total_seconds or 0), 0)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def _entry_elapsed_seconds(entry, now):
@@ -791,7 +812,7 @@ def toggle_pause_timer(request):
 @login_required(login_url='login')
 def projects_list(request):
     projects = accessible_projects(request.user).select_related(
-        'manager', 'technical_director', 'commercial_agent'
+        'manager', 'technical_director', 'commercial_agent', 'client'
     ).prefetch_related('members')
 
     status = request.GET.get('status', '').strip()
@@ -861,7 +882,7 @@ def projects_list(request):
             return redirect('projects_list')
         branch = normalize_branch(request.POST.get('branch', 'metal_design').strip())
         member_ids = request.POST.getlist('members')
-        commercial_agent_id = request.POST.get('commercial_agent', '').strip()
+        client, commercial_agent = _resolve_project_client_and_commercial(request)
 
         if action == 'update':
             project_id = request.POST.get('project_id', '').strip()
@@ -871,9 +892,8 @@ def projects_list(request):
                 messages.error(request, "Tous les champs du projet sont requis.")
                 return redirect('projects_list')
 
-            commercial_agent = User.objects.filter(id=commercial_agent_id).first() if commercial_agent_id else None
             if not commercial_agent:
-                messages.error(request, "Veuillez choisir un agent commercial pour ce projet.")
+                messages.error(request, "Veuillez choisir un client CRM ou un agent commercial.")
                 return redirect('projects_list')
 
             project.name = name
@@ -883,7 +903,18 @@ def projects_list(request):
             previous_status = project.status
             project.status = project_status
             project.branch = branch
+            project.client = client
             project.commercial_agent = commercial_agent
+
+            amount_raw = request.POST.get('contract_amount', '').strip().replace(',', '.')
+            try:
+                from decimal import Decimal
+                project.contract_amount = Decimal(amount_raw) if amount_raw else Decimal('0.00')
+                if project.contract_amount < 0:
+                    project.contract_amount = Decimal('0.00')
+            except Exception:
+                messages.error(request, "Montant du projet invalide.")
+                return redirect('projects_list')
 
             if project_status in {'done', 'awaiting_delivery'}:
                 project.show_on_home = False
@@ -950,10 +981,9 @@ def projects_list(request):
 
         technical_director = _default_technical_director()
         manager = _default_project_manager() or request.user
-        commercial_agent = User.objects.filter(id=commercial_agent_id).first() if commercial_agent_id else None
-
+        # client / commercial déjà résolus plus haut pour create aussi
         if not commercial_agent:
-            messages.error(request, "Veuillez choisir un agent commercial pour ce projet.")
+            messages.error(request, "Veuillez choisir un client CRM ou un agent commercial.")
             return redirect('projects_list')
 
         cover = request.FILES.get('cover_image')
@@ -967,6 +997,16 @@ def projects_list(request):
         if project_status == 'done':
             project_status = 'pending'
 
+        amount_raw = request.POST.get('contract_amount', '').strip().replace(',', '.')
+        try:
+            from decimal import Decimal
+            contract_amount = Decimal(amount_raw) if amount_raw else Decimal('0.00')
+            if contract_amount < 0:
+                contract_amount = Decimal('0.00')
+        except Exception:
+            messages.error(request, "Montant du projet invalide.")
+            return redirect('projects_list')
+
         project = Project.objects.create(
             name=name,
             description=description,
@@ -977,6 +1017,8 @@ def projects_list(request):
             manager=manager,
             technical_director=technical_director,
             commercial_agent=commercial_agent,
+            client=client,
+            contract_amount=contract_amount,
             cover_image=cover if cover else None,
         )
 
@@ -1052,6 +1094,11 @@ def projects_list(request):
         'can_create_project': is_manager,
         'available_users': User.objects.filter(role='agent').order_by('username'),
         'commercial_agents': _commercial_agents_qs(),
+        'crm_clients': list(
+            FinanceClient.objects.filter(is_active=True)
+            .select_related('commercial_owner')
+            .order_by('name', 'id')
+        ),
         'default_technical_director': _default_technical_director(),
         'default_project_manager': _default_project_manager(),
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
@@ -1066,7 +1113,7 @@ def projects_list(request):
 @login_required(login_url='login')
 def project_detail(request, project_id):
     project = get_object_or_404(
-        Project.objects.select_related('manager', 'technical_director', 'commercial_agent').prefetch_related('members'),
+        Project.objects.select_related('manager', 'technical_director', 'commercial_agent', 'client').prefetch_related('members'),
         id=project_id,
     )
 
