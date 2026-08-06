@@ -2,7 +2,16 @@
 <article class="project-card current-project-card {% if current_project.status == 'urgent' %}is-urgent{% endif %} {% if not current_project.id %}is-empty-state{% endif %}">
     <div class="current-project-cover {% if not current_project.cover_url %}is-empty{% endif %}">
         {% if current_project.cover_url %}
-            <img src="{{ current_project.cover_url }}" alt="{{ current_project.title }}" loading="lazy" decoding="async">
+            <img
+                src="{{ current_project.cover_url }}"
+                alt="{{ current_project.title }}"
+                class="lb-trigger"
+                data-lightbox
+                data-lightbox-src="{{ current_project.cover_url }}"
+                loading="lazy"
+                decoding="async"
+                title="Agrandir la photo"
+            >
         {% else %}
             <div class="current-project-cover-fallback">
                 <img src="{% static 'images/icone_projet.png' %}" alt="">

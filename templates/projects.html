@@ -749,7 +749,16 @@
                             <div class="project-item {% if project.status == 'urgent' %}is-urgent{% elif project.status == 'awaiting_delivery' %}is-awaiting-delivery{% endif %}">
                                 <div class="project-cover">
                                     {% if project.cover_url %}
-                                        <img src="{{ project.cover_url }}" alt="{{ project.name }}" loading="lazy" decoding="async">
+                                        <img
+                                            src="{{ project.cover_url }}"
+                                            alt="{{ project.name }}"
+                                            class="lb-trigger"
+                                            data-lightbox
+                                            data-lightbox-src="{{ project.cover_url }}"
+                                            loading="lazy"
+                                            decoding="async"
+                                            title="Agrandir la photo"
+                                        >
                                     {% else %}
                                         <div class="project-cover-empty">Photo du projet</div>
                                     {% endif %}
@@ -943,7 +952,16 @@
                                     <div class="project-item is-done">
                                         <div class="project-cover">
                                             {% if project.cover_url %}
-                                                <img src="{{ project.cover_url }}" alt="{{ project.name }}" loading="lazy" decoding="async">
+                                                <img
+                                                    src="{{ project.cover_url }}"
+                                                    alt="{{ project.name }}"
+                                                    class="lb-trigger"
+                                                    data-lightbox
+                                                    data-lightbox-src="{{ project.cover_url }}"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    title="Agrandir la photo"
+                                                >
                                             {% else %}
                                                 <div class="project-cover-empty">Photo du projet</div>
                                             {% endif %}

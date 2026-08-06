@@ -183,6 +183,22 @@
                     <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
                     <span class="status-badge" style="background:#fde047;color:#111827;margin-left:8px;">{{ project.get_branch_display }}</span>
 
+                    {% if project.cover_url %}
+                    <div class="project-detail-cover">
+                        <img
+                            src="{{ project.cover_url }}"
+                            alt="{{ project.name }}"
+                            class="lb-trigger"
+                            data-lightbox
+                            data-lightbox-src="{{ project.cover_url }}"
+                            loading="lazy"
+                            decoding="async"
+                            title="Cliquer pour agrandir"
+                        >
+                    </div>
+                    <p class="project-detail-cover-hint">Cliquez sur la photo pour l’afficher en grand et zoomer.</p>
+                    {% endif %}
+
                     <div class="project-meta-grid">
                         <div class="meta-item">
                             <div class="meta-label">Branche</div>
