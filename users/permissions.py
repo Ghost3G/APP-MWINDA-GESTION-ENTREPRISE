@@ -93,28 +93,31 @@ def is_commercial_staff(user):
 
 
 def can_access_crm(user):
-    """CRM portefeuille : commerciaux, responsables, direction, finance."""
+    """Menu CRM : commerciaux + direction uniquement (pas les autres agents ni la finance seule)."""
     if not user or not user.is_authenticated:
         return False
-    if is_management_user(user) or is_commercial_lead(user) or is_commercial_staff(user):
+    if is_management_user(user) or is_commercial_lead(user):
         return True
-    return can_access_finance(user)
+    return is_commercial_staff(user)
+
+
+def can_access_finance_clients(user):
+    """Base clients via Finance (équipe finance / direction) ou via CRM."""
+    return can_access_crm(user) or can_access_finance(user)
 
 
 def can_view_all_crm_clients(user):
     """
     Voir tous les portefeuilles.
     - Responsable Commercial (Michelle, etc.) : oui
-    - Direction / Finance : oui
+    - Direction : oui
     - Agent commercial : non (uniquement le sien)
     """
     if not can_access_crm(user):
         return False
     if is_commercial_lead(user):
         return True
-    if is_management_user(user):
-        return True
-    return can_access_finance(user)
+    return is_management_user(user)
 
 
 def can_reassign_crm_client(user):
@@ -125,19 +128,23 @@ def can_reassign_crm_client(user):
 
 
 def can_edit_crm_clients(user):
-    """Créer / modifier des fiches clients CRM."""
-    if not can_access_crm(user):
-        return False
-    if can_view_all_crm_clients(user):
-        return True
-    return is_commercial_staff(user)
+    """Créer / modifier des fiches clients (CRM commercial ou base Finance)."""
+    if can_access_crm(user):
+        if can_view_all_crm_clients(user):
+            return True
+        return is_commercial_staff(user)
+    return can_edit_finance(user)
 
 
 def can_edit_crm_client(user, client):
-    """Modifier une fiche : propriétaire, ou vue globale (lead / direction / finance)."""
+    """Modifier une fiche : propriétaire, lead/direction, ou finance."""
     if not can_edit_crm_clients(user):
         return False
     if can_view_all_crm_clients(user):
+        return True
+    if can_edit_finance(user) and not can_access_crm(user):
+        return True
+    if can_edit_finance(user) and is_management_user(user):
         return True
     return bool(client and client.commercial_owner_id == user.id)
 

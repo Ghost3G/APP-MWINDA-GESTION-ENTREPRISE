@@ -21,6 +21,7 @@ from users.permissions import (
     can_edit_finance,
     can_manage_finance_closure,
     can_access_crm,
+    can_access_finance_clients,
     can_view_all_crm_clients,
     can_reassign_crm_client,
     can_edit_crm_clients,
@@ -1200,7 +1201,7 @@ def _resolve_commercial_owner(request, *, default_owner=None):
     return request.user
 
 
-def _crm_clients_queryset(user, *, show_archived=False, owner_filter=None):
+def _crm_clients_queryset(user, *, show_archived=False, owner_filter=None, see_all=None):
     qs = FinanceClient.objects.select_related(
         'created_by', 'commercial_owner'
     ).order_by('name', 'id')
@@ -1209,9 +1210,12 @@ def _crm_clients_queryset(user, *, show_archived=False, owner_filter=None):
     else:
         qs = qs.filter(is_active=True)
 
+    if see_all is None:
+        see_all = can_view_all_crm_clients(user)
+
     if owner_filter:
         qs = qs.filter(commercial_owner_id=owner_filter)
-    elif not can_view_all_crm_clients(user):
+    elif not see_all:
         qs = qs.filter(commercial_owner=user)
     return qs
 
@@ -1332,11 +1336,11 @@ def _create_crm_project_for_client(request, client):
     return project, None
 
 
-def _crm_followup_agenda(user, *, owner_filter=None):
+def _crm_followup_agenda(user, *, owner_filter=None, see_all=None):
     """Relances en retard et à faire aujourd'hui."""
     today = timezone.localdate()
     qs = _crm_clients_queryset(
-        user, show_archived=False, owner_filter=owner_filter
+        user, show_archived=False, owner_filter=owner_filter, see_all=see_all
     ).exclude(next_action_date__isnull=True)
     overdue = list(
         qs.filter(next_action_date__lt=today)
@@ -1463,19 +1467,30 @@ def _crm_query_redirect(request, *, edit_id=None, extra=None):
 @login_required(login_url='login')
 def finance_clients(request):
     """CRM clients / portefeuille commercial (même base pour Finance et Commercial)."""
-    if not can_access_crm(request.user):
+    crm_mode = request.resolver_match.url_name == 'crm_portfolio'
+    # Menu CRM : commerciaux + direction. Onglet Finance > Clients : aussi l'équipe finance.
+    if crm_mode:
+        if not can_access_crm(request.user):
+            messages.error(
+                request,
+                "Accès CRM réservé aux commerciaux et à la direction.",
+            )
+            return redirect('dashboard')
+    elif not can_access_finance_clients(request.user):
         messages.error(request, "Accès réservé au CRM commercial, à la direction et à la finance.")
         return redirect('dashboard')
 
     can_write = can_edit_crm_clients(request.user)
-    can_reassign = can_reassign_crm_client(request.user) or can_access_finance(request.user)
-    view_all = can_view_all_crm_clients(request.user)
+    can_reassign = can_reassign_crm_client(request.user)
+    view_all = can_view_all_crm_clients(request.user) or (
+        (not crm_mode) and can_access_finance(request.user)
+    )
     edit_id = request.GET.get('edit', '').strip()
     owner_filter = request.GET.get('owner', '').strip() or None
     search_q = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '').strip()
     reste_filter = request.GET.get('reste', '').strip() == '1'
-    redirect_name = 'crm_portfolio' if request.resolver_match.url_name == 'crm_portfolio' else 'finance_clients'
+    redirect_name = 'crm_portfolio' if crm_mode else 'finance_clients'
 
     if request.method == 'POST':
         if not can_write:
@@ -1691,6 +1706,7 @@ def finance_clients(request):
         request.user,
         show_archived=show_archived,
         owner_filter=filter_owner_id,
+        see_all=view_all,
     ).prefetch_related(Prefetch('follow_ups', queryset=follow_ups_qs))
 
     if search_q:
@@ -1726,23 +1742,28 @@ def finance_clients(request):
             edit_follow_ups = list(candidate.follow_ups.all()[:20])
             edit_finance = _client_financial_snapshot(candidate)
             merge_candidates = [
-                c for c in _crm_clients_queryset(request.user, show_archived=False)
+                c for c in _crm_clients_queryset(
+                    request.user, show_archived=False, see_all=view_all
+                )
                 if c.id != candidate.id and can_edit_crm_client(request.user, c)
             ]
 
     commercial_agents = list(_commercial_agents_queryset()) if (can_reassign or view_all) else []
     active_clients_for_project = list(
-        _crm_clients_queryset(request.user, show_archived=False).order_by('name', 'id')
+        _crm_clients_queryset(
+            request.user, show_archived=False, see_all=view_all
+        ).order_by('name', 'id')
     )
 
     overdue_clients, due_today_clients = _crm_followup_agenda(
-        request.user, owner_filter=filter_owner_id
+        request.user, owner_filter=filter_owner_id, see_all=view_all
     )
 
     visible_active = _crm_clients_queryset(
         request.user,
         show_archived=False,
         owner_filter=filter_owner_id,
+        see_all=view_all,
     )
     portfolio_count = visible_active.count()
 
