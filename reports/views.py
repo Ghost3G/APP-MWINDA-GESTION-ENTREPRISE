@@ -1186,6 +1186,72 @@ def _commercial_agents_queryset():
     )
 
 
+def _client_code_initials(owner):
+    """Initiales du commercial pour le code client (ex: César Kyabuta → CK)."""
+    if not owner:
+        return 'XX'
+    first = (owner.first_name or '').strip()
+    last = (owner.last_name or '').strip()
+    if first and last:
+        return (first[0] + last[0]).upper()
+    # Fallback username: cesar.kyabuta → CK
+    parts = [p for p in (owner.username or '').replace('_', '.').split('.') if p]
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    if parts and len(parts[0]) >= 2:
+        return parts[0][:2].upper()
+    if first:
+        return (first[:2]).upper()
+    return 'XX'
+
+
+def _next_client_code_for_owner(owner, *, exclude_id=None):
+    """
+    Génère CLI-XX-0001 pour le commercial.
+    Le numéro est séquentiel par préfixe d'initiales (CLI-CK-…).
+    """
+    import re
+
+    initials = _client_code_initials(owner)
+    # Si collision d'initiales entre 2 commerciaux, distinguer par id court
+    same_initials_owners = list(
+        User.objects.filter(is_active=True).filter(
+            Q(org_group='commercial')
+            | Q(username__in=['michelle.bukebo', 'michael.kabale'])
+            | Q(id=getattr(owner, 'id', None) or 0)
+        )
+    )
+    colliding = [
+        u for u in same_initials_owners
+        if u.id != getattr(owner, 'id', None) and _client_code_initials(u) == initials
+    ]
+    if colliding and owner and owner.id:
+        prefix = f"CLI-{initials}{owner.id % 10}"
+    else:
+        prefix = f"CLI-{initials}"
+
+    pattern = re.compile(rf'^{re.escape(prefix)}-(\d+)$', re.IGNORECASE)
+    qs = FinanceClient.objects.filter(code__istartswith=f'{prefix}-').exclude(code__isnull=True)
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+
+    max_n = 0
+    for code in qs.values_list('code', flat=True):
+        match = pattern.match(code or '')
+        if match:
+            max_n = max(max_n, int(match.group(1)))
+    return f"{prefix}-{max_n + 1:04d}"
+
+
+def _assign_client_code(client, owner=None, *, force=False):
+    """Attribue ou régénère le code client selon le commercial."""
+    owner = owner or client.commercial_owner
+    if client.code and not force:
+        return client.code
+    client.code = _next_client_code_for_owner(owner, exclude_id=client.id)
+    return client.code
+
+
 def _resolve_commercial_owner(request, *, default_owner=None):
     """Owner forcé pour agent ; libre pour lead/direction/finance."""
     if can_reassign_crm_client(request.user) or can_access_finance(request.user):
@@ -1386,12 +1452,16 @@ def _merge_crm_clients(keep, absorb):
     if absorb.notes:
         note_block += f"\nNotes reprises : {absorb.notes}"
     keep.notes = (keep.notes or '') + note_block
+    if not keep.code:
+        _assign_client_code(keep, keep.commercial_owner, force=True)
     keep.save()
 
     absorb.is_active = False
     absorb.notes = (
         (absorb.notes or '')
-        + f"\n[Fusionné dans « {keep.name} » #{keep.id} le {timezone.localdate().isoformat()}]"
+        + f"\n[Fusionné dans « {keep.name} » #{keep.id}"
+        + (f" / {keep.code}" if keep.code else '')
+        + f" le {timezone.localdate().isoformat()}]"
     )
     absorb.save(update_fields=['is_active', 'notes', 'updated_at'])
     return True, None
@@ -1592,12 +1662,13 @@ def finance_clients(request):
                 else '—'
             )
             client.commercial_owner = new_owner
-            client.save(update_fields=['commercial_owner', 'updated_at'])
+            _assign_client_code(client, new_owner, force=True)
+            client.save(update_fields=['commercial_owner', 'code', 'updated_at'])
             # Aligner l’agent commercial des projets liés
             Project.objects.filter(client_id=client.id).update(commercial_agent=new_owner)
             messages.success(
                 request,
-                f"Client « {client.name} » affecté à {new_owner.get_display_name()} "
+                f"Client « {client.name} » ({client.code}) affecté à {new_owner.get_display_name()} "
                 f"(avant : {old_name}).",
             )
             return redirect(_crm_query_redirect(request))
@@ -1648,46 +1719,56 @@ def finance_clients(request):
                 return redirect(_crm_query_redirect(request, edit_id=duplicate.id))
             for key, value in payload.items():
                 setattr(client, key, value)
+            old_owner_id = client.commercial_owner_id
             client.commercial_owner = _resolve_commercial_owner(
                 request, default_owner=client.commercial_owner or request.user
             )
+            if not client.code or client.commercial_owner_id != old_owner_id:
+                _assign_client_code(
+                    client,
+                    client.commercial_owner,
+                    force=bool(client.commercial_owner_id != old_owner_id),
+                )
             client.save()
-            messages.success(request, "Fiche client mise à jour.")
+            messages.success(request, f"Fiche client mise à jour ({client.code}).")
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
         duplicate = _find_duplicate_client(name=payload['name'], phone=payload['phone'])
         if duplicate:
             messages.warning(
                 request,
-                f"Le client « {duplicate.name} » existe déjà. "
+                f"Le client « {duplicate.name} » existe déjà"
+                f"{f' ({duplicate.code})' if duplicate.code else ''}. "
                 f"N’ajoutez pas une 2ᵉ fiche : ouvrez-le et ajoutez un nouveau projet "
                 f"(ou fusionnez les doublons).",
             )
             return redirect(_crm_query_redirect(request, edit_id=duplicate.id))
 
         owner = _resolve_commercial_owner(request, default_owner=request.user)
-        client = FinanceClient.objects.create(
+        client = FinanceClient(
             created_by=request.user,
             commercial_owner=owner,
             **payload,
         )
+        _assign_client_code(client, owner, force=True)
+        client.save()
         project_name = request.POST.get('project_name', '').strip()
         if project_name:
             project, error = _create_crm_project_for_client(request, client)
             if error:
                 messages.warning(
                     request,
-                    f"Client créé, mais le projet n’a pas pu être ajouté : {error}",
+                    f"Client {client.code} créé, mais le projet n’a pas pu être ajouté : {error}",
                 )
                 return redirect(_crm_query_redirect(request, edit_id=client.id))
             messages.success(
                 request,
-                f"Client « {client.name} » créé avec le projet « {project.name} » "
+                f"Client « {client.name} » ({client.code}) créé avec le projet « {project.name} » "
                 f"({project.contract_amount} $).",
             )
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
-        messages.success(request, "Client ajouté au portefeuille.")
+        messages.success(request, f"Client « {client.name} » ajouté ({client.code}).")
         return redirect(_crm_query_redirect(request, edit_id=client.id))
 
     show_archived = request.GET.get('archived') == '1'
@@ -1712,6 +1793,7 @@ def finance_clients(request):
     if search_q:
         clients_qs = clients_qs.filter(
             Q(name__icontains=search_q)
+            | Q(code__icontains=search_q)
             | Q(phone__icontains=search_q)
             | Q(email__icontains=search_q)
             | Q(contact_name__icontains=search_q)

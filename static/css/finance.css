@@ -763,6 +763,24 @@
     margin: 0 0 6px;
     color: #fafafa;
     font-size: 1.05rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.crm-client-code {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(253, 224, 71, 0.12);
+    border: 1px solid rgba(253, 224, 71, 0.35);
+    color: #fde047;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .crm-client-card__meta {

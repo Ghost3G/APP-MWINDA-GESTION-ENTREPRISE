@@ -146,7 +146,7 @@
                                     <option value="">— Sélectionner un client —</option>
                                     {% for c in active_clients_for_project %}
                                         <option value="{{ c.id }}">
-                                            {{ c.name }}{% if c.commercial_owner %} → {{ c.commercial_owner.get_display_name }}{% endif %}
+                                            {% if c.code %}{{ c.code }} — {% endif %}{{ c.name }}{% if c.commercial_owner %} → {{ c.commercial_owner.get_display_name }}{% endif %}
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -183,7 +183,7 @@
                                     <option value="">— Sélectionner un client —</option>
                                     {% for c in active_clients_for_project %}
                                         <option value="{{ c.id }}">
-                                            {{ c.name }}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}
+                                            {% if c.code %}{{ c.code }} — {% endif %}{{ c.name }}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}
                                         </option>
                                     {% endfor %}
                                 </select>
@@ -223,10 +223,11 @@
                 {% endif %}
 
                 <div class="panel" style="margin-bottom:16px;">
-                    <h3>{% if edit_client %}Modifier — {{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
+                    <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
                         Uniquement pour un <strong>nouveau</strong> client. S’il existe déjà, utilisez le formulaire ci-dessus.
+                        Le code (ex. CLI-CK-0001) sera généré automatiquement.
                     </p>
                     {% endif %}
                     <form method="POST">
@@ -236,6 +237,12 @@
                             <input type="hidden" name="client_id" value="{{ edit_client.id }}">
                         {% endif %}
                         <div class="form-grid two-cols">
+                            {% if edit_client and edit_client.code %}
+                            <div class="form-group">
+                                <label>Code client</label>
+                                <input type="text" value="{{ edit_client.code }}" disabled>
+                            </div>
+                            {% endif %}
                             <div class="form-group">
                                 <label>Nom / Société *</label>
                                 <input type="text" name="name" value="{{ edit_client.name|default:'' }}" required placeholder="Ex: Société ABC">
@@ -585,7 +592,7 @@
                         {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
                         <div class="form-group">
                             <label>Recherche</label>
-                            <input type="search" name="q" value="{{ search_q }}" placeholder="Nom, téléphone, email…">
+                            <input type="search" name="q" value="{{ search_q }}" placeholder="Code, nom, téléphone, email…">
                         </div>
                         <div class="form-group">
                             <label>Statut</label>
@@ -627,7 +634,10 @@
                                 <article class="crm-client-card">
                                     <div class="crm-client-card__head">
                                         <div>
-                                            <h4>{{ row.client.name }}</h4>
+                                            <h4>
+                                                {% if row.client.code %}<span class="crm-client-code">{{ row.client.code }}</span>{% endif %}
+                                                {{ row.client.name }}
+                                            </h4>
                                             <div class="crm-client-card__meta">
                                                 {% if row.client.commercial_owner %}
                                                     <span>{{ row.client.commercial_owner.get_display_name }}</span>

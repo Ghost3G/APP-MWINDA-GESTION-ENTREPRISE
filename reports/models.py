@@ -116,6 +116,15 @@ EXPENSE_CATEGORY_CHOICES = (
 class FinanceClient(models.Model):
     """Fiche client CRM — collée au portefeuille d'un commercial."""
 
+    code = models.CharField(
+        max_length=32,
+        unique=True,
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name='Code client',
+        help_text='Format CLI-XX-0001 (initiales commercial + numéro).',
+    )
     name = models.CharField(max_length=200, verbose_name='Nom / Société')
     contact_name = models.CharField(max_length=150, blank=True, verbose_name='Personne de contact')
     phone = models.CharField(max_length=40, blank=True, verbose_name='Téléphone')
@@ -165,6 +174,8 @@ class FinanceClient(models.Model):
         verbose_name_plural = 'Clients'
 
     def __str__(self):
+        if self.code:
+            return f"{self.code} — {self.name}"
         return self.name
 
 
