@@ -642,7 +642,7 @@
                                                 {% if row.client.commercial_owner %}
                                                     <span>{{ row.client.commercial_owner.get_display_name }}</span>
                                                 {% endif %}
-                                                <span class="crm-status">{{ row.client.get_status_display }}</span>
+                                                <span class="crm-status crm-status--{{ row.client.status }}">{{ row.client.get_status_display }}</span>
                                                 {% if row.client.phone %}<span>{{ row.client.phone }}</span>{% endif %}
                                             </div>
                                         </div>
