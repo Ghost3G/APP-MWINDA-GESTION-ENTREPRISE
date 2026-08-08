@@ -21,14 +21,11 @@
                     <p>
                         {% if is_commercial_lead_user %}
                             Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
-                            Création de projets : Japhete &amp; Maki uniquement.
-                        {% elif can_create_project %}
-                            Vous pouvez créer des projets liés aux fiches clients CRM.
+                            Les projets sont créés par Japhete &amp; Maki ; ici vous les liez aux clients.
                         {% elif can_view_all_crm %}
-                            Vue globale des portefeuilles commerciaux.
+                            Vue globale des portefeuilles. Liez les projets existants aux fiches clients.
                         {% elif crm_mode %}
-                            Vous gérez <strong>vos clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par Japhete ou Maki.
-                            Vous ne créez pas les projets vous-même.
+                            Vous créez vos <strong>clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par Japhete ou Maki.
                         {% else %}
                             Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
                         {% endif %}
@@ -209,67 +206,15 @@
                 </div>
                 {% endif %}
 
-                {% if not edit_client and active_clients_for_project and can_create_project %}
-                <div class="panel crm-add-project-panel" style="margin-bottom:16px;">
-                    <h3>Ajouter un projet à un client existant</h3>
-                    <p class="muted panel-hint">
-                        Réservé à Japhete / Maki. Liez un nouveau projet à une fiche client déjà créée par le commercial.
-                    </p>
-                    <form method="POST">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="add_project">
-                        <div class="form-grid two-cols">
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>Client existant *</label>
-                                <select name="client_id" required>
-                                    <option value="">— Sélectionner un client —</option>
-                                    {% for c in active_clients_for_project %}
-                                        <option value="{{ c.id }}">
-                                            {% if c.code %}{{ c.code }} — {% endif %}{{ c.name }}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Nom du projet *</label>
-                                <input type="text" name="project_name" required placeholder="Ex: Enseigne LED siège">
-                            </div>
-                            <div class="form-group">
-                                <label>Montant de ce projet ($)</label>
-                                <input type="number" step="0.01" min="0" name="project_amount" value="0" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Date début</label>
-                                <input type="date" name="project_start_date">
-                            </div>
-                            <div class="form-group">
-                                <label>Date fin</label>
-                                <input type="date" name="project_end_date">
-                            </div>
-                            <div class="form-group">
-                                <label>Branche</label>
-                                <select name="project_branch">
-                                    {% for value, label in branch_choices %}
-                                        <option value="{{ value }}">{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>Description</label>
-                                <textarea name="project_description" placeholder="Optionnel"></textarea>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-primary" style="width:auto;">Ajouter le projet au client</button>
-                    </form>
-                </div>
                 {% endif %}
 
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
-                        Les commerciaux créent ici uniquement la <strong>fiche client</strong>, puis peuvent
-                        <strong>lier un projet déjà créé</strong> par Japhete ou Maki.
+                        Créez ici uniquement la <strong>fiche client</strong>.
+                        Pour rattacher un chantier : utilisez <strong>« Lier un projet existant »</strong>
+                        (projet déjà créé par Japhete ou Maki).
                         Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
@@ -359,36 +304,6 @@
                                 <label>Notes</label>
                                 <textarea name="notes" placeholder="Informations utiles, historique commercial...">{{ edit_client.notes|default:'' }}</textarea>
                             </div>
-                            {% if not edit_client and can_create_project %}
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <div class="crm-first-project-box">
-                                    <strong>Premier projet (optionnel — Japhete / Maki)</strong>
-                                    <p class="muted">Si vous créez déjà le chantier avec la fiche client, renseignez-le ici.</p>
-                                    <div class="form-grid two-cols">
-                                        <div class="form-group">
-                                            <label>Nom du projet</label>
-                                            <input type="text" name="project_name" placeholder="Ex: Signalétique entrée">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Montant de ce projet ($)</label>
-                                            <input type="number" step="0.01" min="0" name="project_amount" value="0">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Branche</label>
-                                            <select name="project_branch">
-                                                {% for value, label in branch_choices %}
-                                                    <option value="{{ value }}">{{ label }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="form-group" style="grid-column: 1 / -1;">
-                                            <label>Description projet</label>
-                                            <textarea name="project_description" placeholder="Optionnel"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
                         </div>
                         <div class="client-form-actions">
                             <button type="submit" class="btn-primary" style="width:auto;">
@@ -529,11 +444,8 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Projets du client — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        {% if can_create_project %}
-                            Chaque projet a son montant, son payé et son reste (en rouge) séparément.
-                        {% else %}
-                            Consultation uniquement. La création de projets est réservée à <strong>Japhete</strong> et <strong>Maki</strong> (module Projets).
-                        {% endif %}
+                        Les projets sont créés par Japhete / Maki dans le module Projets.
+                        Ici, vous pouvez uniquement <strong>lier</strong> un projet déjà créé à ce client.
                     </p>
                     {% if edit_finance %}
                         <div class="crm-money-grid">
@@ -579,13 +491,7 @@
                                 </tbody>
                             </table>
                         {% else %}
-                            <p class="muted">
-                                {% if can_create_project %}
-                                    Aucun projet lié. Ajoutez-en un ci-dessous ou liez un projet existant.
-                                {% else %}
-                                    Aucun projet lié. Liez un projet déjà créé par Japhete ou Maki ci-dessous.
-                                {% endif %}
-                            </p>
+                            <p class="muted">Aucun projet lié. Liez un projet déjà créé par Japhete ou Maki ci-dessous.</p>
                         {% endif %}
                     {% endif %}
                     {% if can_edit_crm and linkable_projects %}
@@ -610,46 +516,7 @@
                         <button type="submit" class="btn-crm btn-crm--primary">Lier ce projet au client</button>
                     </form>
                     {% elif can_edit_crm and not linkable_projects %}
-                    <p class="muted panel-hint">Aucun projet libre à rattacher pour le moment (tous sont déjà liés, ou aucun n’a encore été créé).</p>
-                    {% endif %}
-                    {% if can_create_project %}
-                    <h4 class="crm-section-subtitle">Nouveau projet sur ce client</h4>
-                    <form method="POST">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="add_project">
-                        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
-                        <div class="form-grid two-cols">
-                            <div class="form-group">
-                                <label>Nom du projet *</label>
-                                <input type="text" name="project_name" required placeholder="Ex: Enseigne LED siège">
-                            </div>
-                            <div class="form-group">
-                                <label>Montant de ce projet ($)</label>
-                                <input type="number" step="0.01" min="0" name="project_amount" value="0" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Date début</label>
-                                <input type="date" name="project_start_date">
-                            </div>
-                            <div class="form-group">
-                                <label>Date fin</label>
-                                <input type="date" name="project_end_date">
-                            </div>
-                            <div class="form-group">
-                                <label>Branche</label>
-                                <select name="project_branch">
-                                    {% for value, label in branch_choices %}
-                                        <option value="{{ value }}">{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>Description</label>
-                                <textarea name="project_description" placeholder="Optionnel"></textarea>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-primary" style="width:auto;">Ajouter ce projet au client</button>
-                    </form>
+                    <p class="muted panel-hint">Aucun projet libre à rattacher pour le moment (tous sont déjà liés, ou aucun n’a encore été créé dans Projets).</p>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -795,11 +662,7 @@
                                         </div>
                                     {% else %}
                                         <p class="crm-empty-projects">
-                                            {% if can_create_project %}
-                                                Aucun projet lié — créer ou lier un projet depuis « Gérer ».
-                                            {% else %}
-                                                Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par Japhete / Maki.
-                                            {% endif %}
+                                            Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par Japhete / Maki.
                                         </p>
                                     {% endif %}
 

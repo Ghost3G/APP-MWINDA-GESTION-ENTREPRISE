@@ -1614,27 +1614,12 @@ def finance_clients(request):
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
         if action == 'add_project':
-            if not can_manage_projects(request.user):
-                messages.error(
-                    request,
-                    "Seul le Directeur Technique (Japhete) et l’Ass. DT (Maki) peuvent créer un projet. "
-                    "Vous pouvez en revanche lier un projet déjà créé à un client.",
-                )
-                return redirect(redirect_name)
-            client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
-            if not client or not can_edit_crm_client(request.user, client):
-                messages.error(request, "Client introuvable ou non autorisé.")
-                return redirect(redirect_name)
-            project, error = _create_crm_project_for_client(request, client)
-            if error:
-                messages.error(request, error)
-                return redirect(_crm_query_redirect(request, edit_id=client.id))
-            messages.success(
+            messages.error(
                 request,
-                f"Projet « {project.name} » ajouté au client « {client.name} » "
-                f"(montant {project.contract_amount} $ — suivi séparé des autres projets).",
+                "La création de projet se fait dans le module Projets (Japhete / Maki). "
+                "Dans le CRM, utilisez « Lier un projet existant ».",
             )
-            return redirect(_crm_query_redirect(request, edit_id=client.id))
+            return redirect(redirect_name)
 
         if action == 'link_project':
             client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
@@ -1794,30 +1779,6 @@ def finance_clients(request):
         )
         _assign_client_code(client, owner, force=True)
         client.save()
-        # Premier projet optionnel : uniquement Japhete / Maki
-        project_name = request.POST.get('project_name', '').strip()
-        if project_name and can_manage_projects(request.user):
-            project, error = _create_crm_project_for_client(request, client)
-            if error:
-                messages.warning(
-                    request,
-                    f"Client {client.code} créé, mais le projet n’a pas pu être ajouté : {error}",
-                )
-                return redirect(_crm_query_redirect(request, edit_id=client.id))
-            messages.success(
-                request,
-                f"Client « {client.name} » ({client.code}) créé avec le projet « {project.name} » "
-                f"({project.contract_amount} $).",
-            )
-            return redirect(_crm_query_redirect(request, edit_id=client.id))
-        if project_name and not can_manage_projects(request.user):
-            messages.warning(
-                request,
-                f"Client « {client.name} » ({client.code}) créé. "
-                f"La création de projet est réservée à Japhete et Maki (module Projets).",
-            )
-            return redirect(_crm_query_redirect(request, edit_id=client.id))
-
         messages.success(request, f"Client « {client.name} » ajouté ({client.code}).")
         return redirect(_crm_query_redirect(request, edit_id=client.id))
 
