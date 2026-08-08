@@ -21,11 +21,11 @@
                     <p>
                         {% if is_commercial_lead_user %}
                             Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
-                            Les projets sont créés par Japhete &amp; Maki ; ici vous les liez aux clients.
+                            Les projets sont créés par le Directeur Technique et le Directeur Technique adjoint ; ici vous les liez aux clients.
                         {% elif can_view_all_crm %}
                             Vue globale des portefeuilles. Liez les projets existants aux fiches clients.
                         {% elif crm_mode %}
-                            Vous créez vos <strong>clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par Japhete ou Maki.
+                            Vous créez vos <strong>clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint.
                         {% else %}
                             Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
                         {% endif %}
@@ -171,7 +171,7 @@
                 <div class="panel crm-link-project-panel" style="margin-bottom:16px;">
                     <h3>Lier un projet existant à un client</h3>
                     <p class="muted panel-hint">
-                        Le projet a déjà été créé par Japhete ou Maki ? Rattachez-le ici à la fiche client
+                        Le projet a déjà été créé par le Directeur Technique ou le Directeur Technique adjoint ? Rattachez-le ici à la fiche client
                         (sans créer un nouveau projet).
                     </p>
                     <form method="POST">
@@ -214,7 +214,7 @@
                     <p class="muted panel-hint">
                         Créez ici uniquement la <strong>fiche client</strong>.
                         Pour rattacher un chantier : utilisez <strong>« Lier un projet existant »</strong>
-                        (projet déjà créé par Japhete ou Maki).
+                        (projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint).
                         Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
@@ -444,7 +444,7 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Projets du client — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Les projets sont créés par Japhete / Maki dans le module Projets.
+                        Les projets sont créés par le Directeur Technique / Directeur Technique adjoint dans le module Projets.
                         Ici, vous pouvez uniquement <strong>lier</strong> un projet déjà créé à ce client.
                     </p>
                     {% if edit_finance %}
@@ -491,11 +491,11 @@
                                 </tbody>
                             </table>
                         {% else %}
-                            <p class="muted">Aucun projet lié. Liez un projet déjà créé par Japhete ou Maki ci-dessous.</p>
+                            <p class="muted">Aucun projet lié. Liez un projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint ci-dessous.</p>
                         {% endif %}
                     {% endif %}
                     {% if can_edit_crm and linkable_projects %}
-                    <h4 class="crm-section-subtitle">Lier un projet existant (créé par Japhete / Maki)</h4>
+                    <h4 class="crm-section-subtitle">Lier un projet existant (créé par le Directeur Technique / adjoint)</h4>
                     <form method="POST" style="margin-bottom:16px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="link_project">
@@ -661,7 +661,7 @@
                                         </div>
                                     {% else %}
                                         <p class="crm-empty-projects">
-                                            Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par Japhete / Maki.
+                                            Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par le Directeur Technique / Directeur Technique adjoint.
                                         </p>
                                     {% endif %}
 

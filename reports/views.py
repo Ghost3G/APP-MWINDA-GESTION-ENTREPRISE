@@ -1616,7 +1616,7 @@ def finance_clients(request):
         if action == 'add_project':
             messages.error(
                 request,
-                "La création de projet se fait dans le module Projets (Japhete / Maki). "
+                "La création de projet se fait dans le module Projets (Directeur Technique / adjoint). "
                 "Dans le CRM, utilisez « Lier un projet existant ».",
             )
             return redirect(redirect_name)
@@ -1635,7 +1635,7 @@ def finance_clients(request):
                 messages.error(
                     request,
                     "Projet introuvable ou déjà lié à un client. "
-                    "Seuls les projets créés (Japhete/Maki) et non encore rattachés sont disponibles.",
+                    "Seuls les projets créés (Directeur Technique / adjoint) et non encore rattachés sont disponibles.",
                 )
                 return redirect(_crm_query_redirect(request, edit_id=client.id))
 
