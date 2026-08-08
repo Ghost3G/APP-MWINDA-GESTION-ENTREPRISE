@@ -516,7 +516,8 @@
 
         .btn-complete,
         .btn-awaiting-delivery,
-        .btn-reopen {
+        .btn-reopen,
+        .btn-delete-project {
             width: 100%;
             padding: 10px;
             border-radius: 10px;
@@ -543,6 +544,16 @@
 
         .btn-awaiting-delivery:hover {
             background: rgba(234, 88, 12, 0.26);
+        }
+
+        .btn-delete-project {
+            background: rgba(220, 38, 38, 0.14);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.35);
+        }
+
+        .btn-delete-project:hover {
+            background: rgba(220, 38, 38, 0.24);
         }
 
         .btn-reopen {
@@ -855,6 +866,13 @@
                                             <button type="submit" class="btn-complete">Terminer le projet</button>
                                         </form>
                                         <button type="button" class="btn-card-ghost" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier le projet</button>
+                                        <form method="POST" class="delete-project-form" style="margin:0;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                                            <input type="hidden" name="delete_confirm" value="" class="delete-confirm-field">
+                                            <button type="submit" class="btn-delete-project" data-project-name="{{ project.name|escapejs }}">Supprimer le projet</button>
+                                        </form>
                                         <div id="edit-{{ project.id }}" style="display:none;">
                                             <form method="POST" enctype="multipart/form-data" class="project-status-form" style="display:grid; gap:8px;">
                                                 {% csrf_token %}
@@ -997,6 +1015,13 @@
                                                     <input type="hidden" name="project_id" value="{{ project.id }}">
                                                     <button type="submit" class="btn-reopen">Réouvrir</button>
                                                 </form>
+                                                <form method="POST" class="delete-project-form" style="margin:0;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                    <input type="hidden" name="delete_confirm" value="" class="delete-confirm-field">
+                                                    <button type="submit" class="btn-delete-project" data-project-name="{{ project.name|escapejs }}">Supprimer</button>
+                                                </form>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -1061,6 +1086,22 @@
                 return;
             }
             if (confirmField) confirmField.value = '1';
+        });
+    });
+
+    document.querySelectorAll('.delete-project-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const btn = form.querySelector('.btn-delete-project');
+            const confirmField = form.querySelector('.delete-confirm-field');
+            const name = (btn && btn.getAttribute('data-project-name')) || 'ce projet';
+            const text = window.prompt(
+                'Suppression définitive de « ' + name + ' ».\nTapez SUPPRIMER pour confirmer :'
+            );
+            if (!text || text.trim().toUpperCase() !== 'SUPPRIMER') {
+                event.preventDefault();
+                return;
+            }
+            if (confirmField) confirmField.value = text.trim();
         });
     });
     </script>

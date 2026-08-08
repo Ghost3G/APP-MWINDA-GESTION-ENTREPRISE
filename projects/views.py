@@ -828,10 +828,25 @@ def projects_list(request):
         if not is_manager:
             return HttpResponseForbidden(
                 "Seuls le Directeur Technique (Japhete Kuta) et l’Ass. Directeur Technique "
-                "(Emmanuel Maki) peuvent créer, modifier ou terminer un projet."
+                "(Emmanuel Maki) peuvent créer, modifier, terminer ou supprimer un projet."
             )
 
         action = request.POST.get('action', 'create').strip() or 'create'
+
+        if action == 'delete':
+            project_id = request.POST.get('project_id', '').strip()
+            project = get_object_or_404(Project, id=project_id)
+            delete_confirm = request.POST.get('delete_confirm', '').strip().upper()
+            if delete_confirm != 'SUPPRIMER':
+                messages.error(
+                    request,
+                    "Confirmation invalide. Pour supprimer un projet, tapez SUPPRIMER.",
+                )
+                return redirect('projects_list')
+            project_name = project.name
+            project.delete()
+            messages.success(request, f'Projet « {project_name} » supprimé.')
+            return redirect('projects_list')
 
         if action in {'complete', 'reopen', 'awaiting_delivery'}:
             project_id = request.POST.get('project_id', '').strip()
