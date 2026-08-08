@@ -27,7 +27,8 @@
                         {% elif can_view_all_crm %}
                             Vue globale des portefeuilles commerciaux.
                         {% elif crm_mode %}
-                            Vous gérez <strong>vos clients</strong> uniquement. Les projets sont créés par Japhete et Maki.
+                            Vous gérez <strong>vos clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par Japhete ou Maki.
+                            Vous ne créez pas les projets vous-même.
                         {% else %}
                             Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
                         {% endif %}
@@ -169,6 +170,45 @@
                 </div>
                 {% endif %}
 
+                {% if not edit_client and can_edit_crm and linkable_projects and active_clients_for_project %}
+                <div class="panel crm-link-project-panel" style="margin-bottom:16px;">
+                    <h3>Lier un projet existant à un client</h3>
+                    <p class="muted panel-hint">
+                        Le projet a déjà été créé par Japhete ou Maki ? Rattachez-le ici à la fiche client
+                        (sans créer un nouveau projet).
+                    </p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="link_project">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label>Client *</label>
+                                <select name="client_id" required>
+                                    <option value="">— Sélectionner un client —</option>
+                                    {% for c in active_clients_for_project %}
+                                        <option value="{{ c.id }}">
+                                            {% if c.code %}{{ c.code }} — {% endif %}{{ c.name }}{% if c.commercial_owner %} · {{ c.commercial_owner.get_display_name }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Projet déjà créé *</label>
+                                <select name="project_id" required>
+                                    <option value="">— Sélectionner un projet —</option>
+                                    {% for p in linkable_projects %}
+                                        <option value="{{ p.id }}">
+                                            {{ p.name }} · {{ p.get_status_display }} · {{ p.contract_amount }} $
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-crm btn-crm--primary">Lier le projet au client</button>
+                    </form>
+                </div>
+                {% endif %}
+
                 {% if not edit_client and active_clients_for_project and can_create_project %}
                 <div class="panel crm-add-project-panel" style="margin-bottom:16px;">
                     <h3>Ajouter un projet à un client existant</h3>
@@ -228,8 +268,8 @@
                     <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
-                        Les commerciaux créent ici uniquement la <strong>fiche client</strong>.
-                        La création de projets est réservée à <strong>Japhete</strong> et <strong>Maki</strong> (module Projets).
+                        Les commerciaux créent ici uniquement la <strong>fiche client</strong>, puis peuvent
+                        <strong>lier un projet déjà créé</strong> par Japhete ou Maki.
                         Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
@@ -541,12 +581,36 @@
                         {% else %}
                             <p class="muted">
                                 {% if can_create_project %}
-                                    Aucun projet lié. Ajoutez-en un ci-dessous.
+                                    Aucun projet lié. Ajoutez-en un ci-dessous ou liez un projet existant.
                                 {% else %}
-                                    Aucun projet lié pour l’instant. Japhete ou Maki pourra le créer dans Projets.
+                                    Aucun projet lié. Liez un projet déjà créé par Japhete ou Maki ci-dessous.
                                 {% endif %}
                             </p>
                         {% endif %}
+                    {% endif %}
+                    {% if can_edit_crm and linkable_projects %}
+                    <h4 class="crm-section-subtitle">Lier un projet existant (créé par Japhete / Maki)</h4>
+                    <form method="POST" style="margin-bottom:16px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="link_project">
+                        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+                        <div class="form-grid two-cols">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Projet non encore rattaché *</label>
+                                <select name="project_id" required>
+                                    <option value="">— Choisir un projet —</option>
+                                    {% for p in linkable_projects %}
+                                        <option value="{{ p.id }}">
+                                            {{ p.name }} · {{ p.get_status_display }} · {{ p.contract_amount }} $
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-crm btn-crm--primary">Lier ce projet au client</button>
+                    </form>
+                    {% elif can_edit_crm and not linkable_projects %}
+                    <p class="muted panel-hint">Aucun projet libre à rattacher pour le moment (tous sont déjà liés, ou aucun n’a encore été créé).</p>
                     {% endif %}
                     {% if can_create_project %}
                     <h4 class="crm-section-subtitle">Nouveau projet sur ce client</h4>
@@ -732,9 +796,9 @@
                                     {% else %}
                                         <p class="crm-empty-projects">
                                             {% if can_create_project %}
-                                                Aucun projet lié — utiliser « Ajouter un projet à un client existant » ou « Gérer ».
+                                                Aucun projet lié — créer ou lier un projet depuis « Gérer ».
                                             {% else %}
-                                                Aucun projet lié — la création est réservée à Japhete et Maki (module Projets).
+                                                Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par Japhete / Maki.
                                             {% endif %}
                                         </p>
                                     {% endif %}

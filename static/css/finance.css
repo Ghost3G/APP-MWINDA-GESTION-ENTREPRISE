@@ -621,6 +621,10 @@
     border-color: rgba(253, 224, 71, 0.28);
 }
 
+.crm-link-project-panel {
+    border-color: rgba(74, 222, 128, 0.28);
+}
+
 .crm-card-actions {
     display: flex;
     flex-direction: column;

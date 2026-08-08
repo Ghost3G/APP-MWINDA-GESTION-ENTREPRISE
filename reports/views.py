@@ -1618,7 +1618,7 @@ def finance_clients(request):
                 messages.error(
                     request,
                     "Seul le Directeur Technique (Japhete) et l’Ass. DT (Maki) peuvent créer un projet. "
-                    "Le CRM sert à gérer les clients.",
+                    "Vous pouvez en revanche lier un projet déjà créé à un client.",
                 )
                 return redirect(redirect_name)
             client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
@@ -1633,6 +1633,39 @@ def finance_clients(request):
                 request,
                 f"Projet « {project.name} » ajouté au client « {client.name} » "
                 f"(montant {project.contract_amount} $ — suivi séparé des autres projets).",
+            )
+            return redirect(_crm_query_redirect(request, edit_id=client.id))
+
+        if action == 'link_project':
+            client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
+            if not client or not can_edit_crm_client(request.user, client):
+                messages.error(request, "Client introuvable ou non autorisé.")
+                return redirect(redirect_name)
+            try:
+                project_id = int(request.POST.get('project_id', '').strip() or 0)
+            except (TypeError, ValueError):
+                project_id = 0
+            project = Project.objects.filter(id=project_id, client__isnull=True).first()
+            if not project:
+                messages.error(
+                    request,
+                    "Projet introuvable ou déjà lié à un client. "
+                    "Seuls les projets créés (Japhete/Maki) et non encore rattachés sont disponibles.",
+                )
+                return redirect(_crm_query_redirect(request, edit_id=client.id))
+
+            project.client = client
+            update_fields = ['client']
+            if not project.commercial_agent_id and client.commercial_owner_id:
+                project.commercial_agent = client.commercial_owner
+                update_fields.append('commercial_agent')
+            project.save(update_fields=update_fields)
+            if client.commercial_owner_id:
+                project.members.add(client.commercial_owner)
+            messages.success(
+                request,
+                f"Projet « {project.name} » lié au client « {client.name} »"
+                f"{f' ({client.code})' if client.code else ''}.",
             )
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
@@ -1853,6 +1886,12 @@ def finance_clients(request):
             request.user, show_archived=False, see_all=view_all
         ).order_by('name', 'id')
     )
+    # Projets déjà créés (Japhete/Maki) mais pas encore rattachés à un client CRM
+    linkable_projects = list(
+        Project.objects.filter(client__isnull=True)
+        .select_related('manager', 'commercial_agent')
+        .order_by('-created_at', 'name', 'id')[:200]
+    )
 
     overdue_clients, due_today_clients = _crm_followup_agenda(
         request.user, owner_filter=filter_owner_id, see_all=view_all
@@ -1885,6 +1924,7 @@ def finance_clients(request):
         'clients': clients_list,
         'clients_with_finance': clients_with_finance,
         'active_clients_for_project': active_clients_for_project,
+        'linkable_projects': linkable_projects,
         'edit_client': edit_client,
         'edit_follow_ups': edit_follow_ups,
         'edit_finance': edit_finance,
