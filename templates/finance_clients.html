@@ -21,10 +21,13 @@
                     <p>
                         {% if is_commercial_lead_user %}
                             Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
+                            Création de projets : Japhete &amp; Maki uniquement.
+                        {% elif can_create_project %}
+                            Vous pouvez créer des projets liés aux fiches clients CRM.
                         {% elif can_view_all_crm %}
                             Vue globale des portefeuilles commerciaux.
                         {% elif crm_mode %}
-                            Vous ne voyez que <strong>votre portefeuille</strong> — les clients qui vous sont assignés.
+                            Vous gérez <strong>vos clients</strong> uniquement. Les projets sont créés par Japhete et Maki.
                         {% else %}
                             Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
                         {% endif %}
@@ -166,12 +169,11 @@
                 </div>
                 {% endif %}
 
-                {% if not edit_client and active_clients_for_project %}
+                {% if not edit_client and active_clients_for_project and can_create_project %}
                 <div class="panel crm-add-project-panel" style="margin-bottom:16px;">
                     <h3>Ajouter un projet à un client existant</h3>
                     <p class="muted panel-hint">
-                        Le client existe déjà ? Ne créez pas une 2ᵉ fiche. Choisissez-le ici :
-                        chaque projet a son propre montant / payé / reste.
+                        Réservé à Japhete / Maki. Liez un nouveau projet à une fiche client déjà créée par le commercial.
                     </p>
                     <form method="POST">
                         {% csrf_token %}
@@ -226,8 +228,9 @@
                     <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
-                        Uniquement pour un <strong>nouveau</strong> client. S’il existe déjà, utilisez le formulaire ci-dessus.
-                        Le code (ex. CLI-CK-0001) sera généré automatiquement.
+                        Les commerciaux créent ici uniquement la <strong>fiche client</strong>.
+                        La création de projets est réservée à <strong>Japhete</strong> et <strong>Maki</strong> (module Projets).
+                        Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
                     <form method="POST">
@@ -316,11 +319,11 @@
                                 <label>Notes</label>
                                 <textarea name="notes" placeholder="Informations utiles, historique commercial...">{{ edit_client.notes|default:'' }}</textarea>
                             </div>
-                            {% if not edit_client %}
+                            {% if not edit_client and can_create_project %}
                             <div class="form-group" style="grid-column: 1 / -1;">
                                 <div class="crm-first-project-box">
-                                    <strong>Premier projet (optionnel)</strong>
-                                    <p class="muted">Si vous avez déjà un chantier pour ce nouveau client, renseignez-le ici. Sinon laissez vide.</p>
+                                    <strong>Premier projet (optionnel — Japhete / Maki)</strong>
+                                    <p class="muted">Si vous créez déjà le chantier avec la fiche client, renseignez-le ici.</p>
                                     <div class="form-grid two-cols">
                                         <div class="form-group">
                                             <label>Nom du projet</label>
@@ -486,7 +489,11 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Projets du client — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Même fiche client. Chaque projet a son montant, son payé et son reste (en rouge) séparément.
+                        {% if can_create_project %}
+                            Chaque projet a son montant, son payé et son reste (en rouge) séparément.
+                        {% else %}
+                            Consultation uniquement. La création de projets est réservée à <strong>Japhete</strong> et <strong>Maki</strong> (module Projets).
+                        {% endif %}
                     </p>
                     {% if edit_finance %}
                         <div class="crm-money-grid">
@@ -532,9 +539,16 @@
                                 </tbody>
                             </table>
                         {% else %}
-                            <p class="muted">Aucun projet lié. Ajoutez-en un ci-dessous.</p>
+                            <p class="muted">
+                                {% if can_create_project %}
+                                    Aucun projet lié. Ajoutez-en un ci-dessous.
+                                {% else %}
+                                    Aucun projet lié pour l’instant. Japhete ou Maki pourra le créer dans Projets.
+                                {% endif %}
+                            </p>
                         {% endif %}
                     {% endif %}
+                    {% if can_create_project %}
                     <h4 class="crm-section-subtitle">Nouveau projet sur ce client</h4>
                     <form method="POST">
                         {% csrf_token %}
@@ -572,6 +586,7 @@
                         </div>
                         <button type="submit" class="btn-primary" style="width:auto;">Ajouter ce projet au client</button>
                     </form>
+                    {% endif %}
                 </div>
                 {% endif %}
                 {% endif %}
@@ -715,7 +730,13 @@
                                             </table>
                                         </div>
                                     {% else %}
-                                        <p class="crm-empty-projects">Aucun projet lié — ouvrir « Gérer » ou utiliser « Ajouter un projet à un client existant ».</p>
+                                        <p class="crm-empty-projects">
+                                            {% if can_create_project %}
+                                                Aucun projet lié — utiliser « Ajouter un projet à un client existant » ou « Gérer ».
+                                            {% else %}
+                                                Aucun projet lié — la création est réservée à Japhete et Maki (module Projets).
+                                            {% endif %}
+                                        </p>
                                     {% endif %}
 
                                     {% if row.client.next_action or row.client.next_action_date %}

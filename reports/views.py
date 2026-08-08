@@ -26,6 +26,7 @@ from users.permissions import (
     can_reassign_crm_client,
     can_edit_crm_clients,
     can_edit_crm_client,
+    can_manage_projects,
 )
 from users.uploads import validate_attachment_upload
 
@@ -1552,6 +1553,7 @@ def finance_clients(request):
 
     can_write = can_edit_crm_clients(request.user)
     can_reassign = can_reassign_crm_client(request.user)
+    can_create_project = can_manage_projects(request.user)
     view_all = can_view_all_crm_clients(request.user) or (
         (not crm_mode) and can_access_finance(request.user)
     )
@@ -1612,6 +1614,13 @@ def finance_clients(request):
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
         if action == 'add_project':
+            if not can_manage_projects(request.user):
+                messages.error(
+                    request,
+                    "Seul le Directeur Technique (Japhete) et l’Ass. DT (Maki) peuvent créer un projet. "
+                    "Le CRM sert à gérer les clients.",
+                )
+                return redirect(redirect_name)
             client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
             if not client or not can_edit_crm_client(request.user, client):
                 messages.error(request, "Client introuvable ou non autorisé.")
@@ -1752,8 +1761,9 @@ def finance_clients(request):
         )
         _assign_client_code(client, owner, force=True)
         client.save()
+        # Premier projet optionnel : uniquement Japhete / Maki
         project_name = request.POST.get('project_name', '').strip()
-        if project_name:
+        if project_name and can_manage_projects(request.user):
             project, error = _create_crm_project_for_client(request, client)
             if error:
                 messages.warning(
@@ -1765,6 +1775,13 @@ def finance_clients(request):
                 request,
                 f"Client « {client.name} » ({client.code}) créé avec le projet « {project.name} » "
                 f"({project.contract_amount} $).",
+            )
+            return redirect(_crm_query_redirect(request, edit_id=client.id))
+        if project_name and not can_manage_projects(request.user):
+            messages.warning(
+                request,
+                f"Client « {client.name} » ({client.code}) créé. "
+                f"La création de projet est réservée à Japhete et Maki (module Projets).",
             )
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
@@ -1886,6 +1903,7 @@ def finance_clients(request):
         'can_edit_finance': can_write,
         'can_edit_crm': can_write,
         'can_reassign_crm': can_reassign,
+        'can_create_project': can_create_project,
         'can_view_all_crm': view_all,
         'is_commercial_lead_user': is_commercial_lead(request.user),
         'commercial_agents': commercial_agents,
