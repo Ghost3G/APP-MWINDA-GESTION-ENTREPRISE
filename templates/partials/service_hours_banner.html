@@ -27,9 +27,9 @@
 <style>
 .service-hours-banner {
     width: 100%;
-    background: linear-gradient(90deg, #0f172a 0%, #1e3a5f 45%, #0f766e 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.28);
+    background: #111111;
+    border-bottom: 1px solid rgba(253, 224, 71, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     z-index: 45;
 }
 .service-hours-banner__inner {
@@ -46,8 +46,8 @@
     align-items: center;
     padding: 4px 10px;
     border-radius: 999px;
-    background: rgba(250, 204, 21, 0.95);
-    color: #111827;
+    background: #fde047;
+    color: #111111;
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.06em;
@@ -70,26 +70,33 @@
 }
 .service-hours-banner__slot strong {
     font-weight: 700;
-    color: #cbd5e1;
+    color: #a3a3a3;
 }
 .service-hours-banner__slot em {
     font-style: normal;
     font-weight: 900;
     font-size: 15px;
-    color: #fef08a;
+    color: #fde047;
     letter-spacing: 0.02em;
 }
 .service-hours-banner__slot--today {
     padding: 3px 10px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(254, 240, 138, 0.45);
+    background: rgba(253, 224, 71, 0.12);
+    border: 1px solid rgba(253, 224, 71, 0.55);
+}
+.service-hours-banner__slot--today strong {
+    color: #e5e5e5;
+}
+.service-hours-banner__slot--today.is-closed {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.45);
 }
 .service-hours-banner__slot--today.is-closed em {
-    color: #fecaca;
+    color: #fca5a5;
 }
 .service-hours-banner__sep {
-    color: rgba(226, 232, 240, 0.55);
+    color: rgba(163, 163, 163, 0.7);
     font-weight: 400;
 }
 @media (max-width: 720px) {
