@@ -56,7 +56,7 @@ body {
     white-space: nowrap;
     padding: 9px 0;
     /* Part de la droite de l’écran, sort complètement à gauche */
-    animation: deadline-marquee 22s linear infinite;
+    animation: deadline-marquee 48s linear infinite;
     will-change: transform;
     transform: translateX(100vw);
 }
