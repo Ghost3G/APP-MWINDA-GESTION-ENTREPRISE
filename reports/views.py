@@ -352,6 +352,10 @@ def _resolve_reference_and_project(request):
     """Projet optionnel + client optionnel + référence (auto = nom projet ou client)."""
     project = _resolve_project(request.POST.get('project_id'))
     client = _resolve_client(request.POST.get('client_id'))
+    # Si un projet CRM est choisi, rattacher automatiquement son client
+    # pour que le commercial voie l’encaissement dans son portefeuille.
+    if project and not client and project.client_id:
+        client = project.client
     command_reference = request.POST.get('command_reference', '').strip()
     if not command_reference:
         if project:
@@ -1617,7 +1621,7 @@ def finance_clients(request):
             messages.error(
                 request,
                 "La création de projet se fait dans le module Projets (Directeur Technique / adjoint). "
-                "Dans le CRM, utilisez « Lier un projet existant ».",
+                "Depuis le CRM ou Finance, utilisez « Lier un projet existant ».",
             )
             return redirect(redirect_name)
 
@@ -1655,6 +1659,15 @@ def finance_clients(request):
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
         if action == 'add_payment':
+            # Les paiements ne se font jamais depuis le CRM commercial —
+            # uniquement côté Finance (et visibles ensuite dans le portefeuille).
+            if crm_mode or not can_edit_finance(request.user):
+                messages.error(
+                    request,
+                    "Les encaissements s’enregistrent uniquement dans Finance (Caisse). "
+                    "Le commercial voit ensuite le payé / reste sur son portefeuille CRM.",
+                )
+                return redirect(redirect_name)
             client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
             if not client or not can_edit_crm_client(request.user, client):
                 messages.error(request, "Client introuvable ou non autorisé.")
@@ -1665,7 +1678,8 @@ def finance_clients(request):
                 return redirect(_crm_query_redirect(request, edit_id=client.id))
             messages.success(
                 request,
-                f"Encaissement de {income.amount} $ enregistré sur « {income.project.name} ».",
+                f"Encaissement de {income.amount} $ enregistré sur « {income.project.name} ». "
+                f"Visible pour le commercial associé.",
             )
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
@@ -1901,7 +1915,8 @@ def finance_clients(request):
         'reste_filter': reste_filter,
         'overdue_clients': overdue_clients,
         'due_today_clients': due_today_clients,
-        'can_edit_finance': can_write,
+        'can_edit_finance': can_edit_finance(request.user),
+        'can_record_payment': (not crm_mode) and can_edit_finance(request.user),
         'can_edit_crm': can_write,
         'can_reassign_crm': can_reassign,
         'can_create_project': can_create_project,

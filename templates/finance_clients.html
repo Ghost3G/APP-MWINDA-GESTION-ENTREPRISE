@@ -21,13 +21,14 @@
                     <p>
                         {% if is_commercial_lead_user %}
                             Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
-                            Les projets sont créés par le Directeur Technique et le Directeur Technique adjoint ; ici vous les liez aux clients.
+                            Créez des clients, liez les projets existants. Les paiements sont confirmés uniquement par la Finance — le payé / reste s’affiche ici automatiquement.
                         {% elif can_view_all_crm %}
-                            Vue globale des portefeuilles. Liez les projets existants aux fiches clients.
+                            Vue globale des portefeuilles. Liez les projets existants aux fiches clients. Les montants payés viennent de la Finance.
                         {% elif crm_mode %}
                             Vous créez vos <strong>clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint.
+                            Les <strong>paiements</strong> sont enregistrés par la Finance : le payé et le reste apparaissent ici automatiquement.
                         {% else %}
-                            Fiches clients partagées avec le CRM commercial — aucune facture générée ici.
+                            Fiches clients partagées avec le CRM. Créez des clients, liez des projets existants, et confirmez les encaissements (Caisse ou ici) — le commercial voit alors le payé / reste.
                         {% endif %}
                     </p>
                 </div>
@@ -212,9 +213,10 @@
                     <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
-                        Créez ici uniquement la <strong>fiche client</strong>.
-                        Pour rattacher un chantier : utilisez <strong>« Lier un projet existant »</strong>
-                        (projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint).
+                        Créez ici la <strong>fiche client</strong> (possible aussi côté {% if crm_mode %}Finance{% else %}CRM{% endif %}).
+                        Pour rattacher un chantier : <strong>« Lier un projet existant »</strong>
+                        (créé uniquement par le Directeur Technique / adjoint).
+                        {% if crm_mode %}Les paiements sont saisis par la Finance — vous voyez ensuite payé / reste.{% else %}Après confirmation d’un encaissement, le commercial voit le payé / reste.{% endif %}
                         Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
@@ -317,10 +319,13 @@
                 </div>
 
                 {% if edit_client %}
-                {% if edit_finance and edit_finance.projects %}
+                {% if can_record_payment and edit_finance and edit_finance.projects %}
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Encaissement sur un projet — {{ edit_client.name }}</h3>
-                    <p class="muted panel-hint">Le paiement est rattaché à un projet précis : le reste de ce projet se met à jour immédiatement.</p>
+                    <p class="muted panel-hint">
+                        Réservé à la Finance. Le montant est immédiatement visible chez le commercial associé (payé / reste).
+                        Vous pouvez aussi enregistrer l’encaissement depuis la <a href="{% url 'finance_dashboard' %}">Caisse</a>.
+                    </p>
                     <form method="POST">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="add_payment">
@@ -370,8 +375,16 @@
                                 <textarea name="notes" placeholder="Optionnel"></textarea>
                             </div>
                         </div>
-                        <button type="submit" class="btn-primary" style="width:auto;">Enregistrer l’encaissement</button>
+                        <button type="submit" class="btn-primary" style="width:auto;">Confirmer l’encaissement</button>
                     </form>
+                </div>
+                {% elif crm_mode and edit_finance and edit_finance.projects %}
+                <div class="panel" style="margin-bottom:16px;">
+                    <h3>Paiements — {{ edit_client.name }}</h3>
+                    <p class="muted panel-hint">
+                        Les encaissements sont confirmés uniquement par la <strong>Finance</strong>.
+                        Dès qu’un paiement est enregistré, le <strong>payé</strong> et le <strong>reste</strong> se mettent à jour ci-dessous.
+                    </p>
                 </div>
                 {% endif %}
 
@@ -444,8 +457,8 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Projets du client — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Les projets sont créés par le Directeur Technique / Directeur Technique adjoint dans le module Projets.
-                        Ici, vous pouvez uniquement <strong>lier</strong> un projet déjà créé à ce client.
+                        Les projets sont créés uniquement par le Directeur Technique / Directeur Technique adjoint (module Projets).
+                        Finance et CRM peuvent <strong>lier</strong> un projet déjà créé à ce client. Les montants payés viennent de la Finance.
                     </p>
                     {% if edit_finance %}
                         <div class="crm-money-grid">
