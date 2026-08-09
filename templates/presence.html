@@ -19,58 +19,139 @@
                 <div class="page-header">
                     <h1>{% if can_view_all_presence %}Présence{% else %}Ma présence{% endif %}</h1>
                     <p>
-                        {% if can_view_all_presence %}Suivi des arrivées, départs et absences.{% else %}Consultez uniquement votre propre rythme de connexion.{% endif %}
+                        {% if can_view_all_presence %}
+                            Cliquez sur le nom d’une personne dans la liste pour ouvrir sa fiche.
+                        {% else %}
+                            Consultez votre rythme de connexion.
+                        {% endif %}
                     </p>
                 </div>
 
-                <form method="GET" class="panel filter-panel">
-                    <div class="filter-row">
-                        <div class="form-group">
-                            <label for="presence-date">Journée</label>
-                            <input id="presence-date" type="date" name="date" value="{{ selected_date }}">
-                        </div>
-                        {% if can_view_all_presence %}
-                        <div class="form-group">
-                            <label for="presence-agent">Agent</label>
-                            <select id="presence-agent" name="agent">
-                                {% for agent in agents %}
-                                    <option value="{{ agent.id }}" {% if selected_agent and selected_agent.id == agent.id %}selected{% endif %}>
-                                        {{ agent.get_labeled_name }}
-                                    </option>
-                                {% empty %}
-                                    <option value="">Aucun agent</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        <button type="submit" class="btn-primary btn-filter">Appliquer</button>
-                        {% if selected_agent %}
-                        <div class="pdf-actions">
-                            <a href="{% url 'presence_a4' selected_agent.id %}?month={{ selected_month }}">Voir PDF du mois</a>
-                            <a href="{% url 'presence_pdf' selected_agent.id %}?month={{ selected_month }}" class="download">Télécharger PDF</a>
-                        </div>
-                        {% endif %}
+                {% if can_view_all_presence %}
+                <div class="summary-card four">
+                    <div class="summary-item">
+                        <small>{% if is_today %}Présents aujourd'hui{% else %}Présents ce jour{% endif %}</small>
+                        <strong>{{ present_count }}</strong>
                     </div>
-                    <p class="filter-hint">
-                        {% if can_view_all_presence %}
-                        Cliquez sur le nom d’un agent pour voir sa fiche de présence. PDF mensuel : {{ selected_month }} · {{ schedule_summary_label }}.
-                        {% else %}
-                        Votre fiche de présence personnelle · PDF mensuel : {{ selected_month }} · {{ schedule_summary_label }}.
-                        {% endif %}
-                    </p>
-                </form>
+                    <div class="summary-item late">
+                        <small>En retard (après l’heure d’arrivée)</small>
+                        <strong>{{ late_count }}</strong>
+                    </div>
+                    <div class="summary-item absent">
+                        <small>Absents</small>
+                        <strong>{{ absent_count }}</strong>
+                    </div>
+                    <div class="summary-item online">
+                        <small>Encore connectés</small>
+                        <strong>{{ online_count }}</strong>
+                    </div>
+                </div>
 
-                {% if selected_agent %}
-                <div class="panel agent-focus-panel{% if agent_explicit %} is-active{% endif %}" id="agent-detail">
+                <div class="panel">
+                    <div class="presence-list-header">
+                        <div>
+                            <h3>Personnel — {% if is_today %}aujourd'hui{% else %}{{ selected_date }}{% endif %}</h3>
+                            <p class="filter-hint" style="margin:4px 0 0;">Cliquez un nom pour ouvrir sa fiche de présence.</p>
+                        </div>
+                        <form method="GET" class="presence-date-form">
+                            <label for="presence-date">Journée</label>
+                            <input id="presence-date" type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
+                        </form>
+                    </div>
+                    {% if summary %}
+                    <div class="table-wrap">
+                        <table class="presence-table">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Rôle</th>
+                                    <th>Arrivée</th>
+                                    <th>Départ</th>
+                                    <th>Présence</th>
+                                    <th>PDF mensuel</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in summary %}
+                                <tr class="{% if selected_agent and selected_agent.id == row.user.id %}is-selected{% endif %}">
+                                    <td>
+                                        <a class="agent-link" href="{% url 'presence_dashboard' %}?date={{ selected_date }}&agent={{ row.user.id }}#agent-detail">
+                                            <div class="agent-cell">
+                                                <strong>{{ row.user.get_labeled_name }}</strong>
+                                                <span>@{{ row.user.username }} · voir sa présence</span>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    <td>{{ row.user.get_role_display }}</td>
+                                    <td>
+                                        {% if row.first_login_at %}
+                                            {{ row.first_login_at|date:"H:i" }}
+                                            {% if row.arrival_status == 'late' %}
+                                                <span class="badge late">Retard</span>
+                                            {% else %}
+                                                <span class="badge online">OK</span>
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.last_logout_at %}
+                                            {{ row.last_logout_at|date:"H:i" }}
+                                            {% if row.departure_status == 'early' %}
+                                                <span class="badge early">Tôt</span>
+                                            {% else %}
+                                                <span class="badge offline">OK</span>
+                                            {% endif %}
+                                        {% elif row.present_today %}
+                                            <span class="badge online">En ligne</span>
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.present_today %}
+                                            <span class="badge online">Présent</span>
+                                        {% else %}
+                                            <span class="badge absent">Absent</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="pdf-actions compact">
+                                            <a href="{% url 'presence_a4' row.user.id %}?month={{ selected_month }}">Voir</a>
+                                            <a href="{% url 'presence_pdf' row.user.id %}?month={{ selected_month }}" class="download">Télécharger</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="muted">Aucun compte actif.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if selected_agent and agent_explicit %}
+                <div class="panel agent-focus-panel is-active" id="agent-detail">
                     <div class="agent-focus-header">
                         <div>
                             <p class="agent-focus-kicker">Fiche de présence</p>
                             <h2>{{ selected_agent.get_labeled_name }}</h2>
                             <p class="muted">@{{ selected_agent.username }} · {{ selected_agent.get_role_display }} · {{ selected_date }}</p>
                         </div>
-                        <div class="pdf-actions">
-                            <a href="{% url 'presence_a4' selected_agent.id %}?month={{ selected_month }}">Voir PDF du mois</a>
-                            <a href="{% url 'presence_pdf' selected_agent.id %}?month={{ selected_month }}" class="download">Télécharger PDF</a>
+                        <div class="agent-focus-actions">
+                            {% if not can_view_all_presence %}
+                            <form method="GET" class="presence-date-form">
+                                <label for="presence-date-self">Journée</label>
+                                <input id="presence-date-self" type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
+                            </form>
+                            {% endif %}
+                            <div class="pdf-actions">
+                                <a href="{% url 'presence_a4' selected_agent.id %}?month={{ selected_month }}">Voir PDF du mois</a>
+                                <a href="{% url 'presence_pdf' selected_agent.id %}?month={{ selected_month }}" class="download">Télécharger PDF</a>
+                            </div>
                         </div>
                     </div>
 
@@ -165,28 +246,7 @@
                 </div>
                 {% endif %}
 
-                {% if can_view_all_presence %}
-                <div class="summary-card four">
-                    <div class="summary-item">
-                        <small>{% if is_today %}Présents aujourd'hui{% else %}Présents ce jour{% endif %}</small>
-                        <strong>{{ present_count }}</strong>
-                    </div>
-                    <div class="summary-item late">
-                        <small>En retard (après l’heure d’arrivée)</small>
-                        <strong>{{ late_count }}</strong>
-                    </div>
-                    <div class="summary-item absent">
-                        <small>Absents</small>
-                        <strong>{{ absent_count }}</strong>
-                    </div>
-                    <div class="summary-item online">
-                        <small>Encore connectés</small>
-                        <strong>{{ online_count }}</strong>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if selected_agent %}
+                {% if selected_agent and agent_explicit %}
                 <div class="panel" id="agent-rhythm">
                     <div class="chart-panel-header">
                         <h3>Rythme — {{ selected_agent.get_labeled_name }}</h3>
@@ -231,85 +291,6 @@
                     <div class="chart-wrap">
                         <canvas id="presenceChart"></canvas>
                     </div>
-                </div>
-                {% endif %}
-
-                {% if can_view_all_presence %}
-                <div class="panel">
-                    <h3>Personnel — {% if is_today %}aujourd'hui{% else %}{{ selected_date }}{% endif %}</h3>
-                    <p class="filter-hint" style="margin-top:0; margin-bottom:12px;">Cliquez un nom pour ouvrir sa fiche de présence individuelle (agents et direction).</p>
-                    {% if summary %}
-                    <div class="table-wrap">
-                        <table class="presence-table">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Rôle</th>
-                                    <th>Arrivée</th>
-                                    <th>Départ</th>
-                                    <th>Présence</th>
-                                    <th>PDF mensuel</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in summary %}
-                                <tr class="{% if selected_agent and selected_agent.id == row.user.id %}is-selected{% endif %}">
-                                    <td>
-                                        <a class="agent-link" href="{% url 'presence_dashboard' %}?date={{ selected_date }}&agent={{ row.user.id }}#agent-detail">
-                                            <div class="agent-cell">
-                                                <strong>{{ row.user.get_labeled_name }}</strong>
-                                                <span>@{{ row.user.username }} · voir sa présence</span>
-                                            </div>
-                                        </a>
-                                    </td>
-                                    <td>{{ row.user.get_role_display }}</td>
-                                    <td>
-                                        {% if row.first_login_at %}
-                                            {{ row.first_login_at|date:"H:i" }}
-                                            {% if row.arrival_status == 'late' %}
-                                                <span class="badge late">Retard</span>
-                                            {% else %}
-                                                <span class="badge online">OK</span>
-                                            {% endif %}
-                                        {% else %}
-                                            —
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if row.last_logout_at %}
-                                            {{ row.last_logout_at|date:"H:i" }}
-                                            {% if row.departure_status == 'early' %}
-                                                <span class="badge early">Tôt</span>
-                                            {% else %}
-                                                <span class="badge offline">OK</span>
-                                            {% endif %}
-                                        {% elif row.present_today %}
-                                            <span class="badge online">En ligne</span>
-                                        {% else %}
-                                            —
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if row.present_today %}
-                                            <span class="badge online">Présent</span>
-                                        {% else %}
-                                            <span class="badge absent">Absent</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="pdf-actions compact">
-                                            <a href="{% url 'presence_a4' row.user.id %}?month={{ selected_month }}">Voir</a>
-                                            <a href="{% url 'presence_pdf' row.user.id %}?month={{ selected_month }}" class="download">Télécharger</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="muted">Aucun compte actif.</p>
-                    {% endif %}
                 </div>
                 {% endif %}
             </div>

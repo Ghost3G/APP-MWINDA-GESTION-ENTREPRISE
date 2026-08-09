@@ -78,6 +78,50 @@
     font-size: 12px;
 }
 
+.presence-list-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-bottom: 14px;
+}
+
+.presence-list-header h3 {
+    margin: 0 !important;
+}
+
+.presence-date-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+}
+
+.presence-date-form label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--mw-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.presence-date-form input[type="date"] {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--mw-border);
+    background: var(--mw-surface-2);
+    color: var(--mw-text);
+}
+
+.agent-focus-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
 .pdf-actions {
     display: flex;
     flex-wrap: wrap;

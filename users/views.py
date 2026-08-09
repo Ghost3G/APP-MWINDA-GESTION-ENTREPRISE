@@ -553,9 +553,8 @@ def presence_dashboard(request):
         selected_agent = None
         if agent_id_raw.isdigit():
             selected_agent = next((u for u in visible_users if u.id == int(agent_id_raw)), None)
-        if selected_agent is None and visible_users:
-            selected_agent = visible_users[0]
-        agent_explicit = bool(agent_id_raw.isdigit())
+        # Pas de fiche par défaut : on ouvre uniquement après clic sur un nom.
+        agent_explicit = selected_agent is not None
     else:
         visible_users = [request.user]
         selected_agent = request.user
