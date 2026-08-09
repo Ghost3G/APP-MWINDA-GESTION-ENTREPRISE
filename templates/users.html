@@ -7,189 +7,194 @@
     <title>Départements & Agents - AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <style>
-        .users-container {
+        .departments-page {
             display: grid;
             gap: 20px;
-        }
-
-        .users-table {
-            background: #141416;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .users-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .users-table thead {
-            background: #1a1a1c;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .users-table th {
-            padding: 14px;
-            text-align: left;
-            font-weight: 600;
-            color: #a1a1aa;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .users-table td {
-            padding: 14px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            vertical-align: middle;
-        }
-
-        .users-table tbody tr {
-            background: transparent;
-            transition: background 0.15s ease;
-        }
-
-        .users-table tbody tr:hover {
-            background: rgba(253, 224, 71, 0.06) !important;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #fde047;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: #111827;
-            font-size: 16px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-info-text h3 {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .user-info-text p {
-            margin: 0;
-            font-size: 12px;
-            color: #6b7280;
-        }
-
-        .role-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-
-        .role-admin {
-            background: #fecaca;
-            color: #991b1b;
-        }
-
-        .role-directeur {
-            background: #dbeafe;
-            color: #0c4a6e;
-        }
-
-        .role-agent {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .status-active {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #22c55e;
-        }
-
-        .status-inactive {
-            background: #d1d5db;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-edit {
-            background: #dbeafe;
-            color: #0c4a6e;
-        }
-
-        .btn-edit:hover {
-            background: #bfdbfe;
-        }
-
-        .btn-delete {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .btn-delete:hover {
-            background: #fecaca;
+            max-width: 1200px;
         }
 
         .section-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
         .section-header h2 {
+            margin: 0 0 6px;
+            font-size: 28px;
+            font-weight: 800;
+            color: #f4f4f5;
+        }
+
+        .section-header p {
             margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: #111827;
+            color: #a1a1aa;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 52ch;
         }
 
         .btn-create {
-            padding: 10px 16px;
+            padding: 11px 16px;
             background: #fde047;
-            color: #111827;
+            color: #111111;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
+            border-radius: 10px;
+            font-weight: 800;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.15s ease;
         }
 
         .btn-create:hover {
-            background: #fcd34d;
-            transform: translateY(-2px);
+            background: #facc15;
         }
 
-        .create-form {
-            background: white;
+        .departments-section,
+        .filters-panel,
+        .create-form,
+        .edit-form {
+            background: #141416;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+
+        .departments-section h3,
+        .filters-panel h3 {
+            margin: 0 0 14px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #a1a1aa;
+        }
+
+        .department-tabs {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .department-tab {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 52px;
+            padding: 12px 14px;
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #1a1a1c;
+            color: #e4e4e7;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.35;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .department-tab:hover,
+        .department-tab:focus,
+        .department-tab:focus-visible {
+            border-color: rgba(253, 224, 71, 0.45);
+            background: #222226;
+            color: #fde047;
+            outline: none;
+        }
+
+        .department-tab.active,
+        .department-tab.active:hover,
+        .department-tab.active:focus {
+            background: #fde047;
+            border-color: #fde047;
+            color: #111111;
+            box-shadow: 0 8px 24px rgba(253, 224, 71, 0.22);
+        }
+
+        .department-tab .tab-label {
+            flex: 1;
+        }
+
+        .department-tab .tab-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            background: rgba(255, 255, 255, 0.08);
+            color: inherit;
+            flex-shrink: 0;
+        }
+
+        .department-tab.active .tab-count {
+            background: rgba(17, 17, 17, 0.14);
+            color: #111111;
+        }
+
+        .active-department-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(253, 224, 71, 0.28);
+            background: rgba(253, 224, 71, 0.08);
+            color: #f4f4f5;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .active-department-banner strong {
+            color: #fde047;
+            font-weight: 800;
+        }
+
+        .filters-panel form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .filters-panel label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #a1a1aa;
+        }
+
+        .filters-panel input,
+        .filters-panel select {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: #1a1a1c;
+            color: #f4f4f5;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .filters-panel input::placeholder {
+            color: #71717a;
+        }
+
+        .create-form,
+        .edit-form {
             display: none;
+            background: #fafafa;
+            border-color: rgba(253, 224, 71, 0.35);
         }
 
         .create-form.visible,
@@ -197,20 +202,18 @@
             display: block;
         }
 
-        .edit-form {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            display: none;
-            border: 1px solid rgba(253, 224, 71, 0.35);
+        .create-form h3,
+        .edit-form h3 {
+            margin: 0 0 16px;
+            color: #111111;
+            font-size: 18px;
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 14px;
+            margin-bottom: 14px;
         }
 
         .form-row.full {
@@ -220,44 +223,46 @@
         .form-group {
             display: flex;
             flex-direction: column;
+            gap: 6px;
         }
 
         .form-group label {
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 700;
             color: #374151;
-            margin-bottom: 6px;
         }
 
         .form-group input,
         .form-group select {
-            padding: 10px;
+            padding: 11px 12px;
             border: 1px solid #d1d5db;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 14px;
             font-family: inherit;
+            background: #fff;
+            color: #111111;
         }
 
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
             border-color: #fde047;
-            box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.1);
+            box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.18);
         }
 
         .form-actions {
             display: flex;
             gap: 12px;
             justify-content: flex-end;
+            margin-top: 8px;
         }
 
         .form-actions button {
-            padding: 10px 16px;
+            padding: 11px 16px;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
+            border-radius: 10px;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .btn-submit {
@@ -265,129 +270,253 @@
             color: white;
         }
 
-        .btn-submit:hover {
-            background: #16a34a;
-        }
-
         .btn-cancel {
             background: #e5e7eb;
             color: #374151;
         }
 
-        .btn-cancel:hover {
-            background: #d1d5db;
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .agent-card {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #141416;
+            min-height: 100%;
+        }
+
+        .agent-card__top {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .agent-card__identity {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agent-card__identity h3 {
+            margin: 0 0 4px;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fafafa;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .agent-card__identity p {
+            margin: 0;
+            font-size: 13px;
+            color: #a1a1aa;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .agent-card__badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .role-badge,
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .role-admin {
+            background: rgba(248, 113, 113, 0.18);
+            color: #fecaca;
+        }
+
+        .role-directeur {
+            background: rgba(96, 165, 250, 0.18);
+            color: #bfdbfe;
+        }
+
+        .role-agent {
+            background: rgba(74, 222, 128, 0.16);
+            color: #bbf7d0;
+        }
+
+        .status-pill.is-active {
+            background: rgba(34, 197, 94, 0.14);
+            color: #86efac;
+        }
+
+        .status-pill.is-inactive {
+            background: rgba(161, 161, 170, 0.16);
+            color: #d4d4d8;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .agent-card__meta {
+            display: grid;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        .agent-card__meta-row {
+            display: grid;
+            grid-template-columns: 110px 1fr;
+            gap: 10px;
+            align-items: start;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .agent-card__meta-row span {
+            color: #71717a;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-size: 11px;
+            padding-top: 2px;
+        }
+
+        .agent-card__meta-row strong {
+            color: #e4e4e7;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .agent-card__stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .agent-stat {
+            padding: 12px;
+            border-radius: 12px;
+            background: #1a1a1c;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .agent-stat small {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #a1a1aa;
+        }
+
+        .agent-stat strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 800;
+            color: #fde047;
+            line-height: 1.3;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 4px;
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-edit {
+            background: rgba(253, 224, 71, 0.16);
+            color: #fde047;
+            border: 1px solid rgba(253, 224, 71, 0.35);
+        }
+
+        .btn-delete {
+            background: rgba(248, 113, 113, 0.14);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.3);
         }
 
         .empty-state {
             text-align: center;
-            padding: 40px;
-            color: #6b7280;
-        }
-
-        .departments-section {
-            margin-bottom: 20px;
-        }
-
-        .departments-section h3 {
-            margin: 0 0 12px;
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
+            padding: 48px 24px;
             color: #a1a1aa;
+            background: #141416;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
         }
 
-        .department-tabs {
-            display: flex;
-            flex-wrap: wrap;
+        .flash-stack {
+            display: grid;
             gap: 10px;
         }
 
-        .department-tab {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: #141416;
-            color: #e4e4e7;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-            outline: none;
-            box-shadow: none;
-            -webkit-tap-highlight-color: transparent;
+        .flash-stack .flash {
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.45;
         }
 
-        .department-tab:hover,
-        .department-tab:focus,
-        .department-tab:focus-visible {
-            border-color: rgba(253, 224, 71, 0.4);
-            background: #1c1c1f;
-            color: #fde047;
-            transform: none;
-            outline: none;
-            box-shadow: none;
+        .flash-stack .flash.success {
+            background: rgba(34, 197, 94, 0.14);
+            color: #bbf7d0;
+            border: 1px solid rgba(74, 222, 128, 0.28);
         }
 
-        .department-tab.active,
-        .department-tab.active:hover,
-        .department-tab.active:focus {
-            background: #fde047;
-            border-color: #fde047;
-            color: #111827;
-            box-shadow: 0 8px 24px rgba(253, 224, 71, 0.25);
-        }
-
-        .department-tab .tab-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 24px;
-            height: 24px;
-            padding: 0 7px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            background: rgba(255, 255, 255, 0.08);
-            color: inherit;
-        }
-
-        .department-tab.active .tab-count {
-            background: rgba(17, 24, 39, 0.12);
-            color: #111827;
-        }
-
-        .active-department-banner {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding: 14px 16px;
-            border-radius: 12px;
-            border: 1px solid rgba(253, 224, 71, 0.22);
-            background: linear-gradient(90deg, rgba(253, 224, 71, 0.12), rgba(253, 224, 71, 0.04));
-            color: #f4f4f5;
-        }
-
-        .active-department-banner strong {
-            color: #fde047;
+        .flash-stack .flash.error {
+            background: rgba(248, 113, 113, 0.14);
+            color: #fecaca;
+            border: 1px solid rgba(248, 113, 113, 0.28);
         }
 
         @media (max-width: 900px) {
-            .form-row {
+            .form-row,
+            .filters-panel form {
                 grid-template-columns: 1fr;
             }
 
-            .users-table {
-                font-size: 13px;
+            .department-tabs {
+                grid-template-columns: 1fr 1fr;
             }
 
-            .action-buttons {
-                flex-direction: column;
+            .agents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .department-tabs {
+                grid-template-columns: 1fr;
+            }
+
+            .agent-card__meta-row {
+                grid-template-columns: 1fr;
+                gap: 2px;
             }
         }
     </style>
@@ -399,9 +528,12 @@
         {% include "partials/sidebar.html" %}
 
         <main class="dashboard-content">
-            <div class="content-wrapper">
+            <div class="content-wrapper departments-page">
                 <div class="section-header">
-                    <h2>Départements & Agents</h2>
+                    <div>
+                        <h2>Départements & Agents</h2>
+                        <p>Parcourez les équipes par département. Chaque fiche agent affiche clairement le rôle, la branche et l’activité.</p>
+                    </div>
                     {% if is_admin %}
                         <button class="btn-create" id="toggleCreateForm">+ Créer un agent</button>
                     {% endif %}
@@ -414,7 +546,7 @@
                             href="?{% if query %}q={{ query|urlencode }}&{% endif %}{% if selected_role %}role={{ selected_role }}&{% endif %}{% if selected_direction %}direction={{ selected_direction }}&{% endif %}"
                             class="department-tab {% if not selected_department %}active{% endif %}"
                         >
-                            Tous
+                            <span class="tab-label">Tous</span>
                             <span class="tab-count">{{ total_agents_count }}</span>
                         </a>
                         {% for tab in department_tabs %}
@@ -422,7 +554,7 @@
                                 href="?department={{ tab.value }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if selected_role %}&role={{ selected_role }}{% endif %}{% if selected_direction %}&direction={{ selected_direction }}{% endif %}"
                                 class="department-tab {% if selected_department == tab.value %}active{% endif %}"
                             >
-                                {{ tab.label }}
+                                <span class="tab-label">{{ tab.label }}</span>
                                 <span class="tab-count">{{ tab.count }}</span>
                             </a>
                         {% endfor %}
@@ -440,31 +572,43 @@
                     {% endfor %}
                 {% endif %}
 
-                <form method="GET" style="display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; margin-bottom:16px;">
-                    {% if selected_department %}
-                        <input type="hidden" name="department" value="{{ selected_department }}">
-                    {% endif %}
-                    <input type="text" name="q" value="{{ query }}" placeholder="Rechercher un agent..." style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
-                    <select name="role" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
-                        <option value="">Tous les rôles</option>
-                        {% for value, label in role_choices %}
-                            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    <select name="direction" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
-                        <option value="">Toutes les branches</option>
-                        {% for value, label in direction_choices %}
-                            <option value="{{ value }}" {% if selected_direction == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn-create">Filtrer</button>
-                </form>
+                <div class="filters-panel">
+                    <h3>Recherche & filtres</h3>
+                    <form method="GET">
+                        {% if selected_department %}
+                            <input type="hidden" name="department" value="{{ selected_department }}">
+                        {% endif %}
+                        <div>
+                            <label for="dept-search">Recherche</label>
+                            <input id="dept-search" type="text" name="q" value="{{ query }}" placeholder="Nom, prénom, username…">
+                        </div>
+                        <div>
+                            <label for="dept-role">Rôle</label>
+                            <select id="dept-role" name="role">
+                                <option value="">Tous les rôles</option>
+                                {% for value, label in role_choices %}
+                                    <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="dept-direction">Branche</label>
+                            <select id="dept-direction" name="direction">
+                                <option value="">Toutes les branches</option>
+                                {% for value, label in direction_choices %}
+                                    <option value="{{ value }}" {% if selected_direction == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-create">Filtrer</button>
+                    </form>
+                </div>
 
                 {% if is_admin %}
                     {% if messages %}
-                        <div style="display: grid; gap: 8px; margin-bottom: 16px;">
+                        <div class="flash-stack">
                             {% for message in messages %}
-                                <div style="padding: 12px 14px; border-radius: 8px; font-size: 14px; {% if message.tags == 'success' %}background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;{% else %}background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;{% endif %}">
+                                <div class="flash {% if message.tags == 'success' %}success{% else %}error{% endif %}">
                                     {{ message }}
                                 </div>
                             {% endfor %}
@@ -631,107 +775,112 @@
                     </div>
                 {% endif %}
 
-                <div class="users-container">
-                    {% if users %}
-                        <div class="users-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Agent</th>
-                                        <th>Email</th>
-                                        <th>Rôle</th>
-                                        <th>Département</th>
-                                        <th>Branche</th>
-                                        <th>Compétence IA</th>
-                                        <th>Tâches</th>
-                                        <th>En cours</th>
-                                        <th>Statut</th>
-                                        <th>Performance</th>
-                                        <th>T. exécution tâches</th>
-                                        <th>Temps travail</th>
-                                        <th>Temps pause</th>
-                                        {% if is_admin %}<th>Actions</th>{% endif %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for user in users %}
-                                        <tr>
-                                            <td>
-                                                <div class="user-info">
-                                                    {% include "partials/user_avatar.html" with user_obj=user size="sm" %}
-                                                    <div class="user-info-text">
-                                                        <h3>{{ user.get_labeled_name }}</h3>
-                                                        <p>@{{ user.username }}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>{{ user.email }}</td>
-                                            <td>
-                                                <span class="role-badge role-{{ user.role }}">
-                                                    {{ user.get_role_display }}
-                                                </span>
-                                            </td>
-                                            <td>{{ user.get_org_group_display }}</td>
-                                            <td>{{ user.get_direction_display }}</td>
-                                            <td>{{ user.get_competency_profile_display }}</td>
-                                            <td>{{ user.task_done }}/{{ user.task_total }}</td>
-                                            <td>
-                                                {% if user.current_task %}
-                                                    {{ user.current_task.title|truncatechars:28 }}
-                                                {% else %}
-                                                    —
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <div class="status-active {% if not user.is_active %}status-inactive{% endif %}"></div>
-                                                    <span style="font-size: 13px;">{% if user.is_active %}Actif{% else %}Inactif{% endif %}</span>
-                                                </div>
-                                            </td>
-                                            <td>{{ user.performance_score }}%</td>
-                                            <td>{{ user.avg_task_time }}</td>
-                                            <td>{{ user.work_time_total }}</td>
-                                            <td>{{ user.pause_time_total }}</td>
-                                            {% if is_admin %}
-                                                <td>
-                                                    <div class="action-buttons">
-                                                        <button
-                                                            type="button"
-                                                            class="btn-sm btn-edit"
-                                                            data-user-id="{{ user.id }}"
-                                                            data-username="{{ user.username }}"
-                                                            data-email="{{ user.email }}"
-                                                            data-first-name="{{ user.first_name }}"
-                                                            data-last-name="{{ user.last_name }}"
-                                                            data-role="{{ user.role }}"
-                                                            data-department="{{ user.org_group }}"
-                                                            data-direction="{{ user.direction }}"
-                                                            data-competency-profile="{{ user.competency_profile }}"
-                                                            data-phone="{{ user.phone }}"
-                                                            data-is-active="{{ user.is_active|yesno:'true,false' }}"
-                                                            onclick="openEditForm(this)"
-                                                        >Modifier</button>
-                                                        <form method="POST" style="display:inline;" onsubmit="return confirmDelete(this, '{{ user.username }}');">
-                                                            {% csrf_token %}
-                                                            <input type="hidden" name="action" value="delete">
-                                                            <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                            <input type="hidden" name="delete_confirm" value="">
-                                                            <button type="submit" class="btn-sm btn-delete">Supprimer</button>
-                                                        </form>
-                                                    </div>
-                                                </td>
+                {% if users %}
+                    <div class="agents-grid">
+                        {% for user in users %}
+                            <article class="agent-card">
+                                <div class="agent-card__top">
+                                    {% include "partials/user_avatar.html" with user_obj=user size="md" %}
+                                    <div class="agent-card__identity">
+                                        <h3>{{ user.get_labeled_name }}</h3>
+                                        <p>@{{ user.username }} · {{ user.email }}</p>
+                                        <div class="agent-card__badges">
+                                            <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
+                                            <span class="status-pill {% if user.is_active %}is-active{% else %}is-inactive{% endif %}">
+                                                <span class="status-dot" aria-hidden="true"></span>
+                                                {% if user.is_active %}Actif{% else %}Inactif{% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="agent-card__meta">
+                                    <div class="agent-card__meta-row">
+                                        <span>Département</span>
+                                        <strong>{{ user.get_org_group_display }}</strong>
+                                    </div>
+                                    <div class="agent-card__meta-row">
+                                        <span>Branche</span>
+                                        <strong>{{ user.get_direction_display }}</strong>
+                                    </div>
+                                    <div class="agent-card__meta-row">
+                                        <span>Compétence</span>
+                                        <strong>{{ user.get_competency_profile_display }}</strong>
+                                    </div>
+                                    <div class="agent-card__meta-row">
+                                        <span>En cours</span>
+                                        <strong>
+                                            {% if user.current_task %}
+                                                {{ user.current_task.title }}
+                                            {% else %}
+                                                Aucune tâche en cours
                                             {% endif %}
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <p>Aucun utilisateur trouvé</p>
-                        </div>
-                    {% endif %}
-                </div>
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                <div class="agent-card__stats">
+                                    <div class="agent-stat">
+                                        <small>Tâches</small>
+                                        <strong>{{ user.task_done }}/{{ user.task_total }}</strong>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <small>Performance</small>
+                                        <strong>{{ user.performance_score }}%</strong>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <small>Temps travail</small>
+                                        <strong>{{ user.work_time_total }}</strong>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <small>Temps pause</small>
+                                        <strong>{{ user.pause_time_total }}</strong>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <small>Exécution moyenne</small>
+                                        <strong>{{ user.avg_task_time }}</strong>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <small>Téléphone</small>
+                                        <strong>{% if user.phone %}{{ user.phone }}{% else %}—{% endif %}</strong>
+                                    </div>
+                                </div>
+
+                                {% if is_admin %}
+                                    <div class="action-buttons">
+                                        <button
+                                            type="button"
+                                            class="btn-sm btn-edit"
+                                            data-user-id="{{ user.id }}"
+                                            data-username="{{ user.username }}"
+                                            data-email="{{ user.email }}"
+                                            data-first-name="{{ user.first_name }}"
+                                            data-last-name="{{ user.last_name }}"
+                                            data-role="{{ user.role }}"
+                                            data-department="{{ user.org_group }}"
+                                            data-direction="{{ user.direction }}"
+                                            data-competency-profile="{{ user.competency_profile }}"
+                                            data-phone="{{ user.phone }}"
+                                            data-is-active="{{ user.is_active|yesno:'true,false' }}"
+                                            onclick="openEditForm(this)"
+                                        >Modifier</button>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirmDelete(this, '{{ user.username }}');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                                            <input type="hidden" name="delete_confirm" value="">
+                                            <button type="submit" class="btn-sm btn-delete">Supprimer</button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Aucun utilisateur trouvé pour ces filtres.</p>
+                    </div>
+                {% endif %}
             </div>
         </main>
     </div>
