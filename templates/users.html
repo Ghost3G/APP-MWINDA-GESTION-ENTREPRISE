@@ -10,7 +10,7 @@
         .departments-page {
             display: grid;
             gap: 20px;
-            max-width: 1200px;
+            width: 100%;
         }
 
         .section-header {
@@ -277,29 +277,58 @@
 
         .agents-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             gap: 16px;
+            width: 100%;
         }
 
         .agent-card {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            padding: 18px;
+            display: grid;
+            grid-template-columns: 26% 1fr;
+            min-height: 220px;
             border-radius: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: #141416;
+            overflow: hidden;
+        }
+
+        .agent-card__photo {
+            position: relative;
             min-height: 100%;
+            background: linear-gradient(160deg, #1f1f23 0%, #111111 100%);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            overflow: hidden;
         }
 
-        .agent-card__top {
+        .agent-card__photo-img,
+        .agent-card__photo-fallback {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .agent-card__photo-img {
+            object-fit: cover;
+            display: block;
+        }
+
+        .agent-card__photo-fallback {
             display: flex;
-            align-items: flex-start;
-            gap: 14px;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(160deg, #fde047 0%, #ca8a04 100%);
+            color: #111111;
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 900;
+            letter-spacing: 0.02em;
         }
 
-        .agent-card__identity {
-            flex: 1;
+        .agent-card__body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 16px 18px;
             min-width: 0;
         }
 
@@ -512,6 +541,16 @@
         @media (max-width: 560px) {
             .department-tabs {
                 grid-template-columns: 1fr;
+            }
+
+            .agent-card {
+                grid-template-columns: 1fr;
+            }
+
+            .agent-card__photo {
+                min-height: 140px;
+                border-right: 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             }
 
             .agent-card__meta-row {
@@ -779,8 +818,20 @@
                     <div class="agents-grid">
                         {% for user in users %}
                             <article class="agent-card">
-                                <div class="agent-card__top">
-                                    {% include "partials/user_avatar.html" with user_obj=user size="md" %}
+                                <div class="agent-card__photo" aria-hidden="true">
+                                    {% if user.avatar_url %}
+                                        <img
+                                            class="agent-card__photo-img"
+                                            src="{{ user.avatar_url }}"
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                        >
+                                    {% else %}
+                                        <div class="agent-card__photo-fallback">{{ user.get_avatar_initial }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="agent-card__body">
                                     <div class="agent-card__identity">
                                         <h3>{{ user.get_labeled_name }}</h3>
                                         <p>@{{ user.username }} · {{ user.email }}</p>
@@ -792,87 +843,87 @@
                                             </span>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div class="agent-card__meta">
-                                    <div class="agent-card__meta-row">
-                                        <span>Département</span>
-                                        <strong>{{ user.get_org_group_display }}</strong>
+                                    <div class="agent-card__meta">
+                                        <div class="agent-card__meta-row">
+                                            <span>Département</span>
+                                            <strong>{{ user.get_org_group_display }}</strong>
+                                        </div>
+                                        <div class="agent-card__meta-row">
+                                            <span>Branche</span>
+                                            <strong>{{ user.get_direction_display }}</strong>
+                                        </div>
+                                        <div class="agent-card__meta-row">
+                                            <span>Compétence</span>
+                                            <strong>{{ user.get_competency_profile_display }}</strong>
+                                        </div>
+                                        <div class="agent-card__meta-row">
+                                            <span>En cours</span>
+                                            <strong>
+                                                {% if user.current_task %}
+                                                    {{ user.current_task.title }}
+                                                {% else %}
+                                                    Aucune tâche en cours
+                                                {% endif %}
+                                            </strong>
+                                        </div>
                                     </div>
-                                    <div class="agent-card__meta-row">
-                                        <span>Branche</span>
-                                        <strong>{{ user.get_direction_display }}</strong>
-                                    </div>
-                                    <div class="agent-card__meta-row">
-                                        <span>Compétence</span>
-                                        <strong>{{ user.get_competency_profile_display }}</strong>
-                                    </div>
-                                    <div class="agent-card__meta-row">
-                                        <span>En cours</span>
-                                        <strong>
-                                            {% if user.current_task %}
-                                                {{ user.current_task.title }}
-                                            {% else %}
-                                                Aucune tâche en cours
-                                            {% endif %}
-                                        </strong>
-                                    </div>
-                                </div>
 
-                                <div class="agent-card__stats">
-                                    <div class="agent-stat">
-                                        <small>Tâches</small>
-                                        <strong>{{ user.task_done }}/{{ user.task_total }}</strong>
+                                    <div class="agent-card__stats">
+                                        <div class="agent-stat">
+                                            <small>Tâches</small>
+                                            <strong>{{ user.task_done }}/{{ user.task_total }}</strong>
+                                        </div>
+                                        <div class="agent-stat">
+                                            <small>Performance</small>
+                                            <strong>{{ user.performance_score }}%</strong>
+                                        </div>
+                                        <div class="agent-stat">
+                                            <small>Temps travail</small>
+                                            <strong>{{ user.work_time_total }}</strong>
+                                        </div>
+                                        <div class="agent-stat">
+                                            <small>Temps pause</small>
+                                            <strong>{{ user.pause_time_total }}</strong>
+                                        </div>
+                                        <div class="agent-stat">
+                                            <small>Exécution moyenne</small>
+                                            <strong>{{ user.avg_task_time }}</strong>
+                                        </div>
+                                        <div class="agent-stat">
+                                            <small>Téléphone</small>
+                                            <strong>{% if user.phone %}{{ user.phone }}{% else %}—{% endif %}</strong>
+                                        </div>
                                     </div>
-                                    <div class="agent-stat">
-                                        <small>Performance</small>
-                                        <strong>{{ user.performance_score }}%</strong>
-                                    </div>
-                                    <div class="agent-stat">
-                                        <small>Temps travail</small>
-                                        <strong>{{ user.work_time_total }}</strong>
-                                    </div>
-                                    <div class="agent-stat">
-                                        <small>Temps pause</small>
-                                        <strong>{{ user.pause_time_total }}</strong>
-                                    </div>
-                                    <div class="agent-stat">
-                                        <small>Exécution moyenne</small>
-                                        <strong>{{ user.avg_task_time }}</strong>
-                                    </div>
-                                    <div class="agent-stat">
-                                        <small>Téléphone</small>
-                                        <strong>{% if user.phone %}{{ user.phone }}{% else %}—{% endif %}</strong>
-                                    </div>
-                                </div>
 
-                                {% if is_admin %}
-                                    <div class="action-buttons">
-                                        <button
-                                            type="button"
-                                            class="btn-sm btn-edit"
-                                            data-user-id="{{ user.id }}"
-                                            data-username="{{ user.username }}"
-                                            data-email="{{ user.email }}"
-                                            data-first-name="{{ user.first_name }}"
-                                            data-last-name="{{ user.last_name }}"
-                                            data-role="{{ user.role }}"
-                                            data-department="{{ user.org_group }}"
-                                            data-direction="{{ user.direction }}"
-                                            data-competency-profile="{{ user.competency_profile }}"
-                                            data-phone="{{ user.phone }}"
-                                            data-is-active="{{ user.is_active|yesno:'true,false' }}"
-                                            onclick="openEditForm(this)"
-                                        >Modifier</button>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirmDelete(this, '{{ user.username }}');">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="user_id" value="{{ user.id }}">
-                                            <input type="hidden" name="delete_confirm" value="">
-                                            <button type="submit" class="btn-sm btn-delete">Supprimer</button>
-                                        </form>
-                                    </div>
-                                {% endif %}
+                                    {% if is_admin %}
+                                        <div class="action-buttons">
+                                            <button
+                                                type="button"
+                                                class="btn-sm btn-edit"
+                                                data-user-id="{{ user.id }}"
+                                                data-username="{{ user.username }}"
+                                                data-email="{{ user.email }}"
+                                                data-first-name="{{ user.first_name }}"
+                                                data-last-name="{{ user.last_name }}"
+                                                data-role="{{ user.role }}"
+                                                data-department="{{ user.org_group }}"
+                                                data-direction="{{ user.direction }}"
+                                                data-competency-profile="{{ user.competency_profile }}"
+                                                data-phone="{{ user.phone }}"
+                                                data-is-active="{{ user.is_active|yesno:'true,false' }}"
+                                                onclick="openEditForm(this)"
+                                            >Modifier</button>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirmDelete(this, '{{ user.username }}');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <input type="hidden" name="delete_confirm" value="">
+                                                <button type="submit" class="btn-sm btn-delete">Supprimer</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </article>
                         {% endfor %}
                     </div>
