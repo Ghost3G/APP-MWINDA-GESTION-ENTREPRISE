@@ -7,6 +7,7 @@ body:has(.messaging-page) {
 }
 
 body:has(.messaging-page) .app-header,
+body:has(.messaging-page) .service-hours-banner,
 body:has(.messaging-page) .deadline-ticker {
     flex-shrink: 0;
 }

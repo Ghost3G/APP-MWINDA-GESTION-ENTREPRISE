@@ -140,14 +140,18 @@ def build_presence_monthly_pdf(payload) -> bytes:
     small = ParagraphStyle('PresSmall', parent=styles['Normal'], fontSize=8, leading=11)
 
     work_start = payload.get('work_start') or rhythm.get('work_start_label') or '08:30'
-    work_end = payload.get('work_end') or rhythm.get('work_end_label') or '18:00'
+    work_end = payload.get('work_end') or rhythm.get('work_end_label') or '17:30'
+    schedule_summary = payload.get('schedule_summary') or rhythm.get('schedule_summary') or (
+        'Lun–Ven 08:30–17:30 · Sam 09:00–13:00'
+    )
 
     story = [
         Paragraph('Agence Mwinda — Liste de présence', title),
         Paragraph(
             f'{agent.get_labeled_name()} (@{agent.username})<br/>'
             f'Mois : {period_label} · {payload["start_day"].strftime("%d/%m/%Y")} → {payload["end_day"].strftime("%d/%m/%Y")}<br/>'
-            f'Horaires de référence : {work_start} – {work_end}',
+            f'Horaires de service : {schedule_summary}<br/>'
+            f'Réf. journée (semaine) : {work_start} – {work_end}',
             subtitle,
         ),
     ]

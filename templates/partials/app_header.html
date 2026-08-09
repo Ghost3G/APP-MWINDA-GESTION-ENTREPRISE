@@ -34,6 +34,7 @@
     </div>
 </header>
 {% if request.user.is_authenticated %}
+    {% include "partials/service_hours_banner.html" %}
     {% include "partials/deadline_ticker.html" %}
     {% include "partials/logout_countdown_banner.html" %}
 {% endif %}

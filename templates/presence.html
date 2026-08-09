@@ -18,8 +18,93 @@
             <div class="presence-page">
                 <div class="page-header">
                     <h1>{% if can_view_all_presence %}Présence{% else %}Ma présence{% endif %}</h1>
-                    <p>Horaires de référence : début <strong>{{ work_start_label }}</strong> · fin <strong>{{ work_end_label }}</strong>.{% if can_view_all_presence %} Suivi des arrivées, départs et absences.{% else %} Consultez uniquement votre propre rythme de connexion.{% endif %}</p>
+                    <p>
+                        {% if can_view_all_presence %}Suivi des arrivées, départs et absences.{% else %}Consultez uniquement votre propre rythme de connexion.{% endif %}
+                    </p>
                 </div>
+
+                <div class="panel presence-hours-card">
+                    <h2 class="presence-hours-card__title">Horaires de service</h2>
+                    <div class="presence-hours-card__grid">
+                        <div class="presence-hours-card__item">
+                            <span class="presence-hours-card__label">Lundi – Vendredi</span>
+                            <strong>08:30 – 17:30</strong>
+                        </div>
+                        <div class="presence-hours-card__item">
+                            <span class="presence-hours-card__label">Samedi</span>
+                            <strong>09:00 – 13:00</strong>
+                        </div>
+                        <div class="presence-hours-card__item presence-hours-card__item--focus">
+                            <span class="presence-hours-card__label">Journée sélectionnée</span>
+                            {% if day_schedule_open %}
+                                <strong>{{ work_start_label }} – {{ work_end_label }}</strong>
+                            {% else %}
+                                <strong>Fermé</strong>
+                            {% endif %}
+                            <small>{{ day_schedule_label }}</small>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                .presence-hours-card {
+                    margin-bottom: 16px;
+                    border: 1px solid rgba(15, 118, 110, 0.25);
+                    background: linear-gradient(135deg, #ecfeff 0%, #f0fdfa 55%, #fffbeb 100%);
+                }
+                .presence-hours-card__title {
+                    margin: 0 0 12px;
+                    font-size: 15px;
+                    font-weight: 900;
+                    color: #0f766e;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                }
+                .presence-hours-card__grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 12px;
+                }
+                .presence-hours-card__item {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    padding: 12px 14px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.85);
+                    border: 1px solid rgba(15, 23, 42, 0.08);
+                }
+                .presence-hours-card__item--focus {
+                    background: #0f766e;
+                    border-color: #0f766e;
+                    color: #fff;
+                }
+                .presence-hours-card__label {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #64748b;
+                }
+                .presence-hours-card__item--focus .presence-hours-card__label {
+                    color: rgba(255, 255, 255, 0.8);
+                }
+                .presence-hours-card__item strong {
+                    font-size: 22px;
+                    font-weight: 900;
+                    color: #0f172a;
+                    letter-spacing: 0.01em;
+                }
+                .presence-hours-card__item--focus strong {
+                    color: #fef08a;
+                }
+                .presence-hours-card__item small {
+                    font-size: 12px;
+                    color: rgba(255, 255, 255, 0.85);
+                }
+                @media (max-width: 800px) {
+                    .presence-hours-card__grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                </style>
 
                 <form method="GET" class="panel filter-panel">
                     <div class="filter-row">
@@ -51,9 +136,9 @@
                     </div>
                     <p class="filter-hint">
                         {% if can_view_all_presence %}
-                        Cliquez sur le nom d’un agent pour voir sa fiche de présence. PDF mensuel : {{ selected_month }} · rythme {{ work_start_label }}–{{ work_end_label }}.
+                        Cliquez sur le nom d’un agent pour voir sa fiche de présence. PDF mensuel : {{ selected_month }} · {{ schedule_summary_label }}.
                         {% else %}
-                        Votre fiche de présence personnelle · PDF mensuel : {{ selected_month }} · rythme {{ work_start_label }}–{{ work_end_label }}.
+                        Votre fiche de présence personnelle · PDF mensuel : {{ selected_month }} · {{ schedule_summary_label }}.
                         {% endif %}
                     </p>
                 </form>
@@ -170,7 +255,7 @@
                         <strong>{{ present_count }}</strong>
                     </div>
                     <div class="summary-item late">
-                        <small>En retard (> 8h)</small>
+                        <small>En retard (après l’heure d’arrivée)</small>
                         <strong>{{ late_count }}</strong>
                     </div>
                     <div class="summary-item absent">
@@ -437,7 +522,7 @@
                     rhythm.departure_hours || [],
                     rhythm.departure_ref || [],
                     'rgba(251, 146, 60, 0.95)',
-                    'Réf. ' + (rhythm.work_end_label || '18:00')
+                    'Réf. ' + (rhythm.work_end_label || '17:30')
                 );
                 const absence = rhythm.absence_chart || { labels: [], values: [] };
                 makeDoughnut(

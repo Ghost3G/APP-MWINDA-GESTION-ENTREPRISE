@@ -48,8 +48,8 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            # Après 18h00 : les agents peuvent se reconnecter (consultation / urgente).
-            # La présence du jour (arrivées + départ 18h00) reste intacte en base.
+            # Après la fin de service : les agents peuvent se reconnecter (consultation / urgente).
+            # La présence du jour (arrivées + départ fin de service) reste intacte en base.
             record_login_attempt(username, client_ip, True)
             clear_failed_attempts(username, client_ip)
             login(request, user)
@@ -532,11 +532,13 @@ def users_directory(request):
 def presence_dashboard(request):
     """Présence : direction voit tout le monde ; agent voit uniquement sa fiche."""
     from .presence import (
+        SCHEDULE_SUMMARY_LABEL,
         build_agent_login_chart,
         build_agent_presence_summary,
         build_agent_rhythm_charts,
         build_presence_sessions,
         parse_presence_date,
+        work_schedule_for_day,
     )
 
     can_view_all = is_management_user(request.user)
@@ -579,6 +581,7 @@ def presence_dashboard(request):
         )
 
     chart_data = {'labels': [], 'counts': [], 'total': 0}
+    day_schedule = work_schedule_for_day(selected_date)
     rhythm_data = {
         'labels': [],
         'arrival_hours': [],
@@ -586,10 +589,10 @@ def presence_dashboard(request):
         'arrival_ref': [],
         'departure_ref': [],
         'presence_flags': [],
-        'work_start': 8.5,
-        'work_end': 18.0,
-        'work_start_label': '08:30',
-        'work_end_label': '18:00',
+        'work_start': day_schedule.start_hour if day_schedule.is_open else 8.5,
+        'work_end': day_schedule.end_hour if day_schedule.is_open else 17.5,
+        'work_start_label': day_schedule.start_label if day_schedule.is_open else '08:30',
+        'work_end_label': day_schedule.end_label if day_schedule.is_open else '17:30',
         'stats': {},
         'absence_chart': {'labels': ['Présents', 'Absents'], 'values': [0, 0]},
     }
@@ -613,8 +616,11 @@ def presence_dashboard(request):
         'absent_count': absent_count,
         'chart_data': chart_data,
         'rhythm_data': rhythm_data,
-        'work_start_label': '08:30',
-        'work_end_label': '18:00',
+        'work_start_label': day_schedule.start_label if day_schedule.is_open else '08:30',
+        'work_end_label': day_schedule.end_label if day_schedule.is_open else '17:30',
+        'day_schedule_open': day_schedule.is_open,
+        'day_schedule_label': day_schedule.range_label,
+        'schedule_summary_label': SCHEDULE_SUMMARY_LABEL,
         'can_view_all_presence': can_view_all,
     })
 

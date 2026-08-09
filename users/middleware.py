@@ -45,7 +45,7 @@ class AuditLogMiddleware:
 class AgentSessionWorkdayMiddleware:
     """
     Empêche l'expiration de session des agents pendant la journée de travail.
-    Une connexion du matin reste valide jusqu'à la clôture (18h00),
+    Une connexion du matin reste valide jusqu'à la fin de service du jour,
     même sans activité.
     """
 
@@ -56,23 +56,25 @@ class AgentSessionWorkdayMiddleware:
         user = getattr(request, 'user', None)
         if user is not None and getattr(user, 'is_authenticated', False):
             from django.utils import timezone
-            from .presence import WORK_END, is_presence_auto_close_target
+            from .presence import is_presence_auto_close_target, work_end_datetime
 
             if is_presence_auto_close_target(user):
                 local_now = timezone.localtime()
-                work_end_dt = timezone.make_aware(datetime.combine(local_now.date(), WORK_END))
-                # Petite marge pour que la requête de 18h00 déclenche la déconnexion métier.
-                keep_until = int((work_end_dt - local_now).total_seconds()) + 300
-                if keep_until > 0:
-                    request.session.set_expiry(keep_until)
+                work_end_dt = work_end_datetime(local_now.date())
+                if work_end_dt is not None:
+                    # Petite marge pour que la requête de fin de service déclenche la déconnexion.
+                    keep_until = int((work_end_dt - local_now).total_seconds()) + 300
+                    if keep_until > 0:
+                        request.session.set_expiry(keep_until)
 
         return self.get_response(request)
 
 
 class AgentWorkEndLogoutMiddleware:
     """
-    À partir de 18h00 (Africa/Kinshasa) : déconnecte les agents,
+    À la fin de service (Africa/Kinshasa) : déconnecte les agents,
     complète leur présence, laisse les directeurs connectés.
+    Lun–Ven 17:30 · Samedi 13:00.
     """
 
     def __init__(self, get_response):
@@ -92,20 +94,23 @@ class AgentWorkEndLogoutMiddleware:
             from django.utils import timezone
 
             from .presence import (
-                WORK_END_LABEL,
                 close_open_session_for_user,
                 should_force_agent_logout_now,
+                work_schedule_for_day,
             )
 
-            # Clôture la fiche présence (départ 18h00) sans effacer les connexions du jour.
+            # Clôture la fiche présence (départ fin de service) sans effacer les connexions du jour.
             if should_force_agent_logout_now(user):
-                close_open_session_for_user(user, day=timezone.localdate())
+                day = timezone.localdate()
+                schedule = work_schedule_for_day(day)
+                end_label = schedule.end_label if schedule.is_open else '17:30'
+                close_open_session_for_user(user, day=day)
                 logout(request)
                 messages.info(
                     request,
-                    f'Journée de travail terminée à {WORK_END_LABEL}. '
+                    f'Journée de travail terminée à {end_label}. '
                     'Vos heures de connexion du jour ont été conservées et le départ '
-                    f'a été enregistré à {WORK_END_LABEL}.',
+                    f'a été enregistré à {end_label}.',
                 )
                 return redirect('login')
 

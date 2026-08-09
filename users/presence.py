@@ -2,6 +2,7 @@
 from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, time, timedelta
+from types import SimpleNamespace
 import random
 
 from django.contrib.auth import get_user_model
@@ -11,14 +12,105 @@ from django.utils import timezone
 from .models import AuditLog
 
 ILLUSTRATION_PATH = '/presence/illustration/'
-WORK_START = time(8, 30)
-WORK_END = time(18, 0)
-WORK_WARN = time(17, 30)  # Alerte 30 min avant déconnexion auto
+
+# Horaires de service officiels
+# Lun–Ven : 08:30 → 17:30 | Samedi : 09:00 → 13:00 | Dimanche : fermé
+WEEKDAY_START = time(8, 30)
+WEEKDAY_END = time(17, 30)
+SATURDAY_START = time(9, 0)
+SATURDAY_END = time(13, 0)
+WARN_BEFORE = timedelta(minutes=30)
+
+SCHEDULE_SUMMARY_LABEL = 'Lun–Ven 08:30–17:30 · Sam 09:00–13:00'
+WEEKDAY_RANGE_LABEL = 'Lundi – Vendredi : 08:30 – 17:30'
+SATURDAY_RANGE_LABEL = 'Samedi : 09:00 – 13:00'
+SUNDAY_RANGE_LABEL = 'Dimanche : fermé'
+
+# Alias = horaires en semaine (rétrocompat / défauts UI)
+WORK_START = WEEKDAY_START
+WORK_END = WEEKDAY_END
+WORK_WARN = time(17, 0)  # 30 min avant 17:30
 WORK_START_HOUR = 8.5
-WORK_END_HOUR = 18.0
+WORK_END_HOUR = 17.5
 WORK_START_LABEL = '08:30'
-WORK_END_LABEL = '18:00'
-WORK_WARN_LABEL = '17:30'
+WORK_END_LABEL = '17:30'
+WORK_WARN_LABEL = '17:00'
+
+
+def _time_to_hour_float(value):
+    return round(value.hour + value.minute / 60 + value.second / 3600, 2)
+
+
+def work_schedule_for_day(day=None):
+    """
+    Horaires du jour (Africa/Kinshasa).
+    Lun–Ven 08:30–17:30 · Sam 09:00–13:00 · Dimanche fermé.
+    """
+    day = day or timezone.localdate()
+    weekday = day.weekday()  # 0=lun … 5=sam, 6=dim
+
+    if weekday == 6:
+        return SimpleNamespace(
+            day=day,
+            is_open=False,
+            start=None,
+            end=None,
+            warn=None,
+            start_hour=None,
+            end_hour=None,
+            start_label='—',
+            end_label='—',
+            warn_label='—',
+            day_name='Dimanche',
+            range_label=SUNDAY_RANGE_LABEL,
+            short_label='Fermé',
+        )
+
+    if weekday == 5:
+        start, end = SATURDAY_START, SATURDAY_END
+        day_name = 'Samedi'
+        range_label = SATURDAY_RANGE_LABEL
+    else:
+        start, end = WEEKDAY_START, WEEKDAY_END
+        day_name = (
+            'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'
+        )[weekday]
+        range_label = WEEKDAY_RANGE_LABEL
+
+    warn_dt = datetime.combine(day, end) - WARN_BEFORE
+    warn = warn_dt.time()
+    return SimpleNamespace(
+        day=day,
+        is_open=True,
+        start=start,
+        end=end,
+        warn=warn,
+        start_hour=_time_to_hour_float(start),
+        end_hour=_time_to_hour_float(end),
+        start_label=start.strftime('%H:%M'),
+        end_label=end.strftime('%H:%M'),
+        warn_label=warn.strftime('%H:%M'),
+        day_name=day_name,
+        range_label=range_label,
+        short_label=f'{start.strftime("%H:%M")} – {end.strftime("%H:%M")}',
+    )
+
+
+def service_hours_banner_payload(day=None):
+    """Données pour le bandeau horaires visible dans toute l’app."""
+    schedule = work_schedule_for_day(day)
+    return {
+        'weekday_label': WEEKDAY_RANGE_LABEL,
+        'saturday_label': SATURDAY_RANGE_LABEL,
+        'sunday_label': SUNDAY_RANGE_LABEL,
+        'summary_label': SCHEDULE_SUMMARY_LABEL,
+        'today_open': schedule.is_open,
+        'today_name': schedule.day_name,
+        'today_short': schedule.short_label,
+        'today_range': schedule.range_label,
+        'today_start': schedule.start_label,
+        'today_end': schedule.end_label,
+    }
 
 FRENCH_MONTHS = (
     '',
@@ -141,11 +233,18 @@ def build_sessions(*, start, end, user=None):
 
         login_local = timezone.localtime(login.created_at)
         logout_local = timezone.localtime(matched_logout.created_at) if matched_logout else None
-        arrival_status = 'on_time' if login_local.time() <= WORK_START else 'late'
-        if logout_local:
-            departure_status = 'on_time' if logout_local.time() >= WORK_END else 'early'
+        day_schedule = work_schedule_for_day(login_local.date())
+        if day_schedule.is_open:
+            arrival_status = 'on_time' if login_local.time() <= day_schedule.start else 'late'
+            if logout_local:
+                departure_status = (
+                    'on_time' if logout_local.time() >= day_schedule.end else 'early'
+                )
+            else:
+                departure_status = 'online'
         else:
-            departure_status = 'online'
+            arrival_status = 'on_time'
+            departure_status = 'online' if not logout_local else 'on_time'
 
         sessions.append({
             'user': login.user,
@@ -163,22 +262,28 @@ def build_sessions(*, start, end, user=None):
 
 def build_presence_sessions(selected_date):
     """Liste des sessions de connexion pour une journée."""
-    # Complète automatiquement les départs agents à 18h00 si la journée est close.
+    # Complète automatiquement les départs agents à la fin de service si la journée est close.
     close_open_agent_sessions_for_day(selected_date)
     start, end = _day_bounds(selected_date)
     return build_sessions(start=start, end=end)
 
 
 def work_end_datetime(day):
-    return timezone.make_aware(datetime.combine(day, WORK_END))
+    schedule = work_schedule_for_day(day)
+    if not schedule.is_open:
+        return None
+    return timezone.make_aware(datetime.combine(day, schedule.end))
 
 
 def work_warn_datetime(day):
-    return timezone.make_aware(datetime.combine(day, WORK_WARN))
+    schedule = work_schedule_for_day(day)
+    if not schedule.is_open:
+        return None
+    return timezone.make_aware(datetime.combine(day, schedule.warn))
 
 
 def is_presence_auto_close_target(user):
-    """Agents uniquement — les directeurs / admin restent connectés après 18h00."""
+    """Agents uniquement — les directeurs / admin restent connectés après la fin de service."""
     if not user:
         return False
     if getattr(user, 'is_superuser', False):
@@ -210,33 +315,37 @@ def _close_agent_time_entries(user, closed_at):
 
 
 def _workday_login_cutoff(day):
-    """Les connexions après 18h00 sont hors journée : on ne les écrase pas."""
+    """Les connexions après la fin de service sont hors journée : on ne les écrase pas."""
     return work_end_datetime(day)
 
 
 def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
     """
-    Complète la présence : ajoute un départ à 18h00 pour chaque connexion
+    Complète la présence : ajoute un départ à la fin de service pour chaque connexion
     de la journée de travail encore ouverte.
 
     Ne supprime jamais les login/logout existants (arrivées et départs réels conservés).
-    Ne touche pas aux connexions démarrées après 18h00 (soir / consultation).
+    Ne touche pas aux connexions démarrées après la fin de service (soir / consultation).
     """
     if not is_presence_auto_close_target(user):
         return False
 
     local_now = timezone.localtime()
     day = day or local_now.date()
+    schedule = work_schedule_for_day(day)
+    if not schedule.is_open:
+        return False
+
     closed_at = work_end_datetime(day)
     start, end = _day_bounds(day)
 
     # Ne ferme que si la fin de journée est déjà passée (ou journée antérieure).
     if day > local_now.date():
         return False
-    if day == local_now.date() and local_now.time() < WORK_END:
+    if day == local_now.date() and local_now.time() < schedule.end:
         return False
 
-    # Uniquement les connexions de la plage 00:00 → 18h00 (journée de travail).
+    # Uniquement les connexions de la plage 00:00 → fin de service (journée de travail).
     workday_logins = list(
         AuditLog.objects.filter(
             user=user,
@@ -286,7 +395,7 @@ def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
             method='SYSTEM',
             metadata={
                 'reason': reason,
-                'work_end': WORK_END_LABEL,
+                'work_end': schedule.end_label,
                 'preserves_login_at': login.created_at.isoformat(),
             },
             created_at=logout_at,
@@ -302,14 +411,19 @@ def close_open_agent_sessions_for_day(day=None):
     User = get_user_model()
     local_now = timezone.localtime()
     day = day or local_now.date()
+    schedule = work_schedule_for_day(day)
 
     if day > local_now.date():
         return 0
-    if day == local_now.date() and local_now.time() < WORK_END:
+    if not schedule.is_open:
+        return 0
+    if day == local_now.date() and local_now.time() < schedule.end:
         return 0
 
     start, end = _day_bounds(day)
     cutoff = _workday_login_cutoff(day)
+    if cutoff is None:
+        return 0
     agent_ids = (
         AuditLog.objects.filter(
             action='login_success',
@@ -331,14 +445,17 @@ def close_open_agent_sessions_for_day(day=None):
 
 def agent_still_in_workday_session(user, day=None):
     """
-    True si la dernière connexion du jour a commencé avant 18h00
+    True si la dernière connexion du jour a commencé avant la fin de service
     (session de travail à clôturer / déconnecter).
-    False si pas de connexion, ou reconnexion après 18h00.
+    False si pas de connexion, jour fermé, ou reconnexion après la fin de service.
     """
     if not is_presence_auto_close_target(user):
         return False
     local_now = timezone.localtime()
     day = day or local_now.date()
+    schedule = work_schedule_for_day(day)
+    if not schedule.is_open:
+        return False
     start, end = _day_bounds(day)
     last_login = (
         AuditLog.objects.filter(
@@ -352,36 +469,45 @@ def agent_still_in_workday_session(user, day=None):
     )
     if not last_login:
         return False
-    return timezone.localtime(last_login.created_at).time() < WORK_END
+    return timezone.localtime(last_login.created_at).time() < schedule.end
 
 
 def should_force_agent_logout_now(user):
-    """Déconnecte seulement une session de travail encore active après 18h00."""
+    """Déconnecte seulement une session de travail encore active après la fin de service."""
     if not is_presence_auto_close_target(user):
         return False
-    if timezone.localtime().time() < WORK_END:
+    schedule = work_schedule_for_day()
+    if not schedule.is_open:
+        return False
+    if timezone.localtime().time() < schedule.end:
         return False
     return agent_still_in_workday_session(user)
 
 
 def agent_logout_warning_payload(user=None):
     """
-    Données pour l'alerte UI : visible dès 17h30, déconnexion à 18h00.
+    Données pour l'alerte UI : visible 30 min avant la fin de service du jour.
+    Lun–Ven → alerte 17:00 / fin 17:30 · Samedi → alerte 12:30 / fin 13:00.
     """
-    if user is not None and not is_presence_auto_close_target(user):
+    local_now = timezone.localtime()
+    day = local_now.date()
+    schedule = work_schedule_for_day(day)
+
+    if (
+        not schedule.is_open
+        or (user is not None and not is_presence_auto_close_target(user))
+    ):
         return {
             'enabled': False,
             'active': False,
-            'warn_label': WORK_WARN_LABEL,
-            'logout_label': WORK_END_LABEL,
+            'warn_label': schedule.warn_label if schedule.is_open else WORK_WARN_LABEL,
+            'logout_label': schedule.end_label if schedule.is_open else WORK_END_LABEL,
             'seconds_remaining': 0,
-            'server_now_iso': timezone.localtime().isoformat(),
+            'server_now_iso': local_now.isoformat(),
             'logout_at_iso': '',
             'warn_at_iso': '',
         }
 
-    local_now = timezone.localtime()
-    day = local_now.date()
     warn_at = work_warn_datetime(day)
     logout_at = work_end_datetime(day)
     seconds_remaining = max(0, int((logout_at - local_now).total_seconds()))
@@ -391,8 +517,8 @@ def agent_logout_warning_payload(user=None):
     return {
         'enabled': True,
         'active': active,
-        'warn_label': WORK_WARN_LABEL,
-        'logout_label': WORK_END_LABEL,
+        'warn_label': schedule.warn_label,
+        'logout_label': schedule.end_label,
         'seconds_remaining': seconds_remaining,
         'server_now_iso': local_now.isoformat(),
         'logout_at_iso': logout_at.isoformat(),
@@ -429,8 +555,9 @@ def build_agent_monthly_sessions(agent, year, month):
         'present_days': len(present_days),
         'total_seconds': total_seconds,
         'total_duration_label': format_duration(total_seconds),
-        'work_start': WORK_START.strftime('%H:%M'),
-        'work_end': WORK_END.strftime('%H:%M'),
+        'work_start': WORK_START_LABEL,
+        'work_end': WORK_END_LABEL,
+        'schedule_summary': SCHEDULE_SUMMARY_LABEL,
         'rhythm_data': rhythm,
     }
 
@@ -468,13 +595,14 @@ def build_agent_login_chart(agent, end_date, days=14):
 
 def build_agent_rhythm_charts(agent, end_date, days=14):
     """
-    Diagrammes rythme de travail d'un agent (réf. 8h–17h) :
-    arrivées, départs, absences sur les jours ouvrés.
+    Diagrammes rythme de travail d'un agent :
+    arrivées, départs, absences sur les jours ouvrés (Lun–Sam).
     """
     start_date = end_date - timedelta(days=days - 1)
     start, _ = _day_bounds(start_date)
     _, end = _day_bounds(end_date)
     sessions = build_sessions(start=start, end=end, user=agent)
+    end_schedule = work_schedule_for_day(end_date)
 
     by_day = defaultdict(list)
     for session in sessions:
@@ -497,10 +625,11 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
 
     cursor = start_date
     while cursor <= end_date:
-        if cursor.weekday() < 5:
+        day_schedule = work_schedule_for_day(cursor)
+        if day_schedule.is_open:
             labels.append(cursor.strftime('%d/%m'))
-            arrival_ref.append(WORK_START_HOUR)
-            departure_ref.append(WORK_END_HOUR)
+            arrival_ref.append(day_schedule.start_hour)
+            departure_ref.append(day_schedule.end_hour)
             day_sessions = by_day.get(cursor, [])
             first = _first_login_of_day(day_sessions)
             last = _last_logout_of_day(day_sessions)
@@ -510,7 +639,7 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
                 presence_flags.append(1)
                 arr_h = _to_hour_float(first['login_at'])
                 arrival_hours.append(arr_h)
-                if arr_h <= WORK_START_HOUR:
+                if arr_h <= day_schedule.start_hour:
                     on_time_arrivals += 1
                 else:
                     late_arrivals += 1
@@ -522,7 +651,7 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
             if last:
                 dep_h = _to_hour_float(last['logout_at'])
                 departure_hours.append(dep_h)
-                if dep_h >= WORK_END_HOUR:
+                if dep_h >= day_schedule.end_hour:
                     on_time_departures += 1
                 else:
                     early_departures += 1
@@ -537,10 +666,15 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
         'arrival_ref': arrival_ref,
         'departure_ref': departure_ref,
         'presence_flags': presence_flags,
-        'work_start': WORK_START_HOUR,
-        'work_end': WORK_END_HOUR,
-        'work_start_label': WORK_START_LABEL,
-        'work_end_label': WORK_END_LABEL,
+        'work_start': end_schedule.start_hour if end_schedule.is_open else WORK_START_HOUR,
+        'work_end': end_schedule.end_hour if end_schedule.is_open else WORK_END_HOUR,
+        'work_start_label': (
+            end_schedule.start_label if end_schedule.is_open else WORK_START_LABEL
+        ),
+        'work_end_label': (
+            end_schedule.end_label if end_schedule.is_open else WORK_END_LABEL
+        ),
+        'schedule_summary': SCHEDULE_SUMMARY_LABEL,
         'stats': {
             'present_days': present_days,
             'absent_days': absent_days,
@@ -557,11 +691,17 @@ def build_agent_rhythm_charts(agent, end_date, days=14):
 
 
 def build_day_team_rhythm(selected_date, agents):
-    """Répartition équipe du jour : arrivées / départs / absences (réf. 8h–17h)."""
+    """Répartition équipe du jour : arrivées / départs / absences."""
+    schedule = work_schedule_for_day(selected_date)
     sessions = build_presence_sessions(selected_date)
     by_user = defaultdict(list)
     for session in sessions:
         by_user[session['user'].id].append(session)
+
+    start_h = schedule.start_hour if schedule.is_open else WORK_START_HOUR
+    end_h = schedule.end_hour if schedule.is_open else WORK_END_HOUR
+    start_label = schedule.start_label if schedule.is_open else WORK_START_LABEL
+    end_label = schedule.end_label if schedule.is_open else WORK_END_LABEL
 
     on_time = late = early_leave = left_on_time = still_online = absent = 0
     for agent in agents:
@@ -571,24 +711,24 @@ def build_day_team_rhythm(selected_date, agents):
             continue
         first = _first_login_of_day(day_sessions)
         last = _last_logout_of_day(day_sessions)
-        if first and _to_hour_float(first['login_at']) <= WORK_START_HOUR:
+        if first and _to_hour_float(first['login_at']) <= start_h:
             on_time += 1
         else:
             late += 1
         if not last:
             still_online += 1
-        elif _to_hour_float(last['logout_at']) >= WORK_END_HOUR:
+        elif _to_hour_float(last['logout_at']) >= end_h:
             left_on_time += 1
         else:
             early_leave += 1
 
     return {
         'arrival': {
-            'labels': ['À l’heure (≤ 8h)', 'En retard', 'Absents'],
+            'labels': [f'À l’heure (≤ {start_label})', 'En retard', 'Absents'],
             'values': [on_time, late, absent],
         },
         'departure': {
-            'labels': ['Parti ≥ 17h', 'Parti tôt', 'Encore connectés', 'Absents'],
+            'labels': [f'Parti ≥ {end_label}', 'Parti tôt', 'Encore connectés', 'Absents'],
             'values': [left_on_time, early_leave, still_online, absent],
         },
         'counts': {
@@ -644,16 +784,29 @@ def build_agent_presence_summary(selected_date, agents):
         if last:
             last_logouts[user_id] = last['logout_at']
 
+    day_schedule = work_schedule_for_day(selected_date)
     summary = []
     for agent in agents:
         first_at = first_logins.get(agent.id)
         last_at = last_logouts.get(agent.id)
         arrival_status = None
         departure_status = None
-        if first_at:
-            arrival_status = 'on_time' if timezone.localtime(first_at).time() <= WORK_START else 'late'
-        if last_at:
-            departure_status = 'on_time' if timezone.localtime(last_at).time() >= WORK_END else 'early'
+        if first_at and day_schedule.is_open:
+            arrival_status = (
+                'on_time'
+                if timezone.localtime(first_at).time() <= day_schedule.start
+                else 'late'
+            )
+        elif first_at:
+            arrival_status = 'on_time'
+        if last_at and day_schedule.is_open:
+            departure_status = (
+                'on_time'
+                if timezone.localtime(last_at).time() >= day_schedule.end
+                else 'early'
+            )
+        elif last_at:
+            departure_status = 'on_time'
         elif counts.get(agent.id, 0) > 0:
             departure_status = 'online'
 
@@ -673,7 +826,7 @@ def build_agent_presence_summary(selected_date, agents):
 
 def seed_presence_illustration(days=14):
     """
-    Heures d'illustration autour de 8h (début) et 17h (fin).
+    Heures d'illustration selon l’horaire du jour (Lun–Ven / Samedi).
     Remplace uniquement les logs marqués illustration (ré-exécutable).
     """
     User = get_user_model()
@@ -693,7 +846,8 @@ def seed_presence_illustration(days=14):
 
     for offset in range(days):
         day = today - timedelta(days=offset)
-        if day.weekday() >= 5:
+        schedule = work_schedule_for_day(day)
+        if not schedule.is_open:
             continue
 
         for index, agent in enumerate(agents):
@@ -702,17 +856,21 @@ def seed_presence_illustration(days=14):
 
             arrive_offset_min = rng.randint(-20, 45)
             login_at = timezone.make_aware(
-                datetime.combine(day, WORK_START) + timedelta(minutes=arrive_offset_min)
+                datetime.combine(day, schedule.start) + timedelta(minutes=arrive_offset_min)
             )
 
             leave_offset_min = rng.randint(-40, 40)
             logout_at = timezone.make_aware(
-                datetime.combine(day, WORK_END) + timedelta(minutes=leave_offset_min)
+                datetime.combine(day, schedule.end) + timedelta(minutes=leave_offset_min)
             )
             if logout_at <= login_at:
-                logout_at = login_at + timedelta(hours=8)
+                logout_at = login_at + timedelta(hours=4)
 
-            meta = {'illustration': True, 'agent_id': agent.id, 'work_hours': f'{WORK_START_LABEL}-{WORK_END_LABEL}'}
+            meta = {
+                'illustration': True,
+                'agent_id': agent.id,
+                'work_hours': f'{schedule.start_label}-{schedule.end_label}',
+            }
             AuditLog.objects.create(
                 user=agent,
                 action='login_success',
@@ -731,4 +889,10 @@ def seed_presence_illustration(days=14):
             )
             created += 2
 
-    return {'agents': len(agents), 'logs': created, 'work_start': WORK_START_LABEL, 'work_end': WORK_END_LABEL}
+    return {
+        'agents': len(agents),
+        'logs': created,
+        'work_start': WORK_START_LABEL,
+        'work_end': WORK_END_LABEL,
+        'schedule': SCHEDULE_SUMMARY_LABEL,
+    }

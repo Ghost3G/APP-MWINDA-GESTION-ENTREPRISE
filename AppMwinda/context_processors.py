@@ -14,12 +14,24 @@ def app_notifications(request):
             'agent_logout_warning': {
                 'enabled': False,
                 'active': False,
-                'warn_label': '17:30',
-                'logout_label': '18:00',
+                'warn_label': '17:00',
+                'logout_label': '17:30',
                 'seconds_remaining': 0,
                 'server_now_iso': '',
                 'logout_at_iso': '',
                 'warn_at_iso': '',
+            },
+            'service_hours': {
+                'weekday_label': 'Lundi – Vendredi : 08:30 – 17:30',
+                'saturday_label': 'Samedi : 09:00 – 13:00',
+                'sunday_label': 'Dimanche : fermé',
+                'summary_label': 'Lun–Ven 08:30–17:30 · Sam 09:00–13:00',
+                'today_open': True,
+                'today_name': '',
+                'today_short': '08:30 – 17:30',
+                'today_range': 'Lundi – Vendredi : 08:30 – 17:30',
+                'today_start': '08:30',
+                'today_end': '17:30',
             },
         }
 
@@ -37,7 +49,7 @@ def app_notifications(request):
         can_access_finance,
         can_access_crm,
     )
-    from users.presence import agent_logout_warning_payload
+    from users.presence import agent_logout_warning_payload, service_hours_banner_payload
 
     unread_messages_count = 0
     unread_project_assignments = 0
@@ -50,6 +62,7 @@ def app_notifications(request):
     is_finance = can_access_finance(user)
     is_crm = can_access_crm(user)
     agent_logout_warning = agent_logout_warning_payload(user)
+    service_hours = service_hours_banner_payload()
 
     try:
         unread_messages_count = (
@@ -129,6 +142,7 @@ def app_notifications(request):
         'is_crm': is_crm,
         'project_deadline_alerts': project_deadline_alerts,
         'agent_logout_warning': agent_logout_warning,
+        'service_hours': service_hours,
         'current_user_profile': {
             'display_name': user.get_labeled_name(),
             'short_name': user.get_display_name(),
