@@ -90,7 +90,7 @@
                 </div>
 
                 {% if can_edit_machines %}
-                <div class="panel">
+                <div class="panel" id="edit-machine">
                     <h3>Modifier la fiche</h3>
                     <form method="POST" class="machines-form" enctype="multipart/form-data">
                         {% csrf_token %}
@@ -394,8 +394,11 @@
 
                 {% if can_edit_machines %}
                 <div class="panel">
-                    <h3>Archiver la machine</h3>
-                    <p class="muted" style="margin:0 0 12px;">Tapez <strong style="color:#fecaca;">SUPPRIMER</strong> pour confirmer (archivage, pas suppression définitive).</p>
+                    <h3>Supprimer la machine</h3>
+                    <p class="muted" style="margin:0 0 12px;">
+                        Retire la machine du parc visible.
+                        Tapez <strong style="color:#fecaca;">SUPPRIMER</strong> pour confirmer.
+                    </p>
                     <form method="POST" class="machines-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="delete_machine">
@@ -403,7 +406,7 @@
                             <label>Confirmation</label>
                             <input name="confirm" placeholder="SUPPRIMER" autocomplete="off">
                         </div>
-                        <button type="submit" class="btn-machines btn-machines--warn">Archiver</button>
+                        <button type="submit" class="btn-machines btn-machines--warn">Supprimer</button>
                     </form>
                 </div>
                 {% endif %}

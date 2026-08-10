@@ -211,6 +211,9 @@
                                     <th>Prochaine maint.</th>
                                     <th>Alerte</th>
                                     <th>Statut</th>
+                                    {% if can_edit_machines %}
+                                    <th>Actions</th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -253,10 +256,24 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ m.get_status_display }}</td>
+                                    {% if can_edit_machines %}
+                                    <td>
+                                        <div class="machines-actions">
+                                            <a href="{% url 'machine_detail' m.id %}#edit-machine" class="btn-machines btn-machines--tiny btn-machines--ghost">Modifier</a>
+                                            <form method="POST" class="machines-delete-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_machine">
+                                                <input type="hidden" name="machine_id" value="{{ m.id }}">
+                                                <input type="text" name="confirm" class="machines-delete-confirm" placeholder="SUPPRIMER" autocomplete="off" aria-label="Confirmer suppression {{ m.name }}">
+                                                <button type="submit" class="btn-machines btn-machines--tiny btn-machines--warn">Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                    {% endif %}
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="muted">Aucune machine pour ces filtres.</td>
+                                    <td colspan="{% if can_edit_machines %}8{% else %}7{% endif %}" class="muted">Aucune machine pour ces filtres.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

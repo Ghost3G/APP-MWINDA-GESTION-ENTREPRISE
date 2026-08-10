@@ -60,8 +60,30 @@ class MachinesAccessTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Machine.objects.filter(name='Presse').exists())
 
-    def test_detail_url_resolves(self):
-        self.assertEqual(
-            reverse('machine_detail', args=[self.machine.id]),
-            f'/machines/{self.machine.id}/',
+    def test_dt_can_delete(self):
+        self.client.login(username='ibrahim.japhete', password='testpass123')
+        response = self.client.post(
+            reverse('machines_list'),
+            {
+                'action': 'delete_machine',
+                'machine_id': self.machine.id,
+                'confirm': 'SUPPRIMER',
+            },
         )
+        self.assertEqual(response.status_code, 302)
+        self.machine.refresh_from_db()
+        self.assertFalse(self.machine.is_active)
+
+    def test_agent_cannot_delete(self):
+        self.client.login(username='agent.test', password='testpass123')
+        response = self.client.post(
+            reverse('machines_list'),
+            {
+                'action': 'delete_machine',
+                'machine_id': self.machine.id,
+                'confirm': 'SUPPRIMER',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.machine.refresh_from_db()
+        self.assertTrue(self.machine.is_active)

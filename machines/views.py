@@ -120,6 +120,24 @@ def machines_list(request):
             machine.save()
             messages.success(request, f'Machine « {name} » ajoutée.')
             return redirect('machines_list')
+
+        if action == 'delete_machine':
+            machine = get_object_or_404(
+                Machine, id=request.POST.get('machine_id'), is_active=True
+            )
+            confirm = request.POST.get('confirm', '').strip().upper()
+            if confirm != 'SUPPRIMER':
+                messages.error(
+                    request,
+                    "Pour supprimer, confirmez en tapant SUPPRIMER.",
+                )
+                return redirect('machines_list')
+            label = machine.name
+            machine.is_active = False
+            machine.save(update_fields=['is_active', 'updated_at'])
+            messages.success(request, f'Machine « {label} » supprimée du parc.')
+            return redirect('machines_list')
+
         messages.error(request, "Action non reconnue.")
         return redirect('machines_list')
 
@@ -370,12 +388,12 @@ def machine_detail(request, machine_id):
         if action == 'delete_machine':
             confirm = request.POST.get('confirm', '').strip().upper()
             if confirm != 'SUPPRIMER':
-                messages.error(request, "Tapez SUPPRIMER pour confirmer.")
+                messages.error(request, "Pour supprimer, confirmez en tapant SUPPRIMER.")
                 return redirect('machine_detail', machine_id=machine.id)
             label = machine.name
             machine.is_active = False
             machine.save(update_fields=['is_active', 'updated_at'])
-            messages.success(request, f'Machine « {label} » archivée.')
+            messages.success(request, f'Machine « {label} » supprimée du parc.')
             return redirect('machines_list')
 
         messages.error(request, "Action non reconnue.")
