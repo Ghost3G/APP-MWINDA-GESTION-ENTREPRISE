@@ -20,7 +20,7 @@
                     <div>
                         <h2>Centre des alertes</h2>
                         <p>
-                            Vue d’équipe : retards, stocks, machines, relances clients et bonnes nouvelles.
+                            Vue d’équipe organisée par catégorie : projets, stock, machines, CRM et achats.
                             Une seule page pour aligner tout le monde et avancer plus vite.
                         </p>
                     </div>
@@ -38,25 +38,47 @@
                         </a>
                         <a
                             href="?level=red{% if selected_module %}&module={{ selected_module|urlencode }}{% endif %}"
-                            class="alert-tab is-red {% if selected_level == 'red' %}active{% endif %}"
+                            class="alert-tab {% if selected_level == 'red' %}active{% endif %}"
                         >
                             <span class="tab-label">🔴 Urgentes</span>
                             <span class="tab-count">{{ counts.red }}</span>
                         </a>
                         <a
                             href="?level=orange{% if selected_module %}&module={{ selected_module|urlencode }}{% endif %}"
-                            class="alert-tab is-orange {% if selected_level == 'orange' %}active{% endif %}"
+                            class="alert-tab {% if selected_level == 'orange' %}active{% endif %}"
                         >
                             <span class="tab-label">🟠 À traiter</span>
                             <span class="tab-count">{{ counts.orange }}</span>
                         </a>
                         <a
                             href="?level=green{% if selected_module %}&module={{ selected_module|urlencode }}{% endif %}"
-                            class="alert-tab is-green {% if selected_level == 'green' %}active{% endif %}"
+                            class="alert-tab {% if selected_level == 'green' %}active{% endif %}"
                         >
                             <span class="tab-label">🟢 Positives</span>
                             <span class="tab-count">{{ counts.green }}</span>
                         </a>
+                    </div>
+                </div>
+
+                <div class="alerts-section">
+                    <h3>Catégories</h3>
+                    <div class="alert-tabs">
+                        <a
+                            href="?{% if selected_level %}level={{ selected_level }}{% endif %}"
+                            class="alert-tab {% if not selected_module %}active{% endif %}"
+                        >
+                            <span class="tab-label">Toutes</span>
+                            <span class="tab-count">{{ counts.total }}</span>
+                        </a>
+                        {% for tab in category_tabs %}
+                        <a
+                            href="?module={{ tab.value|urlencode }}{% if selected_level %}&level={{ selected_level }}{% endif %}"
+                            class="alert-tab {% if selected_module == tab.value %}active{% endif %}"
+                        >
+                            <span class="tab-label">{{ tab.label }}</span>
+                            <span class="tab-count">{{ tab.count }}</span>
+                        </a>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -65,74 +87,62 @@
                     <span>
                         Filtre actif :
                         {% if selected_level == 'red' %}<strong>Urgentes</strong>{% elif selected_level == 'orange' %}<strong>À traiter</strong>{% elif selected_level == 'green' %}<strong>Positives</strong>{% else %}<strong>Tous les niveaux</strong>{% endif %}
-                        {% if selected_module %} · module <strong>{{ selected_module }}</strong>{% endif %}
+                        {% if selected_module %} · catégorie <strong>{{ selected_module }}</strong>{% endif %}
                     </span>
                     <span>{{ alerts|length }} alerte{{ alerts|length|pluralize }}</span>
                 </div>
                 {% endif %}
 
-                <div class="filters-panel">
-                    <h3>Recherche & filtres</h3>
-                    <form method="GET">
-                        {% if selected_level %}
-                            <input type="hidden" name="level" value="{{ selected_level }}">
-                        {% endif %}
-                        <div>
-                            <label for="a-module">Module</label>
-                            <select id="a-module" name="module">
-                                <option value="">Tous les modules</option>
-                                {% for m in modules %}
-                                    <option value="{{ m }}" {% if selected_module == m %}selected{% endif %}>{{ m }}</option>
-                                {% endfor %}
-                            </select>
+                {% if alert_groups %}
+                    {% for category, group_alerts in alert_groups.items %}
+                    <section class="alerts-category">
+                        <div class="alerts-category__header">
+                            <h3>{{ category }}</h3>
+                            <span class="alerts-category__count">{{ group_alerts|length }} alerte{{ group_alerts|length|pluralize }}</span>
                         </div>
-                        <button type="submit" class="btn-create">Filtrer</button>
-                        <a href="{% url 'alerts_center' %}" class="btn-reset">Réinitialiser</a>
-                    </form>
-                </div>
-
-                {% if alerts %}
-                <div class="alerts-grid">
-                    {% for alert in alerts %}
-                    <article class="alert-card is-{{ alert.level }}">
-                        <div class="alert-card__side" aria-hidden="true">
-                            <span class="alert-card__icon">{{ alert.icon }}</span>
+                        <div class="alerts-grid">
+                            {% for alert in group_alerts %}
+                            <article class="alert-card is-{{ alert.level }}">
+                                <div class="alert-card__side" aria-hidden="true">
+                                    <span class="alert-card__icon">{{ alert.icon }}</span>
+                                </div>
+                                <div class="alert-card__body">
+                                    <div class="alert-card__identity">
+                                        <div class="alert-card__badges">
+                                            <span class="module-badge">{{ alert.module }}</span>
+                                            <span class="level-pill is-{{ alert.level }}">
+                                                <span class="level-dot" aria-hidden="true"></span>
+                                                {% if alert.level == 'red' %}Urgent{% elif alert.level == 'orange' %}À traiter{% else %}Positif{% endif %}
+                                            </span>
+                                        </div>
+                                        <h3>{{ alert.title }}</h3>
+                                        {% if alert.detail %}
+                                            <p class="alert-card__detail">{{ alert.detail }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="alert-card__meta">
+                                        <div class="alert-card__meta-row">
+                                            <span>Catégorie</span>
+                                            <strong>{{ alert.module }}</strong>
+                                        </div>
+                                        <div class="alert-card__meta-row">
+                                            <span>Priorité</span>
+                                            <strong>
+                                                {% if alert.level == 'red' %}Haute{% elif alert.level == 'orange' %}Moyenne{% else %}Info{% endif %}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    {% if alert.url %}
+                                    <div class="alert-card__actions">
+                                        <a href="{{ alert.url }}" class="btn-open">Ouvrir</a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </article>
+                            {% endfor %}
                         </div>
-                        <div class="alert-card__body">
-                            <div class="alert-card__identity">
-                                <div class="alert-card__badges">
-                                    <span class="module-badge">{{ alert.module }}</span>
-                                    <span class="level-pill is-{{ alert.level }}">
-                                        <span class="level-dot" aria-hidden="true"></span>
-                                        {% if alert.level == 'red' %}Urgent{% elif alert.level == 'orange' %}À traiter{% else %}Positif{% endif %}
-                                    </span>
-                                </div>
-                                <h3>{{ alert.title }}</h3>
-                                {% if alert.detail %}
-                                    <p class="alert-card__detail">{{ alert.detail }}</p>
-                                {% endif %}
-                            </div>
-                            <div class="alert-card__meta">
-                                <div class="alert-card__meta-row">
-                                    <span>Source</span>
-                                    <strong>{{ alert.module }}</strong>
-                                </div>
-                                <div class="alert-card__meta-row">
-                                    <span>Priorité</span>
-                                    <strong>
-                                        {% if alert.level == 'red' %}Haute{% elif alert.level == 'orange' %}Moyenne{% else %}Info{% endif %}
-                                    </strong>
-                                </div>
-                            </div>
-                            {% if alert.url %}
-                            <div class="alert-card__actions">
-                                <a href="{{ alert.url }}" class="btn-open">Ouvrir</a>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </article>
+                    </section>
                     {% endfor %}
-                </div>
                 {% else %}
                 <div class="alerts-empty">
                     Aucune alerte pour ces filtres — bon rythme d’équipe.
