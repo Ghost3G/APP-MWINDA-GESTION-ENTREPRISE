@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centre des alertes - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/alerts.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="alerts-page">
+                <div class="page-header alerts-header">
+                    <div>
+                        <h1>Centre des alertes</h1>
+                        <p>
+                            Vue d’équipe : retards, stocks, machines, relances clients et bonnes nouvelles.
+                            Une seule page pour aligner tout le monde et avancer plus vite.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alerts-summary">
+                    <div class="alerts-summary__item is-red">
+                        <small>🔴 Urgentes</small>
+                        <strong>{{ counts.red }}</strong>
+                    </div>
+                    <div class="alerts-summary__item is-orange">
+                        <small>🟠 À traiter</small>
+                        <strong>{{ counts.orange }}</strong>
+                    </div>
+                    <div class="alerts-summary__item is-green">
+                        <small>🟢 Positives</small>
+                        <strong>{{ counts.green }}</strong>
+                    </div>
+                    <div class="alerts-summary__item">
+                        <small>Total affiché</small>
+                        <strong>{{ alerts|length }}</strong>
+                    </div>
+                </div>
+
+                <form method="GET" class="panel alerts-filters">
+                    <div class="alerts-filters__grid">
+                        <div>
+                            <label for="a-level">Niveau</label>
+                            <select id="a-level" name="level">
+                                <option value="">Tous</option>
+                                <option value="red" {% if selected_level == 'red' %}selected{% endif %}>🔴 Urgentes</option>
+                                <option value="orange" {% if selected_level == 'orange' %}selected{% endif %}>🟠 À traiter</option>
+                                <option value="green" {% if selected_level == 'green' %}selected{% endif %}>🟢 Positives</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="a-module">Module</label>
+                            <select id="a-module" name="module">
+                                <option value="">Tous</option>
+                                {% for m in modules %}
+                                    <option value="{{ m }}" {% if selected_module == m %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-alerts btn-alerts--ghost">Filtrer</button>
+                        <a href="{% url 'alerts_center' %}" class="btn-alerts btn-alerts--ghost">Réinitialiser</a>
+                    </div>
+                </form>
+
+                <div class="panel">
+                    <h3>Fil d’alertes</h3>
+                    <ul class="alerts-feed">
+                        {% for alert in alerts %}
+                        <li class="alerts-feed__item is-{{ alert.level }}">
+                            <span class="alerts-feed__icon" aria-hidden="true">{{ alert.icon }}</span>
+                            <div class="alerts-feed__body">
+                                <div class="alerts-feed__meta">
+                                    <span class="alerts-feed__module">{{ alert.module }}</span>
+                                </div>
+                                {% if alert.url %}
+                                    <a class="alerts-feed__title" href="{{ alert.url }}">{{ alert.title }}</a>
+                                {% else %}
+                                    <strong class="alerts-feed__title">{{ alert.title }}</strong>
+                                {% endif %}
+                                {% if alert.detail %}
+                                    <p class="alerts-feed__detail">{{ alert.detail }}</p>
+                                {% endif %}
+                            </div>
+                            {% if alert.url %}
+                                <a class="btn-alerts btn-alerts--tiny" href="{{ alert.url }}">Ouvrir</a>
+                            {% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="alerts-feed__empty">
+                            Aucune alerte pour ces filtres — bon rythme d’équipe.
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

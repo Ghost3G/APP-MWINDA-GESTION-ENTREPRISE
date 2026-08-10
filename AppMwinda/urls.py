@@ -50,6 +50,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('stock/', include('inventory.urls')),
     path('machines/', include('machines.urls')),
+    path('alerts/', include('alerts.urls')),
     path('tasks/', manage_tasks, name='manage_tasks'),
     
     # Admin panel

@@ -10,6 +10,7 @@ def app_notifications(request):
             'is_finance': False,
             'is_crm': False,
             'is_stock': False,
+            'alerts_actionable_count': 0,
             'current_user_profile': None,
             'project_deadline_alerts': [],
             'agent_logout_warning': {
@@ -134,11 +135,20 @@ def app_notifications(request):
         unread_messages_count + unread_project_assignments + unread_task_assignments
     )
 
+    alerts_actionable_count = 0
+    try:
+        from alerts.services import count_actionable_alerts
+
+        alerts_actionable_count = count_actionable_alerts()
+    except Exception:
+        alerts_actionable_count = 0
+
     return {
         'unread_messages_count': unread_messages_count,
         'unread_project_assignments': unread_project_assignments,
         'unread_task_assignments': unread_task_assignments,
         'unread_notifications_total': unread_notifications_total,
+        'alerts_actionable_count': alerts_actionable_count,
         'is_management': is_management,
         'is_admin': is_admin,
         'is_finance': is_finance,

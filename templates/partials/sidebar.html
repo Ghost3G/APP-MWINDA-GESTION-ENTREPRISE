@@ -15,6 +15,11 @@
             Accueil
             <span class="notification-badge {% if unread_task_assignments %}visible{% endif %}">{{ unread_task_assignments }}</span>
         </a>
+        <a href="{% url 'alerts_center' %}" class="nav-item {% if request.resolver_match.url_name == 'alerts_center' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>
+            Alertes
+            <span class="notification-badge {% if alerts_actionable_count %}visible{% endif %}">{{ alerts_actionable_count }}</span>
+        </a>
         <a href="{% url 'messaging' %}" class="nav-item {% if request.resolver_match.url_name == 'messaging' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_message.png' %}" alt=""></span>
             Messages

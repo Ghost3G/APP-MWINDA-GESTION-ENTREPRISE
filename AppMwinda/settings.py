@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'reports',
     'inventory',
     'machines',
+    'alerts',
 ]
 
 # ========================
