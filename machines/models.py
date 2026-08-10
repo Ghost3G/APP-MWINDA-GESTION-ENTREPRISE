@@ -27,12 +27,6 @@ class Machine(models.Model):
     brand = models.CharField(max_length=120, blank=True)
     model = models.CharField(max_length=120, blank=True)
     serial_number = models.CharField(max_length=120, blank=True)
-    purchase_date = models.DateField(null=True, blank=True)
-    warranty_end = models.DateField(
-        null=True,
-        blank=True,
-        help_text='Fin de garantie',
-    )
     operating_hours = models.DecimalField(
         max_digits=12, decimal_places=1, default=Decimal('0.0')
     )
@@ -202,6 +196,11 @@ class MachineMaintenanceLog(models.Model):
     machine = models.ForeignKey(
         Machine, on_delete=models.CASCADE, related_name='maintenance_logs'
     )
+    title = models.CharField(
+        max_length=180,
+        blank=True,
+        help_text='Type ou libellé de l’intervention',
+    )
     performed_at = models.DateField(default=timezone.localdate)
     next_due = models.DateField(null=True, blank=True)
     cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
@@ -222,7 +221,8 @@ class MachineMaintenanceLog(models.Model):
         ordering = ['-performed_at', '-id']
 
     def __str__(self):
-        return f'Maintenance {self.machine.name} — {self.performed_at}'
+        label = self.title or 'Maintenance'
+        return f'{label} — {self.machine.name} ({self.performed_at})'
 
 
 class MachineConsumable(models.Model):

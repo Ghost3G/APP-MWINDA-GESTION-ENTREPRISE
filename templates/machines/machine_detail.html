@@ -60,14 +60,6 @@
 
                 <div class="machines-meta">
                     <div class="machines-meta__item">
-                        <small>Date d’achat</small>
-                        <strong>{% if machine.purchase_date %}{{ machine.purchase_date|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
-                    </div>
-                    <div class="machines-meta__item">
-                        <small>Garantie jusqu’au</small>
-                        <strong>{% if machine.warranty_end %}{{ machine.warranty_end|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
-                    </div>
-                    <div class="machines-meta__item">
                         <small>Heures de fonctionnement</small>
                         <strong>{{ machine.operating_hours }} h</strong>
                     </div>
@@ -78,6 +70,10 @@
                     <div class="machines-meta__item">
                         <small>Prochaine maintenance</small>
                         <strong>{% if machine.next_maintenance %}{{ machine.next_maintenance|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Interventions (historique)</small>
+                        <strong>{{ maintenances|length }}</strong>
                     </div>
                     <div class="machines-meta__item">
                         <small>Coût de maintenance (total)</small>
@@ -111,14 +107,6 @@
                             <div>
                                 <label>N° de série</label>
                                 <input name="serial_number" value="{{ machine.serial_number }}">
-                            </div>
-                            <div>
-                                <label>Date d’achat</label>
-                                <input type="date" name="purchase_date" value="{% if machine.purchase_date %}{{ machine.purchase_date|date:'Y-m-d' }}{% endif %}">
-                            </div>
-                            <div>
-                                <label>Fin de garantie</label>
-                                <input type="date" name="warranty_end" value="{% if machine.warranty_end %}{{ machine.warranty_end|date:'Y-m-d' }}{% endif %}">
                             </div>
                             <div>
                                 <label>Heures</label>
@@ -159,6 +147,59 @@
                     </form>
                 </div>
                 {% endif %}
+
+                <div class="panel" id="maintenance-history">
+                    <h3>Historique de maintenance</h3>
+                    {% if can_edit_machines %}
+                    <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_maintenance">
+                        <div class="machines-form__row">
+                            <div class="machines-form__full">
+                                <label>Intervention *</label>
+                                <input name="title" required placeholder="Ex. Révision annuelle, graissage, contrôle…">
+                            </div>
+                            <div>
+                                <label>Effectuée le</label>
+                                <input type="date" name="performed_at">
+                            </div>
+                            <div>
+                                <label>Prochaine due</label>
+                                <input type="date" name="next_due">
+                            </div>
+                            <div>
+                                <label>Coût</label>
+                                <input name="cost" placeholder="0">
+                            </div>
+                            <div>
+                                <label>Heures au moment de l’intervention</label>
+                                <input name="operating_hours_at" placeholder="{{ machine.operating_hours }}">
+                            </div>
+                            <div class="machines-form__full">
+                                <label>Notes / détails</label>
+                                <textarea name="notes" placeholder="Travaux réalisés, observations…"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--primary">Ajouter à l’historique</button>
+                    </form>
+                    {% endif %}
+                    <ul class="machines-history">
+                        {% for m in maintenances %}
+                        <li>
+                            <strong>{% if m.title %}{{ m.title }}{% else %}Maintenance{% endif %}</strong>
+                            <div class="muted">
+                                {{ m.performed_at|date:"d/m/Y" }}
+                                {% if m.cost %} · {{ m.cost }} ${% endif %}
+                                {% if m.next_due %} · prochaine {{ m.next_due|date:"d/m/Y" }}{% endif %}
+                                {% if m.operating_hours_at %} · {{ m.operating_hours_at }} h{% endif %}
+                            </div>
+                            {% if m.notes %}<div>{{ m.notes }}</div>{% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="muted">Aucune intervention enregistrée pour le moment.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
 
                 <div class="machines-grid-2">
                     <div class="panel">
@@ -269,127 +310,77 @@
                     </div>
                 </div>
 
-                <div class="machines-grid-2">
-                    <div class="panel">
-                        <h3>Maintenances</h3>
-                        {% if can_edit_machines %}
-                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="add_maintenance">
-                            <div class="machines-form__row">
-                                <div>
-                                    <label>Effectuée le</label>
-                                    <input type="date" name="performed_at">
-                                </div>
-                                <div>
-                                    <label>Prochaine due</label>
-                                    <input type="date" name="next_due">
-                                </div>
-                                <div>
-                                    <label>Coût</label>
-                                    <input name="cost" placeholder="0">
-                                </div>
-                                <div>
-                                    <label>Heures</label>
-                                    <input name="operating_hours_at" placeholder="{{ machine.operating_hours }}">
-                                </div>
-                                <div class="machines-form__full">
-                                    <label>Notes</label>
-                                    <textarea name="notes"></textarea>
-                                </div>
+                <div class="panel">
+                    <h3>Consommables de la machine</h3>
+                    {% if can_edit_machines %}
+                    <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_consumable">
+                        <div class="machines-form__row">
+                            <div class="machines-form__full">
+                                <label>Nom *</label>
+                                <input name="name" required placeholder="Ex. Lame, encre, filtre…">
                             </div>
-                            <button type="submit" class="btn-machines btn-machines--primary">Enregistrer la maintenance</button>
-                        </form>
-                        {% endif %}
-                        <ul class="machines-history">
-                            {% for m in maintenances %}
-                            <li>
-                                <strong>{{ m.performed_at|date:"d/m/Y" }}</strong>
-                                <div class="muted">
-                                    {{ m.cost }} $
-                                    {% if m.next_due %} · prochaine {{ m.next_due|date:"d/m/Y" }}{% endif %}
-                                    {% if m.operating_hours_at %} · {{ m.operating_hours_at }} h{% endif %}
-                                </div>
-                                {% if m.notes %}<div>{{ m.notes }}</div>{% endif %}
-                            </li>
-                            {% empty %}
-                            <li class="muted">Aucune maintenance enregistrée.</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-
-                    <div class="panel">
-                        <h3>Consommables de la machine</h3>
-                        {% if can_edit_machines %}
-                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="add_consumable">
-                            <div class="machines-form__row">
-                                <div class="machines-form__full">
-                                    <label>Nom *</label>
-                                    <input name="name" required placeholder="Ex. Lame, encre, filtre…">
-                                </div>
-                                <div>
-                                    <label>Quantité</label>
-                                    <input name="quantity" value="0">
-                                </div>
-                                <div>
-                                    <label>Minimum</label>
-                                    <input name="min_quantity" value="1">
-                                </div>
-                                <div>
-                                    <label>Unité</label>
-                                    <select name="unit">
-                                        {% for value, label in unit_choices %}
-                                            <option value="{{ value }}">{{ label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="machines-check">
-                                        <input type="checkbox" name="needs_replacement" value="1">
-                                        À remplacer
-                                    </label>
-                                </div>
+                            <div>
+                                <label>Quantité</label>
+                                <input name="quantity" value="0">
                             </div>
-                            <button type="submit" class="btn-machines btn-machines--primary">Ajouter</button>
-                        </form>
-                        {% endif %}
-                        <ul class="machines-history">
-                            {% for c in consumables %}
-                            <li class="{% if c.alert_replace %}open{% endif %}">
-                                <strong>{% if c.alert_replace %}🟠 {% endif %}{{ c.name }}</strong>
-                                <div class="muted">
-                                    {{ c.quantity }} {{ c.get_unit_display|lower }}
-                                    (min. {{ c.min_quantity }})
-                                    {% if c.needs_replacement %} · marqué à remplacer{% endif %}
+                            <div>
+                                <label>Minimum</label>
+                                <input name="min_quantity" value="1">
+                            </div>
+                            <div>
+                                <label>Unité</label>
+                                <select name="unit">
+                                    {% for value, label in unit_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="machines-check">
+                                    <input type="checkbox" name="needs_replacement" value="1">
+                                    À remplacer
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--primary">Ajouter</button>
+                    </form>
+                    {% endif %}
+                    <ul class="machines-history">
+                        {% for c in consumables %}
+                        <li class="{% if c.alert_replace %}open{% endif %}">
+                            <strong>{% if c.alert_replace %}🟠 {% endif %}{{ c.name }}</strong>
+                            <div class="muted">
+                                {{ c.quantity }} {{ c.get_unit_display|lower }}
+                                (min. {{ c.min_quantity }})
+                                {% if c.needs_replacement %} · marqué à remplacer{% endif %}
+                            </div>
+                            {% if can_edit_machines %}
+                            <form method="POST" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_consumable">
+                                <input type="hidden" name="consumable_id" value="{{ c.id }}">
+                                <div>
+                                    <label class="muted">Qté</label>
+                                    <input name="quantity" value="{{ c.quantity }}" style="width:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
                                 </div>
-                                {% if can_edit_machines %}
-                                <form method="POST" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="update_consumable">
-                                    <input type="hidden" name="consumable_id" value="{{ c.id }}">
-                                    <div>
-                                        <label class="muted">Qté</label>
-                                        <input name="quantity" value="{{ c.quantity }}" style="width:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
-                                    </div>
-                                    <div>
-                                        <label class="muted">Min</label>
-                                        <input name="min_quantity" value="{{ c.min_quantity }}" style="width:70px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
-                                    </div>
-                                    <label class="machines-check" style="margin:0 !important;">
-                                        <input type="checkbox" name="needs_replacement" value="1" {% if c.needs_replacement %}checked{% endif %}>
-                                        À remplacer
-                                    </label>
-                                    <button type="submit" class="btn-machines btn-machines--tiny btn-machines--ghost">OK</button>
-                                </form>
-                                {% endif %}
-                            </li>
-                            {% empty %}
-                            <li class="muted">Aucun consommable lié.</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+                                <div>
+                                    <label class="muted">Min</label>
+                                    <input name="min_quantity" value="{{ c.min_quantity }}" style="width:70px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
+                                </div>
+                                <label class="machines-check" style="margin:0 !important;">
+                                    <input type="checkbox" name="needs_replacement" value="1" {% if c.needs_replacement %}checked{% endif %}>
+                                    À remplacer
+                                </label>
+                                <button type="submit" class="btn-machines btn-machines--tiny btn-machines--ghost">OK</button>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% empty %}
+                        <li class="muted">Aucun consommable lié.</li>
+                        {% endfor %}
+                    </ul>
                 </div>
 
                 {% if can_edit_machines %}

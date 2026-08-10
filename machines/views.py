@@ -104,8 +104,6 @@ def machines_list(request):
                 brand=request.POST.get('brand', '').strip()[:120],
                 model=request.POST.get('model', '').strip()[:120],
                 serial_number=request.POST.get('serial_number', '').strip()[:120],
-                purchase_date=_parse_date(request.POST.get('purchase_date')),
-                warranty_end=_parse_date(request.POST.get('warranty_end')),
                 operating_hours=hours,
                 last_maintenance=_parse_date(request.POST.get('last_maintenance')),
                 next_maintenance=_parse_date(request.POST.get('next_maintenance')),
@@ -248,8 +246,6 @@ def machine_detail(request, machine_id):
             machine.brand = request.POST.get('brand', '').strip()[:120]
             machine.model = request.POST.get('model', '').strip()[:120]
             machine.serial_number = request.POST.get('serial_number', '').strip()[:120]
-            machine.purchase_date = _parse_date(request.POST.get('purchase_date'))
-            machine.warranty_end = _parse_date(request.POST.get('warranty_end'))
             machine.operating_hours = hours
             machine.last_maintenance = _parse_date(request.POST.get('last_maintenance'))
             machine.next_maintenance = _parse_date(request.POST.get('next_maintenance'))
@@ -326,6 +322,7 @@ def machine_detail(request, machine_id):
             hours = _parse_decimal(request.POST.get('operating_hours_at'))
             MachineMaintenanceLog.objects.create(
                 machine=machine,
+                title=request.POST.get('title', '').strip()[:180],
                 performed_at=performed,
                 next_due=next_due,
                 cost=cost,
@@ -339,7 +336,7 @@ def machine_detail(request, machine_id):
             if hours is not None:
                 machine.operating_hours = hours
             machine.save()
-            messages.success(request, "Maintenance enregistrée.")
+            messages.success(request, "Intervention ajoutée à l’historique de maintenance.")
             return redirect('machine_detail', machine_id=machine.id)
 
         if action == 'add_consumable':
