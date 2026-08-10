@@ -1,0 +1,259 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des machines - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/machines.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="machines-page">
+                <div class="page-header machines-header">
+                    <div>
+                        <h1>Gestion des machines</h1>
+                        <p>
+                            Parc machines, maintenances, pannes, pièces et consommables.
+                            Consultation pour tous — saisie réservée au
+                            <strong>Directeur Technique</strong> et à son <strong>adjoint</strong>.
+                        </p>
+                    </div>
+                    {% if can_edit_machines %}
+                        <span class="machines-role-pill">Droits de modification</span>
+                    {% endif %}
+                </div>
+
+                {% if messages %}
+                    <div class="machines-flash-stack">
+                        {% for message in messages %}
+                            <div class="machines-flash {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="machines-summary">
+                    <div class="machines-summary__item">
+                        <small>Machines</small>
+                        <strong>{{ machines_total }}</strong>
+                    </div>
+                    <div class="machines-summary__item is-maint">
+                        <small>🔔 Maintenance ≤ 7 j</small>
+                        <strong>{{ maintenance_alerts|length }}</strong>
+                    </div>
+                    <div class="machines-summary__item is-broken">
+                        <small>🔴 En panne</small>
+                        <strong>{{ broken_alerts|length }}</strong>
+                    </div>
+                    <div class="machines-summary__item is-part">
+                        <small>🟠 Pièce à remplacer</small>
+                        <strong>{{ part_alerts|length }}</strong>
+                    </div>
+                </div>
+
+                {% if broken_alerts or maintenance_alerts or part_alerts %}
+                <div class="panel machines-alerts">
+                    <h3>Alertes</h3>
+                    <ul class="machines-alert-list">
+                        {% for m in broken_alerts %}
+                        <li class="is-broken">
+                            <span aria-hidden="true">🔴</span>
+                            <div>
+                                <a href="{% url 'machine_detail' m.id %}">{{ m.name }}</a>
+                                — Machine en panne
+                                {% if m.open_breakdowns %}
+                                    ({{ m.open_breakdowns.0.title }})
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                        {% for m in maintenance_alerts %}
+                        <li class="is-maint">
+                            <span aria-hidden="true">🔔</span>
+                            <div>
+                                <a href="{% url 'machine_detail' m.id %}">{{ m.name }}</a>
+                                — Maintenance
+                                {% if m.maintenance_overdue %}
+                                    en retard ({{ m.next_maintenance|date:"d/m/Y" }})
+                                {% else %}
+                                    dans {{ m.days_until_maintenance }} j
+                                    ({{ m.next_maintenance|date:"d/m/Y" }})
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                        {% for m in part_alerts %}
+                        <li class="is-part">
+                            <span aria-hidden="true">🟠</span>
+                            <div>
+                                <a href="{% url 'machine_detail' m.id %}">{{ m.name }}</a>
+                                — Pièce / consommable à remplacer
+                                {% if m.alert_consumables %}
+                                    ({{ m.alert_consumables.0.name }})
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="GET" class="panel machines-filters">
+                    <div class="machines-filters__grid">
+                        <div>
+                            <label for="m-q">Recherche</label>
+                            <input id="m-q" type="search" name="q" value="{{ search_q }}" placeholder="Nom, marque, modèle, n° série…">
+                        </div>
+                        <div>
+                            <label for="m-status">Statut</label>
+                            <select id="m-status" name="status">
+                                <option value="">Tous</option>
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="m-alert">Alerte</label>
+                            <select id="m-alert" name="alert">
+                                <option value="">Toutes</option>
+                                <option value="maintenance" {% if selected_alert == 'maintenance' %}selected{% endif %}>Maintenance ≤ 7 j</option>
+                                <option value="broken" {% if selected_alert == 'broken' %}selected{% endif %}>En panne</option>
+                                <option value="part" {% if selected_alert == 'part' %}selected{% endif %}>Pièce à remplacer</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--ghost">Filtrer</button>
+                    </div>
+                </form>
+
+                {% if can_edit_machines %}
+                <div class="panel">
+                    <h3>Ajouter une machine</h3>
+                    <form method="POST" class="machines-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_machine">
+                        <div class="machines-form__row">
+                            <div>
+                                <label for="c-name">Nom *</label>
+                                <input id="c-name" name="name" required>
+                            </div>
+                            <div>
+                                <label for="c-brand">Marque</label>
+                                <input id="c-brand" name="brand">
+                            </div>
+                            <div>
+                                <label for="c-model">Modèle</label>
+                                <input id="c-model" name="model">
+                            </div>
+                            <div>
+                                <label for="c-serial">N° de série</label>
+                                <input id="c-serial" name="serial_number">
+                            </div>
+                            <div>
+                                <label for="c-purchase">Date d’achat</label>
+                                <input id="c-purchase" type="date" name="purchase_date">
+                            </div>
+                            <div>
+                                <label for="c-cost">Coût</label>
+                                <input id="c-cost" name="purchase_cost" inputmode="decimal" placeholder="0">
+                            </div>
+                            <div>
+                                <label for="c-warranty">Fin de garantie</label>
+                                <input id="c-warranty" type="date" name="warranty_end">
+                            </div>
+                            <div>
+                                <label for="c-hours">Heures de fonctionnement</label>
+                                <input id="c-hours" name="operating_hours" inputmode="decimal" value="0">
+                            </div>
+                            <div>
+                                <label for="c-last">Dernière maintenance</label>
+                                <input id="c-last" type="date" name="last_maintenance">
+                            </div>
+                            <div>
+                                <label for="c-next">Prochaine maintenance</label>
+                                <input id="c-next" type="date" name="next_maintenance">
+                            </div>
+                            <div>
+                                <label for="c-status">Statut</label>
+                                <select id="c-status" name="status">
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="machines-form__full">
+                                <label for="c-notes">Notes</label>
+                                <textarea id="c-notes" name="notes"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--primary">Enregistrer la machine</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Parc machines</h3>
+                    <div class="machines-table-wrap">
+                        <table class="machines-table">
+                            <thead>
+                                <tr>
+                                    <th>Machine</th>
+                                    <th>Marque / modèle</th>
+                                    <th>Heures</th>
+                                    <th>Prochaine maint.</th>
+                                    <th>Alerte</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in machines %}
+                                <tr class="{% if m.alert_level == 'broken' %}is-broken{% elif m.alert_level == 'part' %}is-part{% elif m.alert_level == 'maintenance' %}is-maint{% endif %}">
+                                    <td>
+                                        <a href="{% url 'machine_detail' m.id %}">{{ m.name }}</a>
+                                        {% if m.serial_number %}<div class="muted">N° {{ m.serial_number }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        {{ m.brand|default:"—" }}
+                                        {% if m.model %}<div class="muted">{{ m.model }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ m.operating_hours }} h</td>
+                                    <td>
+                                        {% if m.next_maintenance %}
+                                            {{ m.next_maintenance|date:"d/m/Y" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if m.alert_level == 'broken' %}
+                                            <span class="machines-badge machines-badge--broken">🔴 Panne</span>
+                                        {% elif m.alert_level == 'part' %}
+                                            <span class="machines-badge machines-badge--part">🟠 Pièce</span>
+                                        {% elif m.alert_level == 'maintenance' %}
+                                            <span class="machines-badge machines-badge--maint">🔔 Maint.</span>
+                                        {% else %}
+                                            <span class="machines-badge machines-badge--ok">OK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ m.get_status_display }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="muted">Aucune machine pour ces filtres.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

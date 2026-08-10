@@ -47,6 +47,10 @@
             Stock & achats
         </a>
         {% endif %}
+        <a href="{% url 'machines_list' %}" class="nav-item {% if request.resolver_match.url_name == 'machines_list' or request.resolver_match.url_name == 'machine_detail' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_tableau.svg' %}" alt=""></span>
+            Machines
+        </a>
         <a href="{% url 'users_list' %}" class="nav-item {% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements

@@ -171,6 +171,16 @@ def can_edit_stock(user):
     return can_access_stock(user)
 
 
+def can_access_machines(user):
+    """Consultation Gestion des machines : tous les agents connectés."""
+    return bool(user and user.is_authenticated)
+
+
+def can_edit_machines(user):
+    """Ajout / modification machines : DT + adjoint uniquement."""
+    return can_manage_projects(user)
+
+
 def admin_required(view_func):
     """Accès réservé aux administrateurs."""
 

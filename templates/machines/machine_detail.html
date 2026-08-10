@@ -1,0 +1,403 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ machine.name }} - Machines - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/machines.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="machines-page">
+                <div class="page-header machines-header machines-detail-top">
+                    <div>
+                        <p class="muted" style="margin:0 0 8px;">
+                            <a href="{% url 'machines_list' %}" style="color:#fde047;text-decoration:none;">← Parc machines</a>
+                        </p>
+                        <h1>{{ machine.name }}</h1>
+                        <p>
+                            {{ machine.brand|default:"" }}
+                            {% if machine.model %} · {{ machine.model }}{% endif %}
+                            {% if machine.serial_number %} · N° {{ machine.serial_number }}{% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        {% if machine.alert_level == 'broken' %}
+                            <span class="machines-badge machines-badge--broken">🔴 Machine en panne</span>
+                        {% elif machine.alert_level == 'part' %}
+                            <span class="machines-badge machines-badge--part">🟠 Pièce à remplacer</span>
+                        {% elif machine.alert_level == 'maintenance' %}
+                            <span class="machines-badge machines-badge--maint">🔔 Maintenance proche</span>
+                        {% else %}
+                            <span class="machines-badge machines-badge--ok">En service</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if messages %}
+                    <div class="machines-flash-stack">
+                        {% for message in messages %}
+                            <div class="machines-flash {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="machines-meta">
+                    <div class="machines-meta__item">
+                        <small>Date d’achat</small>
+                        <strong>{% if machine.purchase_date %}{{ machine.purchase_date|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Coût d’achat</small>
+                        <strong>{{ machine.purchase_cost }} $</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Garantie jusqu’au</small>
+                        <strong>{% if machine.warranty_end %}{{ machine.warranty_end|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Heures de fonctionnement</small>
+                        <strong>{{ machine.operating_hours }} h</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Dernière maintenance</small>
+                        <strong>{% if machine.last_maintenance %}{{ machine.last_maintenance|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Prochaine maintenance</small>
+                        <strong>{% if machine.next_maintenance %}{{ machine.next_maintenance|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Coût de maintenance (total)</small>
+                        <strong>{{ maintenance_cost_total }} $</strong>
+                    </div>
+                    <div class="machines-meta__item">
+                        <small>Statut</small>
+                        <strong>{{ machine.get_status_display }}</strong>
+                    </div>
+                </div>
+
+                {% if can_edit_machines %}
+                <div class="panel">
+                    <h3>Modifier la fiche</h3>
+                    <form method="POST" class="machines-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_machine">
+                        <div class="machines-form__row">
+                            <div>
+                                <label>Nom *</label>
+                                <input name="name" value="{{ machine.name }}" required>
+                            </div>
+                            <div>
+                                <label>Marque</label>
+                                <input name="brand" value="{{ machine.brand }}">
+                            </div>
+                            <div>
+                                <label>Modèle</label>
+                                <input name="model" value="{{ machine.model }}">
+                            </div>
+                            <div>
+                                <label>N° de série</label>
+                                <input name="serial_number" value="{{ machine.serial_number }}">
+                            </div>
+                            <div>
+                                <label>Date d’achat</label>
+                                <input type="date" name="purchase_date" value="{% if machine.purchase_date %}{{ machine.purchase_date|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div>
+                                <label>Coût</label>
+                                <input name="purchase_cost" value="{{ machine.purchase_cost }}">
+                            </div>
+                            <div>
+                                <label>Fin de garantie</label>
+                                <input type="date" name="warranty_end" value="{% if machine.warranty_end %}{{ machine.warranty_end|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div>
+                                <label>Heures</label>
+                                <input name="operating_hours" value="{{ machine.operating_hours }}">
+                            </div>
+                            <div>
+                                <label>Dernière maintenance</label>
+                                <input type="date" name="last_maintenance" value="{% if machine.last_maintenance %}{{ machine.last_maintenance|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div>
+                                <label>Prochaine maintenance</label>
+                                <input type="date" name="next_maintenance" value="{% if machine.next_maintenance %}{{ machine.next_maintenance|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div>
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if machine.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="machines-form__full">
+                                <label>Notes</label>
+                                <textarea name="notes">{{ machine.notes }}</textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--primary">Enregistrer</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="machines-grid-2">
+                    <div class="panel">
+                        <h3>Historique des pannes</h3>
+                        {% if can_edit_machines %}
+                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_breakdown">
+                            <div class="machines-form__row">
+                                <div class="machines-form__full">
+                                    <label>Titre *</label>
+                                    <input name="title" required placeholder="Ex. Moteur bloqué">
+                                </div>
+                                <div>
+                                    <label>Début</label>
+                                    <input type="date" name="started_at">
+                                </div>
+                                <div>
+                                    <label>Coût</label>
+                                    <input name="cost" placeholder="0">
+                                </div>
+                                <div class="machines-form__full">
+                                    <label>Description</label>
+                                    <textarea name="description"></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-machines btn-machines--warn">Signaler une panne</button>
+                        </form>
+                        {% endif %}
+                        <ul class="machines-history">
+                            {% for b in breakdowns %}
+                            <li class="{% if b.is_open %}open{% endif %}">
+                                <strong>{% if b.is_open %}🔴 {% endif %}{{ b.title }}</strong>
+                                <div class="muted">
+                                    Du {{ b.started_at|date:"d/m/Y" }}
+                                    {% if b.resolved_at %} au {{ b.resolved_at|date:"d/m/Y" }}{% else %} — ouverte{% endif %}
+                                    · {{ b.cost }} $
+                                </div>
+                                {% if b.description %}<div>{{ b.description }}</div>{% endif %}
+                                {% if can_edit_machines and b.is_open %}
+                                <form method="POST" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="resolve_breakdown">
+                                    <input type="hidden" name="breakdown_id" value="{{ b.id }}">
+                                    <div>
+                                        <label class="muted">Clôturée le</label>
+                                        <input type="date" name="resolved_at">
+                                    </div>
+                                    <div>
+                                        <label class="muted">Coût final</label>
+                                        <input name="cost" value="{{ b.cost }}" style="width:100px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
+                                    </div>
+                                    <button type="submit" class="btn-machines btn-machines--tiny btn-machines--ghost">Clôturer</button>
+                                </form>
+                                {% endif %}
+                            </li>
+                            {% empty %}
+                            <li class="muted">Aucune panne enregistrée.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Pièces remplacées</h3>
+                        {% if can_edit_machines %}
+                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_part">
+                            <div class="machines-form__row">
+                                <div class="machines-form__full">
+                                    <label>Pièce *</label>
+                                    <input name="part_name" required>
+                                </div>
+                                <div>
+                                    <label>Date</label>
+                                    <input type="date" name="replaced_at">
+                                </div>
+                                <div>
+                                    <label>Coût</label>
+                                    <input name="cost" placeholder="0">
+                                </div>
+                                <div>
+                                    <label>Heures à ce moment</label>
+                                    <input name="operating_hours_at" placeholder="{{ machine.operating_hours }}">
+                                </div>
+                                <div class="machines-form__full">
+                                    <label>Notes</label>
+                                    <textarea name="notes"></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-machines btn-machines--primary">Ajouter une pièce</button>
+                        </form>
+                        {% endif %}
+                        <ul class="machines-history">
+                            {% for p in parts %}
+                            <li>
+                                <strong>{{ p.part_name }}</strong>
+                                <div class="muted">
+                                    {{ p.replaced_at|date:"d/m/Y" }} · {{ p.cost }} $
+                                    {% if p.operating_hours_at %} · {{ p.operating_hours_at }} h{% endif %}
+                                </div>
+                                {% if p.notes %}<div>{{ p.notes }}</div>{% endif %}
+                            </li>
+                            {% empty %}
+                            <li class="muted">Aucune pièce remplacée.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="machines-grid-2">
+                    <div class="panel">
+                        <h3>Maintenances</h3>
+                        {% if can_edit_machines %}
+                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_maintenance">
+                            <div class="machines-form__row">
+                                <div>
+                                    <label>Effectuée le</label>
+                                    <input type="date" name="performed_at">
+                                </div>
+                                <div>
+                                    <label>Prochaine due</label>
+                                    <input type="date" name="next_due">
+                                </div>
+                                <div>
+                                    <label>Coût</label>
+                                    <input name="cost" placeholder="0">
+                                </div>
+                                <div>
+                                    <label>Heures</label>
+                                    <input name="operating_hours_at" placeholder="{{ machine.operating_hours }}">
+                                </div>
+                                <div class="machines-form__full">
+                                    <label>Notes</label>
+                                    <textarea name="notes"></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-machines btn-machines--primary">Enregistrer la maintenance</button>
+                        </form>
+                        {% endif %}
+                        <ul class="machines-history">
+                            {% for m in maintenances %}
+                            <li>
+                                <strong>{{ m.performed_at|date:"d/m/Y" }}</strong>
+                                <div class="muted">
+                                    {{ m.cost }} $
+                                    {% if m.next_due %} · prochaine {{ m.next_due|date:"d/m/Y" }}{% endif %}
+                                    {% if m.operating_hours_at %} · {{ m.operating_hours_at }} h{% endif %}
+                                </div>
+                                {% if m.notes %}<div>{{ m.notes }}</div>{% endif %}
+                            </li>
+                            {% empty %}
+                            <li class="muted">Aucune maintenance enregistrée.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Consommables de la machine</h3>
+                        {% if can_edit_machines %}
+                        <form method="POST" class="machines-form" style="margin-bottom:16px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_consumable">
+                            <div class="machines-form__row">
+                                <div class="machines-form__full">
+                                    <label>Nom *</label>
+                                    <input name="name" required placeholder="Ex. Lame, encre, filtre…">
+                                </div>
+                                <div>
+                                    <label>Quantité</label>
+                                    <input name="quantity" value="0">
+                                </div>
+                                <div>
+                                    <label>Minimum</label>
+                                    <input name="min_quantity" value="1">
+                                </div>
+                                <div>
+                                    <label>Unité</label>
+                                    <select name="unit">
+                                        {% for value, label in unit_choices %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="machines-check">
+                                        <input type="checkbox" name="needs_replacement" value="1">
+                                        À remplacer
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-machines btn-machines--primary">Ajouter</button>
+                        </form>
+                        {% endif %}
+                        <ul class="machines-history">
+                            {% for c in consumables %}
+                            <li class="{% if c.alert_replace %}open{% endif %}">
+                                <strong>{% if c.alert_replace %}🟠 {% endif %}{{ c.name }}</strong>
+                                <div class="muted">
+                                    {{ c.quantity }} {{ c.get_unit_display|lower }}
+                                    (min. {{ c.min_quantity }})
+                                    {% if c.needs_replacement %} · marqué à remplacer{% endif %}
+                                </div>
+                                {% if can_edit_machines %}
+                                <form method="POST" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_consumable">
+                                    <input type="hidden" name="consumable_id" value="{{ c.id }}">
+                                    <div>
+                                        <label class="muted">Qté</label>
+                                        <input name="quantity" value="{{ c.quantity }}" style="width:80px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
+                                    </div>
+                                    <div>
+                                        <label class="muted">Min</label>
+                                        <input name="min_quantity" value="{{ c.min_quantity }}" style="width:70px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141416;color:#f4f4f5;">
+                                    </div>
+                                    <label class="machines-check" style="margin:0 !important;">
+                                        <input type="checkbox" name="needs_replacement" value="1" {% if c.needs_replacement %}checked{% endif %}>
+                                        À remplacer
+                                    </label>
+                                    <button type="submit" class="btn-machines btn-machines--tiny btn-machines--ghost">OK</button>
+                                </form>
+                                {% endif %}
+                            </li>
+                            {% empty %}
+                            <li class="muted">Aucun consommable lié.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                {% if can_edit_machines %}
+                <div class="panel">
+                    <h3>Archiver la machine</h3>
+                    <p class="muted" style="margin:0 0 12px;">Tapez <strong style="color:#fecaca;">SUPPRIMER</strong> pour confirmer (archivage, pas suppression définitive).</p>
+                    <form method="POST" class="machines-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_machine">
+                        <div>
+                            <label>Confirmation</label>
+                            <input name="confirm" placeholder="SUPPRIMER" autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn-machines btn-machines--warn">Archiver</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

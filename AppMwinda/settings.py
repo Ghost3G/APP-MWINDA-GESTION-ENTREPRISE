@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'projects',
     'reports',
     'inventory',
+    'machines',
 ]
 
 # ========================
