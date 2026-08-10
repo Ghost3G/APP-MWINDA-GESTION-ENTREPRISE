@@ -11,8 +11,9 @@ def alerts_center(request):
 
     alerts = collect_team_alerts()
     counts = alert_counts(alerts)
-
+    # modules list from full set before filter
     modules = sorted({a['module'] for a in alerts})
+
     if level in {'red', 'orange', 'green'}:
         alerts = [a for a in alerts if a['level'] == level]
     if module:
