@@ -1,0 +1,375 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock & Achats - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/stock.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="stock-page">
+                <div class="page-header stock-header">
+                    <div>
+                        <h1>Stock & Achats</h1>
+                        <p>
+                            Matières, produits, consommables, pièces détachées, fournisseurs et demandes d’achat.
+                            Responsable opérationnel : <strong>Joseph Mbuyu</strong>.
+                        </p>
+                    </div>
+                    {% if is_stock_manager_user %}
+                        <span class="stock-role-pill">Vous êtes le responsable Stock</span>
+                    {% endif %}
+                </div>
+
+                {% if messages %}
+                    <div class="stock-flash-stack">
+                        {% for message in messages %}
+                            <div class="stock-flash {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="stock-summary">
+                    <div class="stock-summary__item">
+                        <small>Articles actifs</small>
+                        <strong>{{ items|length }}</strong>
+                    </div>
+                    <div class="stock-summary__item is-critical">
+                        <small>Stocks critiques</small>
+                        <strong>{{ critical_count }}</strong>
+                    </div>
+                    <div class="stock-summary__item">
+                        <small>Demandes ouvertes</small>
+                        <strong>{{ open_purchases }}</strong>
+                    </div>
+                    <div class="stock-summary__item">
+                        <small>Fournisseurs</small>
+                        <strong>{{ suppliers|length }}</strong>
+                    </div>
+                </div>
+
+                {% if critical_items %}
+                <div class="panel stock-alerts">
+                    <h3>Alertes de rupture</h3>
+                    <ul class="stock-alert-list">
+                        {% for item in critical_items %}
+                        <li>
+                            <span class="stock-alert-dot" aria-hidden="true">🔴</span>
+                            <div>
+                                <strong>{{ item.name }}</strong>
+                                — Stock : {{ item.quantity }} {{ item.get_unit_display|lower }}
+                                — Minimum : {{ item.min_stock }}
+                                → <em>STOCK CRITIQUE</em>
+                            </div>
+                            {% if can_edit_stock %}
+                            <form method="POST" class="stock-inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="propose_purchase">
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <input type="hidden" name="quantity" value="{{ item.suggested_order_qty }}">
+                                <button type="submit" class="btn-stock btn-stock--warn">Demande d’achat</button>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="GET" class="panel stock-filters">
+                    <div class="stock-filters__grid">
+                        <div>
+                            <label for="stock-q">Recherche</label>
+                            <input id="stock-q" type="search" name="q" value="{{ search_q }}" placeholder="Nom, référence…">
+                        </div>
+                        <div>
+                            <label for="stock-cat">Catégorie</label>
+                            <select id="stock-cat" name="category">
+                                <option value="">Toutes</option>
+                                {% for value, label in category_choices %}
+                                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <label class="stock-check">
+                            <input type="checkbox" name="critical" value="1" {% if critical_only %}checked{% endif %}>
+                            Critiques seulement
+                        </label>
+                        <button type="submit" class="btn-stock btn-stock--primary">Filtrer</button>
+                    </div>
+                </form>
+
+                {% if can_edit_stock %}
+                <div class="stock-forms-grid">
+                    <div class="panel">
+                        <h3>Nouvel article</h3>
+                        <form method="POST" class="stock-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="create_item">
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Nom *</label>
+                                    <input type="text" name="name" required placeholder="Ex: Plexiglass 3 mm">
+                                </div>
+                                <div>
+                                    <label>Catégorie</label>
+                                    <select name="category">
+                                        {% for value, label in category_choices %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Unité</label>
+                                    <select name="unit">
+                                        {% for value, label in unit_choices %}
+                                            <option value="{{ value }}" {% if value == 'feuille' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Stock actuel</label>
+                                    <input type="number" step="0.01" min="0" name="quantity" value="0">
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Stock minimum</label>
+                                    <input type="number" step="0.01" min="0" name="min_stock" value="0">
+                                </div>
+                                <div>
+                                    <label>Stock maximum</label>
+                                    <input type="number" step="0.01" min="0" name="max_stock" value="0">
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Fournisseur</label>
+                                    <select name="supplier_id">
+                                        <option value="">— Aucun —</option>
+                                        {% for s in suppliers %}
+                                            <option value="{{ s.id }}">{{ s.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Réf. / SKU</label>
+                                    <input type="text" name="sku" placeholder="Optionnel">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-stock btn-stock--primary">Créer l’article</button>
+                        </form>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Entrée / Sortie / Inventaire</h3>
+                        <form method="POST" class="stock-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="movement">
+                            <div class="stock-form__row">
+                                <div class="stock-form__full">
+                                    <label>Article *</label>
+                                    <select name="item_id" required>
+                                        <option value="">— Choisir —</option>
+                                        {% for item in all_items %}
+                                            <option value="{{ item.id }}">
+                                                {{ item.name }} ({{ item.quantity }} {{ item.get_unit_display }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Type</label>
+                                    <select name="movement_type">
+                                        {% for value, label in movement_type_choices %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Quantité *</label>
+                                    <input type="number" step="0.01" min="0.01" name="quantity" required>
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div class="stock-form__full">
+                                    <label>Référence</label>
+                                    <input type="text" name="reference" placeholder="Bon, projet, inventaire…">
+                                </div>
+                            </div>
+                            <p class="stock-hint">Pour l’ajustement inventaire, la quantité = nouveau stock réel.</p>
+                            <button type="submit" class="btn-stock btn-stock--primary">Enregistrer le mouvement</button>
+                        </form>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Nouveau fournisseur</h3>
+                        <form method="POST" class="stock-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="create_supplier">
+                            <div class="stock-form__row">
+                                <div class="stock-form__full">
+                                    <label>Nom *</label>
+                                    <input type="text" name="name" required>
+                                </div>
+                            </div>
+                            <div class="stock-form__row">
+                                <div>
+                                    <label>Téléphone</label>
+                                    <input type="text" name="phone">
+                                </div>
+                                <div>
+                                    <label>Email</label>
+                                    <input type="email" name="email">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-stock btn-stock--ghost">Ajouter le fournisseur</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Inventaire</h3>
+                    {% if items %}
+                    <div class="stock-table-wrap">
+                        <table class="stock-table">
+                            <thead>
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Catégorie</th>
+                                    <th>Stock</th>
+                                    <th>Min</th>
+                                    <th>Max</th>
+                                    <th>Statut</th>
+                                    <th>Fournisseur</th>
+                                    {% if can_edit_stock %}<th></th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr class="{% if item.is_critical %}is-critical{% endif %}">
+                                    <td>
+                                        <strong>{{ item.name }}</strong>
+                                        {% if item.sku %}<div class="muted">{{ item.sku }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ item.get_category_display }}</td>
+                                    <td>{{ item.quantity }} {{ item.get_unit_display }}</td>
+                                    <td>{{ item.min_stock }}</td>
+                                    <td>{% if item.max_stock %}{{ item.max_stock }}{% else %}—{% endif %}</td>
+                                    <td>
+                                        {% if item.is_critical %}
+                                            <span class="stock-badge stock-badge--critical">Critique</span>
+                                        {% elif item.is_over_max %}
+                                            <span class="stock-badge stock-badge--over">Au-dessus max</span>
+                                        {% else %}
+                                            <span class="stock-badge stock-badge--ok">OK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{% if item.supplier %}{{ item.supplier.name }}{% else %}—{% endif %}</td>
+                                    {% if can_edit_stock %}
+                                    <td>
+                                        <form method="POST">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="propose_purchase">
+                                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                                            <input type="hidden" name="quantity" value="{{ item.suggested_order_qty }}">
+                                            <button type="submit" class="btn-stock btn-stock--tiny">Acheter</button>
+                                        </form>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p class="muted">Aucun article pour ces filtres. Créez un premier article (ex. Plexiglass 3 mm).</p>
+                    {% endif %}
+                </div>
+
+                <div class="stock-bottom-grid">
+                    <div class="panel">
+                        <h3>Demandes d’achat</h3>
+                        {% if purchases %}
+                        <div class="stock-table-wrap">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Article</th>
+                                        <th>Qté</th>
+                                        <th>Statut</th>
+                                        <th>Motif</th>
+                                        {% if can_edit_stock %}<th>Action</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in purchases %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ p.item.name }}</strong>
+                                            {% if p.auto_generated %}<div class="muted">Auto</div>{% endif %}
+                                        </td>
+                                        <td>{{ p.quantity }} {{ p.item.get_unit_display }}</td>
+                                        <td>{{ p.get_status_display }}</td>
+                                        <td class="stock-reason">{{ p.reason|default:"—" }}</td>
+                                        {% if can_edit_stock %}
+                                        <td>
+                                            <form method="POST" class="stock-status-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update_purchase_status">
+                                                <input type="hidden" name="purchase_id" value="{{ p.id }}">
+                                                <select name="status" onchange="this.form.submit()">
+                                                    {% for value, label in purchase_status_choices %}
+                                                        <option value="{{ value }}" {% if p.status == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </form>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <p class="muted">Aucune demande d’achat pour le moment.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="panel">
+                        <h3>Derniers mouvements</h3>
+                        {% if movements %}
+                        <ul class="stock-movement-list">
+                            {% for m in movements %}
+                            <li>
+                                <strong>{{ m.get_movement_type_display }}</strong>
+                                {{ m.quantity }} — {{ m.item.name }}
+                                <span class="muted">→ solde {{ m.balance_after }} · {{ m.created_at|date:"d/m/Y H:i" }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                            <p class="muted">Aucun mouvement enregistré.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

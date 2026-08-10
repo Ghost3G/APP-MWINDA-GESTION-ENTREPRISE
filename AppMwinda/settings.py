@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'messaging',
     'projects',
     'reports',
+    'inventory',
 ]
 
 # ========================

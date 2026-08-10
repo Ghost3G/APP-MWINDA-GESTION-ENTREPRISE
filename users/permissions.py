@@ -22,6 +22,9 @@ LOGISTICS_NOTIFY_USERNAMES = frozenset({
     'joseph.mbuyu',  # Joseph Mbuyu — Agent Logistique
 })
 
+# Responsable opérationnel Stock & Achats
+STOCK_MANAGER_USERNAME = 'joseph.mbuyu'
+
 # Accès Finance retiré uniquement pour ces comptes (pas le Chef / DG)
 COMMERCIAL_NO_FINANCE_USERNAMES = frozenset({
     'michelle.bukebo',
@@ -147,6 +150,25 @@ def can_edit_crm_client(user, client):
     if can_edit_finance(user) and is_management_user(user):
         return True
     return bool(client and client.commercial_owner_id == user.id)
+
+
+def is_stock_manager(user):
+    """Joseph Mbuyu — responsable Stock & Achats."""
+    if not user or not user.is_authenticated:
+        return False
+    return (user.username or '').strip().lower() == STOCK_MANAGER_USERNAME
+
+
+def can_access_stock(user):
+    """Menu Stock & Achats : direction + Joseph Mbuyu uniquement."""
+    if not user or not user.is_authenticated:
+        return False
+    return is_management_user(user) or is_stock_manager(user)
+
+
+def can_edit_stock(user):
+    """Saisie stock / demandes d'achat : Joseph + direction."""
+    return can_access_stock(user)
 
 
 def admin_required(view_func):

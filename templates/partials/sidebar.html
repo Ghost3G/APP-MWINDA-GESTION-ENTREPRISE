@@ -41,6 +41,12 @@
             CRM
         </a>
         {% endif %}
+        {% if is_stock %}
+        <a href="{% url 'stock_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'stock_dashboard' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_checklist.svg' %}" alt=""></span>
+            Stock & achats
+        </a>
+        {% endif %}
         <a href="{% url 'users_list' %}" class="nav-item {% if request.resolver_match.url_name == 'users_list' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements

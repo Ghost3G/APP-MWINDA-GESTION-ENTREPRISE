@@ -48,6 +48,7 @@ urlpatterns = [
     path('projects/', include('projects.urls')),
     path('reports/', include('reports.urls')),
     path('users/', include('users.urls')),
+    path('stock/', include('inventory.urls')),
     path('tasks/', manage_tasks, name='manage_tasks'),
     
     # Admin panel
