@@ -20,22 +20,27 @@
                     <h1>{% if crm_mode %}CRM — Portefeuille clients{% else %}Base clients{% endif %}</h1>
                     <p>
                         {% if is_commercial_lead_user %}
-                            Vous êtes <strong>Responsable Commercial</strong> : accès à tous les portefeuilles, réassignation possible.
-                            Créez des clients, liez les projets existants. Les paiements sont confirmés uniquement par la Finance — le payé / reste s’affiche ici automatiquement.
+                            Pilotage du portefeuille clients : fiches, affectations commerciales et suivi des montants.
+                            Les encaissements sont confirmés par le service Finance ; le payé et le reste
+                            s’affichent automatiquement.
                         {% elif can_view_all_crm %}
-                            Vue globale des portefeuilles. Liez les projets existants aux fiches clients. Les montants payés viennent de la Finance.
+                            Vue consolidée des portefeuilles clients.
+                            Liez les projets aux fiches et suivez les montants issus des encaissements Finance.
                         {% elif crm_mode %}
-                            Vous créez vos <strong>clients</strong> et pouvez <strong>lier</strong> un projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint.
-                            Les <strong>paiements</strong> sont enregistrés par la Finance : le payé et le reste apparaissent ici automatiquement.
+                            Votre portefeuille clients : création de fiches et rattachement des projets existants.
+                            Les paiements sont enregistrés par le service Finance ; le payé et le reste
+                            apparaissent automatiquement.
                         {% else %}
-                            Fiches clients partagées avec le CRM. Créez des clients, liez des projets existants, et confirmez les encaissements (Caisse ou ici) — le commercial voit alors le payé / reste.
+                            Référentiel clients partagé avec le CRM : fiches, rattachement de projets
+                            et confirmation des encaissements. Le commercial associé visualise ensuite
+                            le payé et le reste.
                         {% endif %}
                     </p>
                 </div>
 
                 {% if is_commercial_lead_user %}
                     <div class="finance-banner finance-banner-lead">
-                        Responsable Commercial — vous voyez et gérez les clients de tous les commerciaux.
+                        Profil Responsable Commercial — accès à l’ensemble des portefeuilles.
                     </div>
                 {% endif %}
 
@@ -127,7 +132,7 @@
 
                 {% if not can_edit_crm %}
                     <div class="finance-banner finance-banner-readonly">
-                        Mode lecture seule sur les fiches clients.
+                        Mode consultation sur les fiches clients.
                     </div>
                 {% endif %}
 
@@ -136,7 +141,8 @@
                 <div class="panel crm-reassign-panel" style="margin-bottom:16px;">
                     <h3>Affecter un client à un commercial</h3>
                     <p class="muted panel-hint">
-                        Réservé à la Responsable Commercial / direction : choisissez le client puis le commercial qui en aura la charge.
+                        Affectation réservée à la responsabilité commerciale et à la direction :
+                        sélectionnez le client puis le commercial en charge.
                     </p>
                     <form method="POST">
                         {% csrf_token %}
@@ -172,8 +178,8 @@
                 <div class="panel crm-link-project-panel" style="margin-bottom:16px;">
                     <h3>Lier un projet existant à un client</h3>
                     <p class="muted panel-hint">
-                        Le projet a déjà été créé par le Directeur Technique ou le Directeur Technique adjoint ? Rattachez-le ici à la fiche client
-                        (sans créer un nouveau projet).
+                        Rattachez un projet déjà ouvert dans le module Projets à la fiche client concernée,
+                        sans créer de nouveau chantier.
                     </p>
                     <form method="POST">
                         {% csrf_token %}
@@ -213,10 +219,10 @@
                     <h3>{% if edit_client %}Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}{% else %}Nouveau client{% endif %}</h3>
                     {% if not edit_client %}
                     <p class="muted panel-hint">
-                        Créez ici la <strong>fiche client</strong> (possible aussi côté {% if crm_mode %}Finance{% else %}CRM{% endif %}).
-                        Pour rattacher un chantier : <strong>« Lier un projet existant »</strong>
-                        (créé uniquement par le Directeur Technique / adjoint).
-                        {% if crm_mode %}Les paiements sont saisis par la Finance — vous voyez ensuite payé / reste.{% else %}Après confirmation d’un encaissement, le commercial voit le payé / reste.{% endif %}
+                        Créez ici la fiche client (également possible côté {% if crm_mode %}Finance{% else %}CRM{% endif %}).
+                        Pour rattacher un chantier, utilisez <strong>« Lier un projet existant »</strong>
+                        (projets ouverts par le service technique autorisé).
+                        {% if crm_mode %}Les paiements sont saisis par le service Finance — vous visualisez ensuite le payé et le reste.{% else %}Après confirmation d’un encaissement, le commercial associé visualise le payé et le reste.{% endif %}
                         Le code client (ex. CLI-CK-0001) est généré automatiquement.
                     </p>
                     {% endif %}
@@ -323,8 +329,9 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Encaissement sur un projet — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Réservé à la Finance. Le montant est immédiatement visible chez le commercial associé (payé / reste).
-                        Vous pouvez aussi enregistrer l’encaissement depuis la <a href="{% url 'finance_dashboard' %}">Caisse</a>.
+                        Enregistrement réservé au service Finance.
+                        Le montant est immédiatement visible sur le portefeuille commercial (payé / reste).
+                        Vous pouvez également saisir l’encaissement depuis la <a href="{% url 'finance_dashboard' %}">Caisse</a>.
                     </p>
                     <form method="POST">
                         {% csrf_token %}
@@ -382,8 +389,8 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Paiements — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Les encaissements sont confirmés uniquement par la <strong>Finance</strong>.
-                        Dès qu’un paiement est enregistré, le <strong>payé</strong> et le <strong>reste</strong> se mettent à jour ci-dessous.
+                        Les encaissements sont confirmés par le service Finance.
+                        Dès validation, le <strong>payé</strong> et le <strong>reste</strong> se mettent à jour ci-dessous.
                     </p>
                 </div>
                 {% endif %}
@@ -457,8 +464,9 @@
                 <div class="panel" style="margin-bottom:16px;">
                     <h3>Projets du client — {{ edit_client.name }}</h3>
                     <p class="muted panel-hint">
-                        Les projets sont créés uniquement par le Directeur Technique / Directeur Technique adjoint (module Projets).
-                        Finance et CRM peuvent <strong>lier</strong> un projet déjà créé à ce client. Les montants payés viennent de la Finance.
+                        Les projets sont ouverts dans le module Projets par le service technique autorisé.
+                        Finance et CRM peuvent rattacher un projet existant à ce client.
+                        Les montants payés proviennent du service Finance.
                     </p>
                     {% if edit_finance %}
                         <div class="crm-money-grid">
@@ -504,11 +512,11 @@
                                 </tbody>
                             </table>
                         {% else %}
-                            <p class="muted">Aucun projet lié. Liez un projet déjà créé par le Directeur Technique ou le Directeur Technique adjoint ci-dessous.</p>
+                            <p class="muted">Aucun projet lié. Rattachez un projet existant ci-dessous.</p>
                         {% endif %}
                     {% endif %}
                     {% if can_edit_crm and linkable_projects %}
-                    <h4 class="crm-section-subtitle">Lier un projet existant (créé par le Directeur Technique / adjoint)</h4>
+                    <h4 class="crm-section-subtitle">Lier un projet existant</h4>
                     <form method="POST" style="margin-bottom:16px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="link_project">
@@ -674,7 +682,7 @@
                                         </div>
                                     {% else %}
                                         <p class="crm-empty-projects">
-                                            Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà créé par le Directeur Technique / Directeur Technique adjoint.
+                                            Aucun projet lié — ouvrez « Gérer » pour rattacher un projet déjà ouvert dans Projets.
                                         </p>
                                     {% endif %}
 

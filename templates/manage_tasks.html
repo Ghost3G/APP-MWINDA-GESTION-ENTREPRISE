@@ -173,7 +173,10 @@
                 <div class="page-header">
                     <div>
                         <h1>Tâches</h1>
-                        <p>Vue direction : planification auto (IA + règles) selon titres agents, puis suivi par projet.</p>
+                        <p>
+                            Planification et suivi des tâches par projet.
+                            Affectation assistée selon les profils agents, puis pilotage de l’avancement.
+                        </p>
                     </div>
                     <div class="header-actions">
                         <button type="button" class="btn-primary" onclick="document.getElementById('assignPanel').scrollIntoView({behavior:'smooth'})">+ Assigner</button>
@@ -190,12 +193,13 @@
                     <div class="panel-head">
                         <h3>Planification auto — IA + règles</h3>
                         <span class="work-meta">
-                            {% if ai_assignment_enabled %}IA activée (OPENAI_API_KEY){% else %}Mode règles (ajoutez OPENAI_API_KEY pour l'IA){% endif %}
+                            {% if ai_assignment_enabled %}Assistance IA active{% else %}Mode règles métier{% endif %}
                         </span>
                     </div>
                     <p style="margin:0 0 12px;color:#a1a1aa;font-size:13px;">
-                        Crée les tâches du processus et les affecte selon le titre / département de chaque membre.
-                        L'IA propose d'abord si disponible, sinon les règles métier prennent le relais. N'écrase pas les tâches déjà présentes.
+                        Génère les tâches du processus et les affecte selon le profil de chaque membre.
+                        Proposition assistée si disponible, sinon application des règles métier.
+                        Les tâches déjà présentes ne sont pas écrasées.
                     </p>
                     <form method="POST" class="filters">
                         {% csrf_token %}

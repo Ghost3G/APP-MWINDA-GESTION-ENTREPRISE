@@ -163,7 +163,7 @@ def _get_finance_day_closure(day):
 def _finance_write_guard(request, record_date):
     """Bloque l'écriture si lecture seule ou journée clôturée."""
     if not can_edit_finance(request.user):
-        messages.error(request, "Accès en lecture seule. Seule l'équipe Finance peut saisir.")
+        messages.error(request, "Mode consultation. Seul le service Finance peut saisir.")
         return False
     if _is_finance_day_closed(record_date):
         messages.error(
@@ -1570,7 +1570,7 @@ def finance_clients(request):
 
     if request.method == 'POST':
         if not can_write:
-            messages.error(request, "Accès en lecture seule sur les fiches clients.")
+            messages.error(request, "Mode consultation sur les fiches clients.")
             return redirect(redirect_name)
 
         action = request.POST.get('action', 'create').strip() or 'create'
@@ -1620,7 +1620,7 @@ def finance_clients(request):
         if action == 'add_project':
             messages.error(
                 request,
-                "La création de projet se fait dans le module Projets (Directeur Technique / adjoint). "
+                "La création de projet s’effectue dans le module Projets (service technique autorisé). "
                 "Depuis le CRM ou Finance, utilisez « Lier un projet existant ».",
             )
             return redirect(redirect_name)
@@ -1639,7 +1639,7 @@ def finance_clients(request):
                 messages.error(
                     request,
                     "Projet introuvable ou déjà lié à un client. "
-                    "Seuls les projets créés (Directeur Technique / adjoint) et non encore rattachés sont disponibles.",
+                    "Seuls les projets ouverts par le service technique et non encore rattachés sont disponibles.",
                 )
                 return redirect(_crm_query_redirect(request, edit_id=client.id))
 

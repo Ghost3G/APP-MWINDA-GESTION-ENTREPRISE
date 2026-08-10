@@ -18,7 +18,10 @@
             <div class="finance-page">
                 <div class="page-header">
                     <h1>Caisse du jour</h1>
-                    <p>Saisie Finance, clôture de journée, marge par projet, totaux annuels et par catégorie.</p>
+                    <p>
+                        Gestion de la caisse journalière : saisies, clôture de journée,
+                        marges par projet et synthèses par catégorie.
+                    </p>
                 </div>
 
                 {% include "partials/finance_tabs.html" %}
@@ -81,7 +84,7 @@
 
                 {% if not can_edit_finance %}
                     <div class="finance-banner finance-banner-readonly">
-                        Mode lecture seule. La saisie est réservée à l'équipe Finance et à la direction.
+                        Mode consultation. La saisie est réservée au service Finance et à la direction.
                     </div>
                 {% elif day_is_closed %}
                     <div class="finance-banner finance-banner-closed">

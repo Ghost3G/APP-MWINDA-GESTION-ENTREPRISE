@@ -827,8 +827,8 @@ def projects_list(request):
     if request.method == 'POST':
         if not is_manager:
             return HttpResponseForbidden(
-                "Seuls le Directeur Technique (Japhete Kuta) et l’Ass. Directeur Technique "
-                "(Emmanuel Maki) peuvent créer, modifier, terminer ou supprimer un projet."
+                "La création et la modification des projets sont réservées "
+                "au service technique autorisé."
             )
 
         action = request.POST.get('action', 'create').strip() or 'create'

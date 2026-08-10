@@ -23,7 +23,7 @@ from .models import (
 def _deny(request):
     messages.error(
         request,
-        "Accès Stock & Achats réservé à la direction et à Joseph Mbuyu (responsable).",
+        "Accès Stock & Achats réservé à la direction et au service logistique autorisé.",
     )
     return redirect('dashboard')
 

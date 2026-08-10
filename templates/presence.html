@@ -20,9 +20,11 @@
                     <h1>{% if can_view_all_presence %}Présence{% else %}Ma présence{% endif %}</h1>
                     <p>
                         {% if can_view_all_presence %}
-                            Cliquez sur le nom d’une personne dans la liste pour ouvrir sa fiche.
+                            Suivi des connexions et de la présence du personnel.
+                            Sélectionnez un collaborateur dans la liste pour consulter sa fiche détaillée.
                         {% else %}
-                            Consultez votre rythme de connexion.
+                            Consultez votre historique de connexion et votre rythme de présence
+                            sur la période sélectionnée.
                         {% endif %}
                     </p>
                 </div>
@@ -51,7 +53,7 @@
                     <div class="presence-list-header">
                         <div>
                             <h3>Personnel — {% if is_today %}aujourd'hui{% else %}{{ selected_date }}{% endif %}</h3>
-                            <p class="filter-hint" style="margin:4px 0 0;">Cliquez un nom pour ouvrir sa fiche de présence.</p>
+                            <p class="filter-hint" style="margin:4px 0 0;">Sélectionnez un nom pour ouvrir la fiche de présence.</p>
                         </div>
                         <form method="GET" class="presence-date-form">
                             <label for="presence-date">Journée</label>
