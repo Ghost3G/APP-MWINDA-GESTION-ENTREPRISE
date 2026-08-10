@@ -7,10 +7,17 @@
     <title>Départements & Agents - AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <style>
+        /* Respire par rapport à la sidebar et aux bords de carte */
+        .dashboard-content:has(.departments-page) {
+            padding: 28px 32px 36px !important;
+        }
+
         .departments-page {
             display: grid;
-            gap: 20px;
+            gap: 22px;
             width: 100%;
+            box-sizing: border-box;
+            padding: 0;
         }
 
         .section-header {
@@ -19,21 +26,23 @@
             align-items: flex-start;
             gap: 16px;
             flex-wrap: wrap;
+            padding: 4px 4px 8px;
         }
 
         .section-header h2 {
-            margin: 0 0 6px;
+            margin: 0 0 8px;
             font-size: 28px;
             font-weight: 800;
             color: #f4f4f5;
+            line-height: 1.25;
         }
 
         .section-header p {
             margin: 0;
             color: #a1a1aa;
             font-size: 14px;
-            line-height: 1.5;
-            max-width: 52ch;
+            line-height: 1.55;
+            max-width: 56ch;
         }
 
         .btn-create {
@@ -58,7 +67,8 @@
             background: #141416;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 14px;
-            padding: 18px 20px;
+            padding: 20px 22px;
+            box-sizing: border-box;
         }
 
         .departments-section h3,
@@ -143,13 +153,14 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            padding: 14px 18px;
+            padding: 16px 20px;
             border-radius: 12px;
             border: 1px solid rgba(253, 224, 71, 0.28);
             background: rgba(253, 224, 71, 0.08);
             color: #f4f4f5;
             font-size: 14px;
             line-height: 1.45;
+            box-sizing: border-box;
         }
 
         .active-department-banner strong {
@@ -336,11 +347,11 @@
         .agent-card__body {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
             flex: 1 1 auto;
             width: 75%;
             min-width: 0;
-            padding: 14px 16px;
+            padding: 18px 18px 18px 20px;
             overflow: hidden;
             box-sizing: border-box;
         }
@@ -556,6 +567,10 @@
         }
 
         @media (max-width: 900px) {
+            .dashboard-content:has(.departments-page) {
+                padding: 20px 18px 28px !important;
+            }
+
             .form-row,
             .filters-panel form {
                 grid-template-columns: 1fr;
