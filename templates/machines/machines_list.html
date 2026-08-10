@@ -20,9 +20,10 @@
                     <div>
                         <h1>Gestion des machines</h1>
                         <p>
-                            Parc machines, maintenances, pannes, pièces et consommables.
-                            Consultation pour tous — saisie réservée au
-                            <strong>Directeur Technique</strong> et à son <strong>adjoint</strong>.
+                            Suivi du parc technique : identification, planning de maintenance,
+                            historique des interventions et consommables associés.
+                            Consultez l’état de chaque équipement ; la mise à jour des fiches
+                            est réservée au service technique autorisé.
                         </p>
                     </div>
                     {% if can_edit_machines %}
@@ -135,7 +136,7 @@
                 {% if can_edit_machines %}
                 <div class="panel">
                     <h3>Ajouter une machine</h3>
-                    <form method="POST" class="machines-form">
+                    <form method="POST" class="machines-form" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="create_machine">
                         <div class="machines-form__row">
@@ -158,10 +159,6 @@
                             <div>
                                 <label for="c-purchase">Date d’achat</label>
                                 <input id="c-purchase" type="date" name="purchase_date">
-                            </div>
-                            <div>
-                                <label for="c-cost">Coût</label>
-                                <input id="c-cost" name="purchase_cost" inputmode="decimal" placeholder="0">
                             </div>
                             <div>
                                 <label for="c-warranty">Fin de garantie</label>
@@ -188,6 +185,10 @@
                                 </select>
                             </div>
                             <div class="machines-form__full">
+                                <label for="c-photo">Photo</label>
+                                <input id="c-photo" type="file" name="photo" accept="image/*">
+                            </div>
+                            <div class="machines-form__full">
                                 <label for="c-notes">Notes</label>
                                 <textarea id="c-notes" name="notes"></textarea>
                             </div>
@@ -203,6 +204,7 @@
                         <table class="machines-table">
                             <thead>
                                 <tr>
+                                    <th>Photo</th>
                                     <th>Machine</th>
                                     <th>Marque / modèle</th>
                                     <th>Heures</th>
@@ -214,6 +216,15 @@
                             <tbody>
                                 {% for m in machines %}
                                 <tr class="{% if m.alert_level == 'broken' %}is-broken{% elif m.alert_level == 'part' %}is-part{% elif m.alert_level == 'maintenance' %}is-maint{% endif %}">
+                                    <td>
+                                        <a href="{% url 'machine_detail' m.id %}" class="machines-thumb-link" title="Voir la fiche">
+                                            {% if m.photo_url %}
+                                                <img class="machines-thumb" src="{{ m.photo_url }}" alt="{{ m.name }}">
+                                            {% else %}
+                                                <span class="machines-thumb machines-thumb--empty" aria-hidden="true">—</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
                                     <td>
                                         <a href="{% url 'machine_detail' m.id %}">{{ m.name }}</a>
                                         {% if m.serial_number %}<div class="muted">N° {{ m.serial_number }}</div>{% endif %}
@@ -245,7 +256,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="muted">Aucune machine pour ces filtres.</td>
+                                    <td colspan="7" class="muted">Aucune machine pour ces filtres.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

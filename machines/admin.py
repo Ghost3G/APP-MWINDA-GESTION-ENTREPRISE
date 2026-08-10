@@ -40,6 +40,7 @@ class MachineAdmin(admin.ModelAdmin):
         'operating_hours',
         'next_maintenance',
         'is_active',
+        'photo',
     )
     list_filter = ('status', 'is_active', 'brand')
     search_fields = ('name', 'brand', 'model', 'serial_number')

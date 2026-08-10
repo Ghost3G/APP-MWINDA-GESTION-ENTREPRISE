@@ -17,16 +17,25 @@
         <main class="dashboard-content">
             <div class="machines-page">
                 <div class="page-header machines-header machines-detail-top">
-                    <div>
-                        <p class="muted" style="margin:0 0 8px;">
-                            <a href="{% url 'machines_list' %}" style="color:#fde047;text-decoration:none;">← Parc machines</a>
-                        </p>
-                        <h1>{{ machine.name }}</h1>
-                        <p>
-                            {{ machine.brand|default:"" }}
-                            {% if machine.model %} · {{ machine.model }}{% endif %}
-                            {% if machine.serial_number %} · N° {{ machine.serial_number }}{% endif %}
-                        </p>
+                    <div class="machines-detail-identity">
+                        {% if machine.photo_url %}
+                            <a href="{{ machine.photo_url }}" target="_blank" rel="noopener" class="machines-hero-photo-link">
+                                <img class="machines-hero-photo" src="{{ machine.photo_url }}" alt="{{ machine.name }}">
+                            </a>
+                        {% else %}
+                            <div class="machines-hero-photo machines-hero-photo--empty">Sans photo</div>
+                        {% endif %}
+                        <div>
+                            <p class="muted" style="margin:0 0 8px;">
+                                <a href="{% url 'machines_list' %}" style="color:#fde047;text-decoration:none;">← Parc machines</a>
+                            </p>
+                            <h1>{{ machine.name }}</h1>
+                            <p>
+                                {{ machine.brand|default:"" }}
+                                {% if machine.model %} · {{ machine.model }}{% endif %}
+                                {% if machine.serial_number %} · N° {{ machine.serial_number }}{% endif %}
+                            </p>
+                        </div>
                     </div>
                     <div>
                         {% if machine.alert_level == 'broken' %}
@@ -53,10 +62,6 @@
                     <div class="machines-meta__item">
                         <small>Date d’achat</small>
                         <strong>{% if machine.purchase_date %}{{ machine.purchase_date|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
-                    </div>
-                    <div class="machines-meta__item">
-                        <small>Coût d’achat</small>
-                        <strong>{{ machine.purchase_cost }} $</strong>
                     </div>
                     <div class="machines-meta__item">
                         <small>Garantie jusqu’au</small>
@@ -87,7 +92,7 @@
                 {% if can_edit_machines %}
                 <div class="panel">
                     <h3>Modifier la fiche</h3>
-                    <form method="POST" class="machines-form">
+                    <form method="POST" class="machines-form" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="update_machine">
                         <div class="machines-form__row">
@@ -112,10 +117,6 @@
                                 <input type="date" name="purchase_date" value="{% if machine.purchase_date %}{{ machine.purchase_date|date:'Y-m-d' }}{% endif %}">
                             </div>
                             <div>
-                                <label>Coût</label>
-                                <input name="purchase_cost" value="{{ machine.purchase_cost }}">
-                            </div>
-                            <div>
                                 <label>Fin de garantie</label>
                                 <input type="date" name="warranty_end" value="{% if machine.warranty_end %}{{ machine.warranty_end|date:'Y-m-d' }}{% endif %}">
                             </div>
@@ -138,6 +139,16 @@
                                         <option value="{{ value }}" {% if machine.status == value %}selected{% endif %}>{{ label }}</option>
                                     {% endfor %}
                                 </select>
+                            </div>
+                            <div class="machines-form__full">
+                                <label>Photo</label>
+                                <input type="file" name="photo" accept="image/*">
+                                {% if machine.photo_url %}
+                                <label class="machines-check" style="margin-top:10px !important;">
+                                    <input type="checkbox" name="remove_photo" value="1">
+                                    Retirer la photo actuelle
+                                </label>
+                                {% endif %}
                             </div>
                             <div class="machines-form__full">
                                 <label>Notes</label>

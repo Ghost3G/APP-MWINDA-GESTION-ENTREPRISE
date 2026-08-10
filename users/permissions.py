@@ -25,6 +25,13 @@ LOGISTICS_NOTIFY_USERNAMES = frozenset({
 # Responsable opérationnel Stock & Achats
 STOCK_MANAGER_USERNAME = 'joseph.mbuyu'
 
+# Écriture Gestion des machines : DT + adjoint + Louise Netando
+MACHINE_EDITOR_USERNAMES = frozenset({
+    'ibrahim.japhete',   # Directeur Technique
+    'emmanuel.maki',     # Ass. Directeur Technique
+    'louise.netando',    # Mme Louise
+})
+
 # Accès Finance retiré uniquement pour ces comptes (pas le Chef / DG)
 COMMERCIAL_NO_FINANCE_USERNAMES = frozenset({
     'michelle.bukebo',
@@ -177,8 +184,10 @@ def can_access_machines(user):
 
 
 def can_edit_machines(user):
-    """Ajout / modification machines : DT + adjoint uniquement."""
-    return can_manage_projects(user)
+    """Ajout / modification machines : DT, adjoint et Mme Louise."""
+    if not user or not user.is_authenticated:
+        return False
+    return (user.username or '').strip().lower() in MACHINE_EDITOR_USERNAMES
 
 
 def admin_required(view_func):

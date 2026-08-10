@@ -28,9 +28,6 @@ class Machine(models.Model):
     model = models.CharField(max_length=120, blank=True)
     serial_number = models.CharField(max_length=120, blank=True)
     purchase_date = models.DateField(null=True, blank=True)
-    purchase_cost = models.DecimalField(
-        max_digits=14, decimal_places=2, default=Decimal('0.00')
-    )
     warranty_end = models.DateField(
         null=True,
         blank=True,
@@ -43,6 +40,12 @@ class Machine(models.Model):
     next_maintenance = models.DateField(null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=MACHINE_STATUS_CHOICES, default='ok'
+    )
+    photo = models.ImageField(
+        upload_to='machine_photos/',
+        blank=True,
+        null=True,
+        verbose_name='Photo de la machine',
     )
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -65,6 +68,35 @@ class Machine(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def photo_url(self):
+        try:
+            if not self.photo:
+                return ''
+            name = (getattr(self.photo, 'name', None) or '').strip()
+            if not name:
+                return ''
+            if name.startswith('http://') or name.startswith('https://'):
+                return name
+            try:
+                import os
+
+                import cloudinary
+                from django.conf import settings as django_settings
+
+                if getattr(django_settings, 'CLOUDINARY_STORAGE', None) or os.environ.get(
+                    'CLOUDINARY_URL'
+                ):
+                    return cloudinary.CloudinaryResource(
+                        name,
+                        resource_type='image',
+                    ).build_url(secure=True)
+            except Exception:
+                pass
+            return self.photo.url
+        except Exception:
+            return ''
 
     @property
     def maintenance_cost_total(self):

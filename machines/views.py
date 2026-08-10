@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from users.permissions import can_edit_machines
+from users.uploads import validate_image_upload
 
 from .models import (
     CONSUMABLE_UNIT_CHOICES,
@@ -41,11 +42,36 @@ def _parse_date(raw):
 def _deny_write(request, *redirect_args):
     messages.error(
         request,
-        "Modification réservée au Directeur Technique et à son adjoint.",
+        "La mise à jour du parc machines est réservée au service technique autorisé.",
     )
     if redirect_args:
         return redirect(*redirect_args)
     return redirect('machines_list')
+
+
+def _apply_machine_photo(machine, request):
+    """Met à jour ou retire la photo. Retourne un message d'erreur ou None."""
+    if request.POST.get('remove_photo') == '1' and machine.photo:
+        try:
+            machine.photo.delete(save=False)
+        except Exception:
+            pass
+        machine.photo = None
+        return None
+
+    photo = request.FILES.get('photo')
+    if not photo:
+        return None
+    error = validate_image_upload(photo)
+    if error:
+        return error
+    if machine.photo:
+        try:
+            machine.photo.delete(save=False)
+        except Exception:
+            pass
+    machine.photo = photo
+    return None
 
 
 @login_required(login_url='login')
@@ -69,18 +95,16 @@ def machines_list(request):
             machine_status = request.POST.get('status', 'ok').strip() or 'ok'
             if machine_status not in {c[0] for c in MACHINE_STATUS_CHOICES}:
                 machine_status = 'ok'
-            cost = _parse_decimal(request.POST.get('purchase_cost'), '0')
             hours = _parse_decimal(request.POST.get('operating_hours'), '0')
-            if cost is None or hours is None:
-                messages.error(request, "Vérifiez le coût et les heures de fonctionnement.")
+            if hours is None:
+                messages.error(request, "Vérifiez les heures de fonctionnement.")
                 return redirect('machines_list')
-            Machine.objects.create(
+            machine = Machine(
                 name=name,
                 brand=request.POST.get('brand', '').strip()[:120],
                 model=request.POST.get('model', '').strip()[:120],
                 serial_number=request.POST.get('serial_number', '').strip()[:120],
                 purchase_date=_parse_date(request.POST.get('purchase_date')),
-                purchase_cost=cost,
                 warranty_end=_parse_date(request.POST.get('warranty_end')),
                 operating_hours=hours,
                 last_maintenance=_parse_date(request.POST.get('last_maintenance')),
@@ -89,6 +113,11 @@ def machines_list(request):
                 notes=request.POST.get('notes', '').strip(),
                 created_by=request.user,
             )
+            photo_error = _apply_machine_photo(machine, request)
+            if photo_error:
+                messages.error(request, photo_error)
+                return redirect('machines_list')
+            machine.save()
             messages.success(request, f'Machine « {name} » ajoutée.')
             return redirect('machines_list')
         messages.error(request, "Action non reconnue.")
@@ -191,25 +220,27 @@ def machine_detail(request, machine_id):
             machine_status = request.POST.get('status', machine.status).strip()
             if machine_status not in {c[0] for c in MACHINE_STATUS_CHOICES}:
                 machine_status = machine.status
-            cost = _parse_decimal(request.POST.get('purchase_cost'), str(machine.purchase_cost))
             hours = _parse_decimal(
                 request.POST.get('operating_hours'), str(machine.operating_hours)
             )
-            if cost is None or hours is None:
-                messages.error(request, "Vérifiez le coût et les heures.")
+            if hours is None:
+                messages.error(request, "Vérifiez les heures de fonctionnement.")
                 return redirect('machine_detail', machine_id=machine.id)
             machine.name = name
             machine.brand = request.POST.get('brand', '').strip()[:120]
             machine.model = request.POST.get('model', '').strip()[:120]
             machine.serial_number = request.POST.get('serial_number', '').strip()[:120]
             machine.purchase_date = _parse_date(request.POST.get('purchase_date'))
-            machine.purchase_cost = cost
             machine.warranty_end = _parse_date(request.POST.get('warranty_end'))
             machine.operating_hours = hours
             machine.last_maintenance = _parse_date(request.POST.get('last_maintenance'))
             machine.next_maintenance = _parse_date(request.POST.get('next_maintenance'))
             machine.status = machine_status
             machine.notes = request.POST.get('notes', '').strip()
+            photo_error = _apply_machine_photo(machine, request)
+            if photo_error:
+                messages.error(request, photo_error)
+                return redirect('machine_detail', machine_id=machine.id)
             machine.save()
             messages.success(request, "Fiche machine mise à jour.")
             return redirect('machine_detail', machine_id=machine.id)

@@ -32,6 +32,16 @@ class MachinesAccessTests(TestCase):
         self.assertTrue(can_edit_machines(self.dt))
         self.assertFalse(can_edit_machines(self.agent))
 
+    def test_louise_can_edit(self):
+        louise = User.objects.create_user(
+            username='louise.netando',
+            password='testpass123',
+            email='louise@example.com',
+            role='agent',
+            direction='metal_design',
+        )
+        self.assertTrue(can_edit_machines(louise))
+
     def test_agent_cannot_create(self):
         self.client.login(username='agent.test', password='testpass123')
         response = self.client.post(
