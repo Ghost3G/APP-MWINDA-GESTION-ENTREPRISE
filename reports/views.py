@@ -365,6 +365,51 @@ def _resolve_reference_and_project(request):
     return project, client, command_reference
 
 
+def _ensure_client_payment_links_project(*, project, client, category, record_type):
+    """
+    Circuit métier : acompte/solde → projet obligatoire, et client CRM si déjà lié.
+    Retourne un message d'erreur ou None.
+    """
+    if record_type != 'income':
+        return None
+    if category not in {'acompte', 'solde'}:
+        return None
+    if not project:
+        return (
+            "Pour un acompte ou un solde client, sélectionnez le projet technique. "
+            "Le montant remontera alors dans le CRM du commercial."
+        )
+    if not project.client_id and not client:
+        return (
+            "Ce projet n’est pas encore lié à une fiche client. "
+            "Liez d’abord le projet au client (CRM ou Finance > Clients), "
+            "puis enregistrez l’encaissement."
+        )
+    return None
+
+
+def _link_project_to_client(project, client):
+    """
+    Rattache un projet libre à un client CRM :
+    - aligne le commercial du projet sur le propriétaire de la fiche
+    - rattache les encaissements déjà saisis sur ce projet
+    """
+    project.client = client
+    update_fields = ['client']
+    if client.commercial_owner_id:
+        if project.commercial_agent_id != client.commercial_owner_id:
+            project.commercial_agent = client.commercial_owner
+            update_fields.append('commercial_agent')
+    project.save(update_fields=update_fields)
+    if client.commercial_owner_id:
+        project.members.add(client.commercial_owner)
+    # Rétro-liaison : paiements caisse déjà saisis sur ce projet sans client
+    FinanceIncome.objects.filter(project_id=project.id, client__isnull=True).update(
+        client=client
+    )
+    return project
+
+
 def _project_margins(start, end):
     """Marge = entrées − sorties, regroupée par projet lié."""
     income_rows = {
@@ -459,6 +504,23 @@ def _create_finance_record(request, record_type):
 
     payment_method = _valid_choice(payment_method, PAYMENT_METHOD_CHOICES, 'cash')
 
+    if record_type == 'income':
+        category = _valid_choice(category, INCOME_CATEGORY_CHOICES, 'autre')
+        link_error = _ensure_client_payment_links_project(
+            project=project,
+            client=client,
+            category=category,
+            record_type=record_type,
+        )
+        if link_error:
+            messages.error(request, link_error)
+            return redirect(f"{request.path}?date={parsed_date.isoformat()}")
+        # Garantir le client CRM dès que le projet est lié
+        if project and project.client_id and not client:
+            client = project.client
+    else:
+        category = _valid_choice(category, EXPENSE_CATEGORY_CHOICES, 'autre')
+
     common = {
         'created_by': request.user,
         'project': project,
@@ -473,15 +535,19 @@ def _create_finance_record(request, record_type):
         common['attachment'] = attachment
 
     if record_type == 'income':
-        category = _valid_choice(category, INCOME_CATEGORY_CHOICES, 'autre')
         FinanceIncome.objects.create(
             income_date=parsed_date,
             category=category,
             **common,
         )
-        messages.success(request, "Encaissement enregistré.")
+        if project and client:
+            messages.success(
+                request,
+                "Encaissement enregistré — visible dans le CRM du commercial associé.",
+            )
+        else:
+            messages.success(request, "Encaissement enregistré.")
     else:
-        category = _valid_choice(category, EXPENSE_CATEGORY_CHOICES, 'autre')
         FinanceExpense.objects.create(
             expense_date=parsed_date,
             category=category,
@@ -543,6 +609,17 @@ def _update_finance_record(request, record_type):
     if record_type == 'income':
         record.income_date = parsed_date
         record.category = _valid_choice(category, INCOME_CATEGORY_CHOICES, record.category or 'autre')
+        link_error = _ensure_client_payment_links_project(
+            project=project,
+            client=client,
+            category=record.category,
+            record_type=record_type,
+        )
+        if link_error:
+            messages.error(request, link_error)
+            return redirect(f"{request.path}?date={parsed_date.isoformat()}")
+        if project and project.client_id and not client:
+            client = project.client
     else:
         record.expense_date = parsed_date
         record.category = _valid_choice(category, EXPENSE_CATEGORY_CHOICES, record.category or 'autre')
@@ -1643,18 +1720,12 @@ def finance_clients(request):
                 )
                 return redirect(_crm_query_redirect(request, edit_id=client.id))
 
-            project.client = client
-            update_fields = ['client']
-            if not project.commercial_agent_id and client.commercial_owner_id:
-                project.commercial_agent = client.commercial_owner
-                update_fields.append('commercial_agent')
-            project.save(update_fields=update_fields)
-            if client.commercial_owner_id:
-                project.members.add(client.commercial_owner)
+            _link_project_to_client(project, client)
             messages.success(
                 request,
                 f"Projet « {project.name} » lié au client « {client.name} »"
-                f"{f' ({client.code})' if client.code else ''}.",
+                f"{f' ({client.code})' if client.code else ''}. "
+                f"Les encaissements déjà saisis sur ce projet sont visibles dans le CRM.",
             )
             return redirect(_crm_query_redirect(request, edit_id=client.id))
 
@@ -1780,7 +1851,7 @@ def finance_clients(request):
                 request,
                 f"Le client « {duplicate.name} » existe déjà"
                 f"{f' ({duplicate.code})' if duplicate.code else ''}. "
-                f"N’ajoutez pas une 2ᵉ fiche : ouvrez-le et ajoutez un nouveau projet "
+                f"N’ajoutez pas une 2ᵉ fiche : ouvrez-la, puis liez un projet existant "
                 f"(ou fusionnez les doublons).",
             )
             return redirect(_crm_query_redirect(request, edit_id=duplicate.id))

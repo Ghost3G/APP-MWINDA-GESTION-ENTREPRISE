@@ -622,9 +622,9 @@
                 <div class="page-header">
                     <h1>Projets</h1>
                     <p>
-                        Pilotage des chantiers et livraisons : chaque projet est rattaché à une branche technique.
-                        Consultez l’avancement et les échéances ; la création et la modification
-                        sont réservées au service technique autorisé.
+                        Pilotage des chantiers et livraisons : chaque projet est rattaché à une branche technique
+                        et à un agent commercial. Circuit recommandé : ouvrir le projet ici, puis laisser le
+                        commercial créer la fiche client et lier le projet ; Finance enregistre ensuite les paiements.
                     </p>
                 </div>
 
@@ -711,14 +711,14 @@
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Client CRM</label>
                                     <select name="client_id" class="js-crm-client-select" style="width:100%;">
-                                        <option value="">— Optionnel —</option>
+                                        <option value="">— Optionnel (recommandé : plus tard via CRM) —</option>
                                         {% for client in crm_clients %}
                                             <option value="{{ client.id }}" data-owner-id="{{ client.commercial_owner_id|default:'' }}">
                                                 {{ client.name }}{% if client.commercial_owner %} — {{ client.commercial_owner.get_display_name }}{% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
-                                    <small class="field-hint">Si choisi, l’agent commercial est repris automatiquement.</small>
+                                    <small class="field-hint">Circuit : le commercial crée souvent la fiche client ensuite, puis lie ce projet.</small>
                                 </div>
                                 <div>
                                     <label style="display:block; margin-bottom:6px; font-weight:600;">Directeur Technique</label>
