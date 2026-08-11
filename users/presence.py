@@ -262,6 +262,9 @@ def build_sessions(*, start, end, user=None):
 
 def build_presence_sessions(selected_date):
     """Liste des sessions de connexion pour une journée."""
+    local_today = timezone.localdate()
+    if selected_date < local_today:
+        close_open_sessions_at_midnight_for_day(selected_date)
     # Complète automatiquement les départs agents à la fin de service si la journée est close.
     close_open_agent_sessions_for_day(selected_date)
     start, end = _day_bounds(selected_date)
@@ -280,6 +283,15 @@ def work_warn_datetime(day):
     if not schedule.is_open:
         return None
     return timezone.make_aware(datetime.combine(day, schedule.warn))
+
+
+MIDNIGHT_LOGOUT_LABEL = '00:00'
+
+
+def midnight_datetime(day):
+    """00:00 du lendemain = clôture calendaire de la journée."""
+    next_day = day + timedelta(days=1)
+    return timezone.make_aware(datetime.combine(next_day, time.min))
 
 
 def is_presence_auto_close_target(user):
@@ -441,6 +453,177 @@ def close_open_agent_sessions_for_day(day=None):
         if close_open_session_for_user(user, day=day):
             closed += 1
     return closed
+
+
+def close_open_session_for_user_at_midnight(user, *, day=None, reason='auto_midnight'):
+    """
+    Clôture à minuit toutes les connexions encore ouvertes sur une journée calendaire.
+    S'applique à tous les rôles (agents, directeurs, admin).
+    """
+    if not user:
+        return False
+
+    local_now = timezone.localtime()
+    day = day or (local_now.date() - timedelta(days=1))
+    if day >= local_now.date():
+        return False
+
+    closed_at = midnight_datetime(day)
+    start, end = _day_bounds(day)
+
+    day_logins = list(
+        AuditLog.objects.filter(
+            user=user,
+            action='login_success',
+            created_at__gte=start,
+            created_at__lte=end,
+        ).order_by('created_at')
+    )
+    if not day_logins:
+        return False
+
+    logouts = list(
+        AuditLog.objects.filter(
+            user=user,
+            action='logout',
+            created_at__gte=start,
+            created_at__lte=closed_at + timedelta(hours=1),
+        ).order_by('created_at')
+    )
+
+    remaining_logouts = list(logouts)
+    closed_any = False
+    extra_seconds = 0
+    for login in day_logins:
+        matched = None
+        kept = []
+        for logout in remaining_logouts:
+            if matched is None and logout.created_at >= login.created_at:
+                matched = logout
+            else:
+                kept.append(logout)
+        remaining_logouts = kept
+        if matched is not None:
+            continue
+
+        logout_at = max(closed_at, login.created_at + timedelta(minutes=1))
+        if extra_seconds:
+            logout_at = logout_at + timedelta(seconds=extra_seconds)
+        extra_seconds += 1
+        AuditLog.objects.create(
+            user=user,
+            action='logout',
+            path='/system/auto-midnight-close/',
+            method='SYSTEM',
+            metadata={
+                'reason': reason,
+                'midnight': MIDNIGHT_LOGOUT_LABEL,
+                'calendar_day': day.isoformat(),
+                'preserves_login_at': login.created_at.isoformat(),
+            },
+            created_at=logout_at,
+        )
+        closed_any = True
+
+    if is_presence_auto_close_target(user):
+        _close_agent_time_entries(user, closed_at)
+    return closed_any
+
+
+def close_open_sessions_at_midnight_for_day(day=None):
+    """Ferme à minuit les sessions ouvertes pour une journée (tous les utilisateurs actifs)."""
+    User = get_user_model()
+    local_now = timezone.localtime()
+    day = day or (local_now.date() - timedelta(days=1))
+    if day >= local_now.date():
+        return 0
+
+    start, end = _day_bounds(day)
+    user_ids = (
+        AuditLog.objects.filter(
+            action='login_success',
+            created_at__gte=start,
+            created_at__lte=end,
+            user__isnull=False,
+            user__is_active=True,
+        )
+        .values_list('user_id', flat=True)
+        .distinct()
+    )
+    closed = 0
+    for user in User.objects.filter(id__in=user_ids, is_active=True):
+        if close_open_session_for_user_at_midnight(user, day=day):
+            closed += 1
+    return closed
+
+
+def flush_all_django_sessions():
+    """Invalide toutes les sessions Django encore actives."""
+    try:
+        from django.contrib.sessions.models import Session
+    except Exception:
+        return 0
+    qs = Session.objects.filter(expire_date__gte=timezone.now())
+    count = qs.count()
+    qs.delete()
+    return count
+
+
+def invalidate_django_sessions_for_users(user_ids):
+    """Supprime les sessions Django des utilisateurs indiqués."""
+    if not user_ids:
+        return 0
+    try:
+        from django.contrib.sessions.models import Session
+    except Exception:
+        return 0
+
+    target_ids = {str(uid) for uid in user_ids}
+    removed = 0
+    for session in Session.objects.filter(expire_date__gte=timezone.now()):
+        try:
+            uid = session.get_decoded().get('_auth_user_id')
+        except Exception:
+            continue
+        if uid in target_ids:
+            session.delete()
+            removed += 1
+    return removed
+
+
+def run_midnight_logout_cycle(*, day=None):
+    """
+    Cycle minuit : clôture présence de la veille + invalidation de toutes les sessions Django.
+    """
+    local_now = timezone.localtime()
+    day = day or (local_now.date() - timedelta(days=1))
+    presence_closed = close_open_sessions_at_midnight_for_day(day)
+    sessions_flushed = flush_all_django_sessions()
+    return {
+        'day': day.isoformat(),
+        'presence_closed': presence_closed,
+        'sessions_flushed': sessions_flushed,
+    }
+
+
+def should_force_midnight_logout_now(user):
+    """
+    True si l'utilisateur est encore connecté alors que sa dernière connexion
+    date d'un jour calendaire précédent (nouvelle journée à minuit).
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+
+    local_now = timezone.localtime()
+    today_start = timezone.make_aware(datetime.combine(local_now.date(), time.min))
+    last_login = (
+        AuditLog.objects.filter(user=user, action='login_success')
+        .order_by('-created_at')
+        .first()
+    )
+    if not last_login:
+        return True
+    return last_login.created_at < today_start
 
 
 def agent_still_in_workday_session(user, day=None):

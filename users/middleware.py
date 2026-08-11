@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .security import write_audit_log
 
@@ -73,7 +73,7 @@ class AgentSessionWorkdayMiddleware:
 class AgentWorkEndLogoutMiddleware:
     """
     À la fin de service (Africa/Kinshasa) : déconnecte les agents,
-    complète leur présence, laisse les directeurs connectés.
+    complète leur présence. Directeurs / admin restent connectés jusqu'à minuit.
     Lun–Ven 17:30 · Samedi 13:00.
     """
 
@@ -111,6 +111,49 @@ class AgentWorkEndLogoutMiddleware:
                     f'Journée de travail terminée à {end_label}. '
                     'Vos heures de connexion du jour ont été conservées et le départ '
                     f'a été enregistré à {end_label}.',
+                )
+                return redirect('login')
+
+        return self.get_response(request)
+
+
+class MidnightLogoutMiddleware:
+    """
+    À minuit (00:00, Africa/Kinshasa) : déconnecte tout le monde pour une nouvelle journée.
+    Complète la présence (départ enregistré à 00:00) et invalide la session Django.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = request.path or ''
+        user = getattr(request, 'user', None)
+        if (
+            user is not None
+            and getattr(user, 'is_authenticated', False)
+            and not any(path.startswith(prefix) for prefix in _SKIP_FORCE_LOGOUT_PREFIXES)
+        ):
+            from django.contrib import messages
+            from django.contrib.auth import logout
+            from django.shortcuts import redirect
+            from django.utils import timezone
+
+            from .presence import (
+                close_open_session_for_user_at_midnight,
+                should_force_midnight_logout_now,
+            )
+
+            if should_force_midnight_logout_now(user):
+                from .presence import MIDNIGHT_LOGOUT_LABEL
+
+                yesterday = timezone.localdate() - timedelta(days=1)
+                close_open_session_for_user_at_midnight(user, day=yesterday)
+                logout(request)
+                messages.info(
+                    request,
+                    'Nouvelle journée — veuillez vous reconnecter. '
+                    f'Votre départ a été enregistré à {MIDNIGHT_LOGOUT_LABEL}.',
                 )
                 return redirect('login')
 

@@ -34,6 +34,31 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
 
+  # Minuit Kinshasa (UTC+1) = 23:00 UTC — déconnexion globale + clôture présence
+  - type: cron
+    name: appmwinda-midnight-logout
+    runtime: python
+    region: frankfurt
+    schedule: "0 23 * * *"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python manage.py close_midnight_sessions"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: appmwinda
+          envVarKey: SECRET_KEY
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: appmwinda-db
+          property: connectionString
+      - key: DATABASE_SSL_REQUIRE
+        value: "True"
+
 databases:
   - name: appmwinda-db
     region: frankfurt

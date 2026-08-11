@@ -103,6 +103,7 @@ MIDDLEWARE = [
     'users.middleware.AuditLogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'users.middleware.AgentWorkEndLogoutMiddleware',
+    'users.middleware.MidnightLogoutMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
