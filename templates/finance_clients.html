@@ -16,9 +16,10 @@
 
         <main class="dashboard-content">
             <div class="finance-page">
-                <div class="page-header">
-                    <h1>{% if crm_mode %}CRM — Portefeuille clients{% else %}Base clients{% endif %}</h1>
-                    <p>
+                <div class="page-header page-header--crm">
+                    <div class="page-header__text">
+                        <h1>{% if crm_mode %}CRM — Portefeuille clients{% else %}Base clients{% endif %}</h1>
+                        <p>
                         {% if is_commercial_lead_user %}
                             Pilotage du portefeuille clients : fiches, affectations commerciales et suivi des montants.
                             Les encaissements sont confirmés par le service Finance ; le payé et le reste
@@ -35,7 +36,11 @@
                             et confirmation des encaissements. Le commercial associé visualise ensuite
                             le payé et le reste.
                         {% endif %}
-                    </p>
+                        </p>
+                    </div>
+                    {% if crm_mode %}
+                        {% include "partials/crm_header_action.html" %}
+                    {% endif %}
                 </div>
 
                 {% if is_commercial_lead_user %}
@@ -46,10 +51,6 @@
 
                 {% if is_finance %}
                     {% include "partials/finance_tabs.html" %}
-                {% endif %}
-
-                {% if crm_mode %}
-                    {% include "partials/crm_tabs.html" %}
                 {% endif %}
 
                 {% if messages %}

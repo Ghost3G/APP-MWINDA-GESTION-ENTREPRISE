@@ -17,16 +17,17 @@
 
         <main class="dashboard-content">
             <div class="finance-page">
-                <div class="page-header">
-                    <h1>CRM — Rapports commerciaux</h1>
-                    <p>
-                        Compte rendu d’activité lié obligatoirement à un client existant de votre portefeuille.
-                        La direction et les responsables commerciaux consultent l’ensemble des rapports ;
-                        les encaissements restent enregistrés par le service Finance.
-                    </p>
+                <div class="page-header page-header--crm">
+                    <div class="page-header__text">
+                        <h1>CRM — Rapports commerciaux</h1>
+                        <p>
+                            Compte rendu d’activité lié obligatoirement à un client existant de votre portefeuille.
+                            La direction et les responsables commerciaux consultent l’ensemble des rapports ;
+                            les encaissements restent enregistrés par le service Finance.
+                        </p>
+                    </div>
+                    {% include "partials/crm_header_action.html" %}
                 </div>
-
-                {% include "partials/crm_tabs.html" %}
 
                 {% if messages %}
                     {% for message in messages %}

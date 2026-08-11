@@ -1,0 +1,12 @@
+{% load static %}
+{% if request.resolver_match.url_name == 'crm_reports_list' or request.resolver_match.url_name == 'crm_report_detail' %}
+    <a href="{% url 'crm_portfolio' %}" class="crm-action-btn crm-action-btn--ghost">
+        <img src="{% static 'images/icone_agents.svg' %}" alt="" aria-hidden="true">
+        Portefeuille clients
+    </a>
+{% else %}
+    <a href="{% url 'crm_reports_list' %}" class="crm-action-btn">
+        <img src="{% static 'images/icone_rapport.png' %}" alt="" aria-hidden="true">
+        Rapports commerciaux
+    </a>
+{% endif %}

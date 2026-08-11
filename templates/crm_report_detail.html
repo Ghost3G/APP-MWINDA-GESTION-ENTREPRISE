@@ -17,15 +17,16 @@
 
         <main class="dashboard-content">
             <div class="finance-page">
-                <div class="page-header">
-                    <h1>Rapport commercial</h1>
-                    <p>
-                        {% if report.client.code %}{{ report.client.code }} — {% endif %}{{ report.client.name }}
-                        · {{ report.activity_date|date:"d/m/Y" }}
-                    </p>
+                <div class="page-header page-header--crm">
+                    <div class="page-header__text">
+                        <h1>Rapport commercial</h1>
+                        <p>
+                            {% if report.client.code %}{{ report.client.code }} — {% endif %}{{ report.client.name }}
+                            · {{ report.activity_date|date:"d/m/Y" }}
+                        </p>
+                    </div>
+                    {% include "partials/crm_header_action.html" %}
                 </div>
-
-                {% include "partials/crm_tabs.html" %}
 
                 {% if messages %}
                     {% for message in messages %}

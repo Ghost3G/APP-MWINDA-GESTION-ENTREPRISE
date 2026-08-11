@@ -1,4 +1,0 @@
-<nav class="finance-tabs crm-tabs" aria-label="Navigation CRM">
-    <a href="{% url 'crm_portfolio' %}" class="{% if request.resolver_match.url_name == 'crm_portfolio' %}active{% endif %}">Portefeuille clients</a>
-    <a href="{% url 'crm_reports_list' %}" class="{% if request.resolver_match.url_name == 'crm_reports_list' or request.resolver_match.url_name == 'crm_report_detail' %}active{% endif %}">Rapports commerciaux</a>
-</nav>
