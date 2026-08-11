@@ -36,6 +36,7 @@ from projects.models import (
 )
 from reports.models import (
     CrmFollowUp,
+    CrmCommercialReport,
     DailyReport,
     FinanceClient,
     FinanceDayClosure,
@@ -80,6 +81,7 @@ class Command(BaseCommand):
             counts['finance_incomes'] = FinanceIncome.objects.all().delete()[0]
             counts['finance_day_closures'] = FinanceDayClosure.objects.all().delete()[0]
             counts['crm_follow_ups'] = CrmFollowUp.objects.all().delete()[0]
+            counts['crm_commercial_reports'] = CrmCommercialReport.objects.all().delete()[0]
             counts['finance_clients'] = FinanceClient.objects.all().delete()[0]
             counts['login_attempts'] = LoginAttempt.objects.all().delete()[0]
             counts['audit_logs'] = AuditLog.objects.all().delete()[0]

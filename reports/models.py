@@ -213,6 +213,114 @@ class CrmFollowUp(models.Model):
         return f"{self.client_id} — {self.follow_type}"
 
 
+class CrmCommercialReport(models.Model):
+    """Rapport d'activité commercial — obligatoirement lié à un client existant."""
+
+    ACTIVITY_TYPE_CHOICES = (
+        ('visit', 'Visite client'),
+        ('call', 'Appel téléphonique'),
+        ('meeting', 'Réunion / RDV'),
+        ('email', 'Email'),
+        ('quote_followup', 'Relance devis'),
+        ('payment_followup', 'Relance paiement'),
+        ('prospecting', 'Prospection'),
+        ('other', 'Autre'),
+    )
+    RESULT_CHOICES = (
+        ('quote_requested', 'Devis demandé'),
+        ('payment_promised', 'Paiement promis'),
+        ('won', 'Affaire conclue'),
+        ('lost', 'Refus / perdu'),
+        ('waiting', 'En attente'),
+        ('meeting_scheduled', 'RDV planifié'),
+        ('no_response', 'Pas de réponse'),
+        ('other', 'Autre'),
+    )
+    STATUS_CHOICES = (
+        ('submitted', 'Soumis'),
+        ('read', 'Lu par la direction'),
+    )
+
+    client = models.ForeignKey(
+        FinanceClient,
+        on_delete=models.CASCADE,
+        related_name='commercial_reports',
+        verbose_name='Client',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='crm_commercial_reports',
+        verbose_name='Commercial',
+    )
+    activity_date = models.DateField(verbose_name='Date de l’activité', db_index=True)
+    activity_type = models.CharField(
+        max_length=30,
+        choices=ACTIVITY_TYPE_CHOICES,
+        default='call',
+        verbose_name='Type d’activité',
+    )
+    summary = models.TextField(verbose_name='Compte rendu')
+    result = models.CharField(
+        max_length=30,
+        choices=RESULT_CHOICES,
+        default='waiting',
+        verbose_name='Résultat',
+    )
+    next_action = models.CharField(max_length=255, blank=True, verbose_name='Prochaine action')
+    next_action_date = models.DateField(null=True, blank=True, verbose_name='Date prochaine action')
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='crm_commercial_reports',
+        verbose_name='Projet lié',
+    )
+    quoted_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Montant / devis évoqué ($)',
+    )
+    attachment = models.FileField(
+        upload_to='crm_reports/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name='Pièce jointe',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='submitted',
+        db_index=True,
+        verbose_name='Statut',
+    )
+    read_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='crm_reports_marked_read',
+        verbose_name='Lu par',
+    )
+    read_at = models.DateTimeField(null=True, blank=True, verbose_name='Lu le')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-activity_date', '-created_at')
+        verbose_name = 'Rapport commercial CRM'
+        verbose_name_plural = 'Rapports commerciaux CRM'
+
+    def __str__(self):
+        client_label = self.client.name if self.client_id else '—'
+        return f"{client_label} — {self.activity_date}"
+
+
 class FinanceExpense(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

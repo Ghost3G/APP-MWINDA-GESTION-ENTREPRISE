@@ -159,6 +159,30 @@ def can_edit_crm_client(user, client):
     return bool(client and client.commercial_owner_id == user.id)
 
 
+def can_create_crm_commercial_report(user):
+    """Rédiger un rapport commercial CRM (commerciaux + leads)."""
+    if not can_access_crm(user):
+        return False
+    return is_commercial_staff(user) or is_commercial_lead(user)
+
+
+def can_view_crm_commercial_report(user, report):
+    """Consulter un rapport : auteur, portefeuille, direction / lead."""
+    if not can_access_crm(user):
+        return False
+    if can_view_all_crm_clients(user):
+        return True
+    if report.author_id == user.id:
+        return True
+    client = getattr(report, 'client', None)
+    return bool(client and client.commercial_owner_id == user.id)
+
+
+def can_mark_crm_report_read(user):
+    """Marquer un rapport comme lu (direction / responsable commercial)."""
+    return can_view_all_crm_clients(user)
+
+
 def is_stock_manager(user):
     """Joseph Mbuyu — responsable Stock & Achats."""
     if not user or not user.is_authenticated:

@@ -161,6 +161,98 @@ def build_report_pdf(report) -> bytes:
     return buffer.getvalue()
 
 
+def build_crm_commercial_report_pdf(report) -> bytes:
+    """PDF A4 — rapport d'activité commercial CRM."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title=f'Rapport commercial {report.activity_date}',
+    )
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle(
+        'CrmTitle',
+        parent=styles['Heading1'],
+        alignment=TA_CENTER,
+        fontSize=15,
+        spaceAfter=6,
+    )
+    subtitle = ParagraphStyle(
+        'CrmSub',
+        parent=styles['Normal'],
+        alignment=TA_CENTER,
+        fontSize=10,
+        textColor=colors.HexColor('#4b5563'),
+        spaceAfter=12,
+    )
+    section = ParagraphStyle(
+        'CrmSec',
+        parent=styles['Heading2'],
+        fontSize=11,
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    body = ParagraphStyle(
+        'CrmBody',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=13,
+        alignment=TA_LEFT,
+    )
+
+    client = report.client
+    client_label = f'{client.code} — {client.name}' if client.code else client.name
+    story = [
+        Paragraph('Agence Mwinda — Rapport commercial CRM', title),
+        Paragraph(f'{client_label} · {report.activity_date.strftime("%d/%m/%Y")}', subtitle),
+    ]
+
+    author_name = report.author.get_labeled_name() if report.author_id else '—'
+    meta = [
+        ['Commercial', author_name],
+        ['Client', client_label],
+        ['Type d’activité', report.get_activity_type_display()],
+        ['Résultat', report.get_result_display()],
+        ['Statut', report.get_status_display()],
+        ['Projet lié', report.project.name if report.project_id else '—'],
+        ['Montant évoqué', f'{report.quoted_amount} $' if report.quoted_amount is not None else '—'],
+        ['Prochaine action', report.next_action or '—'],
+        [
+            'Date prochaine action',
+            report.next_action_date.strftime('%d/%m/%Y') if report.next_action_date else '—',
+        ],
+        ['Soumis le', report.created_at.strftime('%d/%m/%Y %H:%M') if report.created_at else '—'],
+    ]
+    if report.status == 'read' and report.read_at:
+        reader = report.read_by.get_labeled_name() if report.read_by_id else 'Direction'
+        meta.append(['Lu par', f'{reader} · {report.read_at.strftime("%d/%m/%Y %H:%M")}'])
+
+    meta_table = Table(meta, colWidths=[42 * mm, 128 * mm])
+    meta_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#374151')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 10))
+    story.append(Paragraph('Compte rendu', section))
+    story.append(Paragraph(report.summary.replace('\n', '<br/>'), body))
+
+    doc.build(story)
+    return buffer.getvalue()
+
+
 def build_finance_pdf(*, period_label, start, end, totals, incomes, expenses, by_command_incomes=None, by_command_expenses=None, project_margins=None) -> bytes:
     """PDF A4 — rapport finance (journalier / mensuel / semestriel)."""
     buffer = BytesIO()

@@ -1,6 +1,6 @@
 import csv
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -27,10 +27,14 @@ from users.permissions import (
     can_edit_crm_clients,
     can_edit_crm_client,
     can_manage_projects,
+    can_create_crm_commercial_report,
+    can_view_crm_commercial_report,
+    can_mark_crm_report_read,
 )
 from users.uploads import validate_attachment_upload
 
 from .models import (
+    CrmCommercialReport,
     CrmFollowUp,
     DailyReport,
     FinanceClient,
@@ -41,7 +45,7 @@ from .models import (
     INCOME_CATEGORY_CHOICES,
     PAYMENT_METHOD_CHOICES,
 )
-from .pdf import build_report_pdf, build_finance_pdf
+from .pdf import build_report_pdf, build_finance_pdf, build_crm_commercial_report_pdf
 
 CLIENT_STATUS_CHOICES = getattr(
     FinanceClient._meta.get_field('status'),
@@ -1906,6 +1910,7 @@ def finance_clients(request):
 
     edit_client = None
     edit_follow_ups = []
+    edit_commercial_reports = []
     edit_finance = None
     merge_candidates = []
     if edit_id and can_write:
@@ -1918,6 +1923,11 @@ def finance_clients(request):
         if candidate and can_edit_crm_client(request.user, candidate):
             edit_client = candidate
             edit_follow_ups = list(candidate.follow_ups.all()[:20])
+            edit_commercial_reports = list(
+                CrmCommercialReport.objects.filter(client=candidate)
+                .select_related('author')
+                .order_by('-activity_date', '-created_at')[:15]
+            )
             edit_finance = _client_financial_snapshot(candidate)
             merge_candidates = [
                 c for c in _crm_clients_queryset(
@@ -1973,6 +1983,7 @@ def finance_clients(request):
         'linkable_projects': linkable_projects,
         'edit_client': edit_client,
         'edit_follow_ups': edit_follow_ups,
+        'edit_commercial_reports': edit_commercial_reports,
         'edit_finance': edit_finance,
         'merge_candidates': merge_candidates,
         'followup_type_choices': CrmFollowUp.TYPE_CHOICES,
@@ -1991,6 +2002,7 @@ def finance_clients(request):
         'can_edit_crm': can_write,
         'can_reassign_crm': can_reassign,
         'can_create_project': can_create_project,
+        'can_create_crm_report': can_create_crm_commercial_report(request.user),
         'can_view_all_crm': view_all,
         'is_commercial_lead_user': is_commercial_lead(request.user),
         'commercial_agents': commercial_agents,
@@ -2009,3 +2021,293 @@ def finance_clients(request):
         'crm_mode': request.resolver_match.url_name == 'crm_portfolio',
         'today': timezone.localdate(),
     })
+
+
+def _parse_optional_date(raw):
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw.strip(), '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+def _apply_commercial_report_to_client(report):
+    """Met à jour la prochaine action sur la fiche client."""
+    client = report.client
+    updates = []
+    if report.next_action:
+        client.next_action = report.next_action
+        updates.append('next_action')
+    if report.next_action_date:
+        client.next_action_date = report.next_action_date
+        updates.append('next_action_date')
+    if updates:
+        updates.append('updated_at')
+        client.save(update_fields=updates)
+
+
+def _crm_reports_queryset(user, *, see_all=False):
+    qs = CrmCommercialReport.objects.select_related(
+        'client', 'author', 'project', 'read_by'
+    )
+    if see_all:
+        return qs
+    return qs.filter(
+        Q(author=user)
+        | Q(client__commercial_owner=user)
+    )
+
+
+def _crm_reportable_clients(user, *, see_all=False):
+    return _crm_clients_queryset(user, show_archived=False, see_all=see_all).order_by('name', 'id')
+
+
+@login_required(login_url='login')
+def crm_reports_list(request):
+    """Rapports commerciaux CRM — rédaction (commerciaux) et consultation (direction)."""
+    if not can_access_crm(request.user):
+        messages.error(request, 'Accès réservé au CRM commercial et à la direction.')
+        return redirect('dashboard')
+
+    can_create = can_create_crm_commercial_report(request.user)
+    can_view_all = can_view_all_crm_clients(request.user)
+    view_all = can_view_all
+
+    author_filter = request.GET.get('author', '').strip()
+    client_filter = request.GET.get('client', '').strip()
+    type_filter = request.GET.get('type', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    date_from = _parse_optional_date(request.GET.get('from', '').strip())
+    date_to = _parse_optional_date(request.GET.get('to', '').strip())
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '').strip()
+        if action == 'mark_read':
+            if not can_mark_crm_report_read(request.user):
+                messages.error(request, 'Action non autorisée.')
+                return redirect('crm_reports_list')
+            report = CrmCommercialReport.objects.filter(id=request.POST.get('report_id')).first()
+            if not report or not can_view_crm_commercial_report(request.user, report):
+                messages.error(request, 'Rapport introuvable ou non autorisé.')
+                return redirect('crm_reports_list')
+            if report.status != 'read':
+                report.status = 'read'
+                report.read_by = request.user
+                report.read_at = timezone.now()
+                report.save(update_fields=['status', 'read_by', 'read_at', 'updated_at'])
+                messages.success(request, 'Rapport marqué comme lu.')
+            return redirect(request.get_full_path() or 'crm_reports_list')
+
+        if action == 'create_report':
+            if not can_create:
+                messages.error(request, 'Seuls les commerciaux peuvent rédiger un rapport.')
+                return redirect('crm_reports_list')
+
+            client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
+            if not client or not can_edit_crm_client(request.user, client):
+                messages.error(request, 'Choisissez un client existant de votre portefeuille.')
+                return redirect('crm_reports_list')
+
+            summary = request.POST.get('summary', '').strip()
+            if not summary:
+                messages.error(request, 'Le compte rendu est obligatoire.')
+                return redirect('crm_reports_list')
+
+            activity_date = _parse_optional_date(request.POST.get('activity_date', '').strip())
+            if not activity_date:
+                activity_date = timezone.localdate()
+
+            activity_type = _valid_choice(
+                request.POST.get('activity_type', '').strip(),
+                CrmCommercialReport.ACTIVITY_TYPE_CHOICES,
+                'call',
+            )
+            result = _valid_choice(
+                request.POST.get('result', '').strip(),
+                CrmCommercialReport.RESULT_CHOICES,
+                'waiting',
+            )
+            next_action = request.POST.get('next_action', '').strip()
+            next_action_date = _parse_optional_date(request.POST.get('next_action_date', '').strip())
+
+            project = None
+            project_id_raw = request.POST.get('project_id', '').strip()
+            if project_id_raw:
+                try:
+                    project = Project.objects.filter(
+                        id=int(project_id_raw),
+                        client_id=client.id,
+                    ).first()
+                except (TypeError, ValueError):
+                    project = None
+
+            quoted_amount = None
+            amount_raw = request.POST.get('quoted_amount', '').strip().replace(',', '.')
+            if amount_raw:
+                try:
+                    quoted_amount = Decimal(amount_raw)
+                except Exception:
+                    messages.error(request, 'Montant invalide.')
+                    return redirect('crm_reports_list')
+
+            report = CrmCommercialReport(
+                client=client,
+                author=request.user,
+                activity_date=activity_date,
+                activity_type=activity_type,
+                summary=summary,
+                result=result,
+                next_action=next_action,
+                next_action_date=next_action_date,
+                project=project,
+                quoted_amount=quoted_amount,
+            )
+
+            attachment = request.FILES.get('attachment')
+            if attachment:
+                error = validate_attachment_upload(attachment)
+                if error:
+                    messages.error(request, error)
+                    return redirect('crm_reports_list')
+                report.attachment = attachment
+
+            report.save()
+            _apply_commercial_report_to_client(report)
+            messages.success(
+                request,
+                f'Rapport enregistré pour « {client.name} » ({report.activity_date.strftime("%d/%m/%Y")}).',
+            )
+            return redirect('crm_report_detail', report_id=report.id)
+
+    reports_qs = _crm_reports_queryset(request.user, see_all=view_all)
+    if author_filter and view_all:
+        try:
+            reports_qs = reports_qs.filter(author_id=int(author_filter))
+        except (TypeError, ValueError):
+            pass
+    if client_filter:
+        try:
+            reports_qs = reports_qs.filter(client_id=int(client_filter))
+        except (TypeError, ValueError):
+            pass
+    if type_filter in {k for k, _ in CrmCommercialReport.ACTIVITY_TYPE_CHOICES}:
+        reports_qs = reports_qs.filter(activity_type=type_filter)
+    if status_filter in {'submitted', 'read'}:
+        reports_qs = reports_qs.filter(status=status_filter)
+    if date_from:
+        reports_qs = reports_qs.filter(activity_date__gte=date_from)
+    if date_to:
+        reports_qs = reports_qs.filter(activity_date__lte=date_to)
+
+    reports_list = list(reports_qs.order_by('-activity_date', '-created_at')[:300])
+    today = timezone.localdate()
+    week_start = today - timedelta(days=6)
+    month_start = today.replace(day=1)
+
+    stats = {
+        'total': len(reports_list),
+        'this_week': sum(1 for r in reports_list if r.activity_date >= week_start),
+        'unread': sum(1 for r in reports_list if r.status == 'submitted'),
+        'this_month': sum(1 for r in reports_list if r.activity_date >= month_start),
+    }
+
+    weekly_reminder = False
+    if can_create:
+        has_recent = CrmCommercialReport.objects.filter(
+            author=request.user,
+            activity_date__gte=today - timedelta(days=7),
+        ).exists()
+        weekly_reminder = not has_recent
+
+    preselected_client_id = request.GET.get('client', '').strip()
+    preselected_client = None
+    if preselected_client_id.isdigit():
+        candidate = FinanceClient.objects.filter(id=int(preselected_client_id)).first()
+        if candidate and can_edit_crm_client(request.user, candidate):
+            preselected_client = candidate
+
+    reportable_clients = list(_crm_reportable_clients(request.user, see_all=view_all))
+    client_ids = [c.id for c in reportable_clients]
+    client_projects = {}
+    if client_ids:
+        for row in Project.objects.filter(client_id__in=client_ids).order_by('name').values('id', 'name', 'client_id'):
+            client_projects.setdefault(str(row['client_id']), []).append(
+                {'id': row['id'], 'name': row['name']}
+            )
+
+    return render(request, 'crm_reports.html', {
+        'reports': reports_list,
+        'stats': stats,
+        'can_create': can_create,
+        'can_view_all': can_view_all,
+        'can_mark_read': can_mark_crm_report_read(request.user),
+        'weekly_reminder': weekly_reminder,
+        'reportable_clients': reportable_clients,
+        'preselected_client': preselected_client,
+        'client_projects_json': client_projects,
+        'commercial_agents': list(_commercial_agents_queryset()) if can_view_all else [],
+        'activity_type_choices': CrmCommercialReport.ACTIVITY_TYPE_CHOICES,
+        'result_choices': CrmCommercialReport.RESULT_CHOICES,
+        'status_choices': CrmCommercialReport.STATUS_CHOICES,
+        'selected_author': author_filter,
+        'selected_client': client_filter,
+        'selected_type': type_filter,
+        'selected_status': status_filter,
+        'date_from': date_from.isoformat() if date_from else '',
+        'date_to': date_to.isoformat() if date_to else '',
+        'default_activity_date': today.isoformat(),
+        'is_commercial_lead_user': is_commercial_lead(request.user),
+        'is_management': is_management_user(request.user),
+        'crm_mode': True,
+    })
+
+
+@login_required(login_url='login')
+def crm_report_detail(request, report_id):
+    report = get_object_or_404(
+        CrmCommercialReport.objects.select_related(
+            'client', 'author', 'project', 'read_by'
+        ),
+        id=report_id,
+    )
+    if not can_view_crm_commercial_report(request.user, report):
+        return HttpResponseForbidden('Accès refusé')
+
+    if request.method == 'POST' and request.POST.get('action') == 'mark_read':
+        if not can_mark_crm_report_read(request.user):
+            messages.error(request, 'Action non autorisée.')
+            return redirect('crm_report_detail', report_id=report.id)
+        if report.status != 'read':
+            report.status = 'read'
+            report.read_by = request.user
+            report.read_at = timezone.now()
+            report.save(update_fields=['status', 'read_by', 'read_at', 'updated_at'])
+            messages.success(request, 'Rapport marqué comme lu.')
+        return redirect('crm_report_detail', report_id=report.id)
+
+    return render(request, 'crm_report_detail.html', {
+        'report': report,
+        'can_mark_read': can_mark_crm_report_read(request.user) and report.status != 'read',
+        'can_view_all': can_view_all_crm_clients(request.user),
+        'crm_mode': True,
+    })
+
+
+@login_required(login_url='login')
+def crm_report_pdf(request, report_id):
+    report = get_object_or_404(
+        CrmCommercialReport.objects.select_related(
+            'client', 'author', 'project', 'read_by'
+        ),
+        id=report_id,
+    )
+    if not can_view_crm_commercial_report(request.user, report):
+        return HttpResponseForbidden('Accès refusé')
+
+    pdf_bytes = build_crm_commercial_report_pdf(report)
+    client_slug = (report.client.code or str(report.client_id)).replace(' ', '_')
+    filename = f"rapport_crm_{client_slug}_{report.activity_date.strftime('%Y%m%d')}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

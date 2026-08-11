@@ -273,6 +273,50 @@ def collect_team_alerts(*, limit=120):
                     sort_date=today,
                 )
             )
+
+        from django.contrib.auth import get_user_model
+        from reports.models import CrmCommercialReport
+
+        User = get_user_model()
+        week_ago = today - timedelta(days=7)
+        commercial_ids_with_report = set(
+            CrmCommercialReport.objects.filter(activity_date__gte=week_ago)
+            .values_list('author_id', flat=True)
+            .distinct()
+        )
+        for agent in User.objects.filter(is_active=True, org_group='commercial').order_by('first_name', 'last_name')[:30]:
+            if agent.id not in commercial_ids_with_report:
+                alerts.append(
+                    _item(
+                        level='orange',
+                        icon='🟠',
+                        module='CRM',
+                        title=f'Commercial {agent.get_display_name()} — aucun rapport depuis 7 jours',
+                        detail='Encourager un compte rendu d’activité client dans Rapports CRM',
+                        url=reverse('crm_reports_list'),
+                        sort_date=week_ago,
+                    )
+                )
+
+        for report in (
+            CrmCommercialReport.objects.filter(status='submitted')
+            .select_related('client', 'author')
+            .filter(result__in=['quote_requested', 'payment_promised'])
+            .order_by('-activity_date')[:15]
+        ):
+            client_name = report.client.name if report.client_id else 'Client'
+            author_name = report.author.get_display_name() if report.author_id else 'Commercial'
+            alerts.append(
+                _item(
+                    level='orange',
+                    icon='🟠',
+                    module='CRM',
+                    title=f'Rapport CRM — {report.get_result_display()} ({client_name})',
+                    detail=f'{author_name} · {report.activity_date.strftime("%d/%m/%Y")}',
+                    url=reverse('crm_report_detail', args=[report.id]),
+                    sort_date=report.activity_date,
+                )
+            )
     except (OperationalError, ProgrammingError):
         pass
 

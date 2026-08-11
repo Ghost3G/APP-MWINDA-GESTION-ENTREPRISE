@@ -48,6 +48,10 @@
                     {% include "partials/finance_tabs.html" %}
                 {% endif %}
 
+                {% if crm_mode %}
+                    {% include "partials/crm_tabs.html" %}
+                {% endif %}
+
                 {% if messages %}
                     {% for message in messages %}
                         <div class="message {{ message.tags }}">{{ message }}</div>
@@ -458,6 +462,40 @@
                         </ul>
                     {% else %}
                         <p class="muted">Aucun suivi pour ce client.</p>
+                    {% endif %}
+                </div>
+
+                <div class="panel crm-client-reports-panel">
+                    <h3>Rapports commerciaux — {{ edit_client.name }}</h3>
+                    <p class="muted panel-hint">
+                        Comptes rendus d’activité liés à ce client. Les commerciaux rédigent leurs rapports
+                        depuis l’onglet « Rapports commerciaux » du CRM.
+                    </p>
+                    {% if edit_commercial_reports %}
+                        <ul class="crm-followup-list crm-followup-list--reports">
+                            {% for rep in edit_commercial_reports %}
+                                <li>
+                                    <strong>{{ rep.get_activity_type_display }}</strong>
+                                    · {{ rep.activity_date|date:"d/m/Y" }}
+                                    · {{ rep.get_result_display }}
+                                    {% if rep.author %}· {{ rep.author.get_display_name }}{% endif %}
+                                    <div>{{ rep.summary|truncatechars:180 }}</div>
+                                    <div class="crm-report-actions" style="margin-top:6px;">
+                                        <a href="{% url 'crm_report_detail' rep.id %}">Voir le rapport</a>
+                                        <a href="{% url 'crm_report_pdf' rep.id %}">PDF</a>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="muted">Aucun rapport commercial pour ce client.</p>
+                    {% endif %}
+                    {% if can_create_crm_report and crm_mode %}
+                        <p style="margin-top:12px;">
+                            <a href="{% url 'crm_reports_list' %}?client={{ edit_client.id }}#nouveau-rapport" class="btn-primary" style="display:inline-block;width:auto;">
+                                + Nouveau rapport pour ce client
+                            </a>
+                        </p>
                     {% endif %}
                 </div>
 

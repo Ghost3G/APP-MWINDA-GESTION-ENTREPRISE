@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Rapport commercial — {{ report.client.name }} — AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/finance.css' %}">
+    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="finance-page">
+                <div class="page-header">
+                    <h1>Rapport commercial</h1>
+                    <p>
+                        {% if report.client.code %}{{ report.client.code }} — {% endif %}{{ report.client.name }}
+                        · {{ report.activity_date|date:"d/m/Y" }}
+                    </p>
+                </div>
+
+                {% include "partials/crm_tabs.html" %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="panel crm-report-detail">
+                    <div class="crm-report-detail__actions">
+                        <a href="{% url 'crm_reports_list' %}" class="btn-secondary">← Retour à la liste</a>
+                        <a href="{% url 'crm_report_pdf' report.id %}" class="btn-primary">Télécharger PDF</a>
+                        {% if can_mark_read %}
+                            <form method="post" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="mark_read">
+                                <button type="submit" class="btn-primary">Marquer comme lu</button>
+                            </form>
+                        {% endif %}
+                        <a href="{% url 'crm_portfolio' %}?edit={{ report.client.id }}" class="btn-secondary">Fiche client</a>
+                    </div>
+
+                    <div class="crm-report-meta-grid">
+                        <div><span class="label">Commercial</span><strong>{{ report.author.get_labeled_name|default:"—" }}</strong></div>
+                        <div><span class="label">Type</span><strong>{{ report.get_activity_type_display }}</strong></div>
+                        <div><span class="label">Résultat</span><strong>{{ report.get_result_display }}</strong></div>
+                        <div>
+                            <span class="label">Statut</span>
+                            <strong class="crm-report-status crm-report-status--{{ report.status }}">{{ report.get_status_display }}</strong>
+                        </div>
+                        <div><span class="label">Projet lié</span><strong>{{ report.project.name|default:"—" }}</strong></div>
+                        <div><span class="label">Montant évoqué</span><strong>{% if report.quoted_amount is not None %}{{ report.quoted_amount }} ${% else %}—{% endif %}</strong></div>
+                        <div><span class="label">Prochaine action</span><strong>{{ report.next_action|default:"—" }}</strong></div>
+                        <div><span class="label">Date prochaine action</span><strong>{% if report.next_action_date %}{{ report.next_action_date|date:"d/m/Y" }}{% else %}—{% endif %}</strong></div>
+                        <div><span class="label">Soumis le</span><strong>{{ report.created_at|date:"d/m/Y H:i" }}</strong></div>
+                        {% if report.status == 'read' and report.read_at %}
+                            <div><span class="label">Lu par</span><strong>{{ report.read_by.get_labeled_name|default:"Direction" }} · {{ report.read_at|date:"d/m/Y H:i" }}</strong></div>
+                        {% endif %}
+                    </div>
+
+                    <div class="crm-report-summary-block">
+                        <h3>Compte rendu</h3>
+                        <div class="crm-report-summary-text">{{ report.summary|linebreaksbr }}</div>
+                    </div>
+
+                    {% if report.attachment %}
+                        <div class="crm-report-attachment">
+                            <h3>Pièce jointe</h3>
+                            <a href="{{ report.attachment.url }}" target="_blank" rel="noopener">Ouvrir le fichier</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

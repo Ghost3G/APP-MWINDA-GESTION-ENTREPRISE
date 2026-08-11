@@ -1,0 +1,282 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Rapports commerciaux — CRM — AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/finance.css' %}">
+    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="finance-page">
+                <div class="page-header">
+                    <h1>CRM — Rapports commerciaux</h1>
+                    <p>
+                        Compte rendu d’activité lié obligatoirement à un client existant de votre portefeuille.
+                        La direction et les responsables commerciaux consultent l’ensemble des rapports ;
+                        les encaissements restent enregistrés par le service Finance.
+                    </p>
+                </div>
+
+                {% include "partials/crm_tabs.html" %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if weekly_reminder %}
+                    <div class="finance-banner crm-report-reminder">
+                        Rappel : aucun rapport commercial enregistré depuis 7 jours.
+                        Publiez un compte rendu dès qu’une activité client significative a lieu.
+                    </div>
+                {% endif %}
+
+                <div class="crm-report-stats">
+                    <div class="stat-card">
+                        <span class="label">Total affichés</span>
+                        <strong>{{ stats.total }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span class="label">Cette semaine</span>
+                        <strong>{{ stats.this_week }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span class="label">Ce mois</span>
+                        <strong>{{ stats.this_month }}</strong>
+                    </div>
+                    {% if can_view_all %}
+                        <div class="stat-card stat-card--warn">
+                            <span class="label">Non lus</span>
+                            <strong>{{ stats.unread }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="panel crm-report-filters">
+                    <form method="get" class="form-grid crm-report-filter-grid">
+                        {% if can_view_all %}
+                            <div class="form-group">
+                                <label for="f-author">Commercial</label>
+                                <select id="f-author" name="author">
+                                    <option value="">Tous</option>
+                                    {% for agent in commercial_agents %}
+                                        <option value="{{ agent.id }}" {% if selected_author == agent.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ agent.get_labeled_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        <div class="form-group">
+                            <label for="f-client">Client</label>
+                            <select id="f-client" name="client">
+                                <option value="">Tous</option>
+                                {% for client in reportable_clients %}
+                                    <option value="{{ client.id }}" {% if selected_client == client.id|stringformat:"s" %}selected{% endif %}>
+                                        {% if client.code %}{{ client.code }} — {% endif %}{{ client.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="f-type">Type</label>
+                            <select id="f-type" name="type">
+                                <option value="">Tous</option>
+                                {% for value, label in activity_type_choices %}
+                                    <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="f-status">Statut</label>
+                            <select id="f-status" name="status">
+                                <option value="">Tous</option>
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="f-from">Du</label>
+                            <input id="f-from" type="date" name="from" value="{{ date_from }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="f-to">Au</label>
+                            <input id="f-to" type="date" name="to" value="{{ date_to }}">
+                        </div>
+                        <div class="form-group crm-filter-actions">
+                            <button type="submit" class="btn-primary">Filtrer</button>
+                            <a href="{% url 'crm_reports_list' %}" class="btn-secondary">Réinitialiser</a>
+                        </div>
+                    </form>
+                </div>
+
+                {% if can_create %}
+                <div class="panel crm-report-form-panel" id="nouveau-rapport">
+                    <h3>Nouveau rapport commercial</h3>
+                    <p class="muted panel-hint">
+                        Client obligatoire — choisissez une fiche déjà créée dans votre portefeuille CRM.
+                    </p>
+                    <form method="post" enctype="multipart/form-data" class="crm-report-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_report">
+                        <div class="form-grid two-cols">
+                            <div class="form-group">
+                                <label for="r-client">Client *</label>
+                                <select id="r-client" name="client_id" required>
+                                    <option value="">— Choisir un client —</option>
+                                    {% for client in reportable_clients %}
+                                        <option value="{{ client.id }}" {% if preselected_client and preselected_client.id == client.id %}selected{% endif %}>
+                                            {% if client.code %}{{ client.code }} — {% endif %}{{ client.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-date">Date de l’activité *</label>
+                                <input id="r-date" type="date" name="activity_date" value="{{ default_activity_date }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-type">Type d’activité *</label>
+                                <select id="r-type" name="activity_type" required>
+                                    {% for value, label in activity_type_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-result">Résultat *</label>
+                                <select id="r-result" name="result" required>
+                                    {% for value, label in result_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-project">Projet lié (optionnel)</label>
+                                <select id="r-project" name="project_id">
+                                    <option value="">— Aucun —</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-amount">Montant / devis évoqué ($)</label>
+                                <input id="r-amount" type="number" step="0.01" min="0" name="quoted_amount" placeholder="Optionnel">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label for="r-summary">Compte rendu *</label>
+                                <textarea id="r-summary" name="summary" required rows="5" placeholder="Visite, négociation, retours client, engagements pris…"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="r-next">Prochaine action</label>
+                                <input id="r-next" type="text" name="next_action" placeholder="Ex. Rappeler pour devis">
+                            </div>
+                            <div class="form-group">
+                                <label for="r-next-date">Date prochaine action</label>
+                                <input id="r-next-date" type="date" name="next_action_date">
+                            </div>
+                            <div class="form-group">
+                                <label for="r-file">Pièce jointe (optionnel)</label>
+                                <input id="r-file" type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Enregistrer le rapport</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Rapports enregistrés</h3>
+                    {% if reports %}
+                        <div class="table-wrap">
+                            <table class="table crm-reports-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Client</th>
+                                        {% if can_view_all %}<th>Commercial</th>{% endif %}
+                                        <th>Type</th>
+                                        <th>Résultat</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for report in reports %}
+                                        <tr class="{% if report.status == 'submitted' and can_view_all %}crm-report-unread{% endif %}">
+                                            <td>{{ report.activity_date|date:"d/m/Y" }}</td>
+                                            <td>
+                                                <a href="{% url 'crm_report_detail' report.id %}">
+                                                    {% if report.client.code %}{{ report.client.code }} — {% endif %}{{ report.client.name }}
+                                                </a>
+                                            </td>
+                                            {% if can_view_all %}
+                                                <td>{{ report.author.get_labeled_name|default:"—" }}</td>
+                                            {% endif %}
+                                            <td>{{ report.get_activity_type_display }}</td>
+                                            <td>{{ report.get_result_display }}</td>
+                                            <td>
+                                                <span class="crm-report-status crm-report-status--{{ report.status }}">
+                                                    {{ report.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td class="crm-report-actions">
+                                                <a href="{% url 'crm_report_detail' report.id %}">Voir</a>
+                                                <a href="{% url 'crm_report_pdf' report.id %}">PDF</a>
+                                                {% if can_mark_read and report.status == 'submitted' %}
+                                                    <form method="post" class="inline-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="mark_read">
+                                                        <input type="hidden" name="report_id" value="{{ report.id }}">
+                                                        <button type="submit" class="link-button">Marquer lu</button>
+                                                    </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="muted">Aucun rapport pour ces critères.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    {{ client_projects|json_script:"crm-client-projects" }}
+    <script>
+    (function () {
+        const map = JSON.parse(document.getElementById('crm-client-projects').textContent || '{}');
+        const clientSelect = document.getElementById('r-client');
+        const projectSelect = document.getElementById('r-project');
+        if (!clientSelect || !projectSelect) return;
+
+        function refreshProjects() {
+            const clientId = clientSelect.value;
+            const rows = map[clientId] || [];
+            projectSelect.innerHTML = '<option value="">— Aucun —</option>';
+            rows.forEach(function (row) {
+                const opt = document.createElement('option');
+                opt.value = row.id;
+                opt.textContent = row.name;
+                projectSelect.appendChild(opt);
+            });
+        }
+
+        clientSelect.addEventListener('change', refreshProjects);
+        refreshProjects();
+    })();
+    </script>
+</body>
+</html>
