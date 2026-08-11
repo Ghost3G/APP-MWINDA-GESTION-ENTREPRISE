@@ -41,13 +41,9 @@
         </a>
         {% endif %}
         {% if is_crm %}
-        <a href="{% url 'crm_portfolio' %}" class="nav-item {% if request.resolver_match.url_name == 'crm_portfolio' %}active{% endif %}">
+        <a href="{% url 'crm_portfolio' %}" class="nav-item {% if request.resolver_match.url_name == 'crm_portfolio' or request.resolver_match.url_name == 'crm_reports_list' or request.resolver_match.url_name == 'crm_report_detail' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             CRM
-        </a>
-        <a href="{% url 'crm_reports_list' %}" class="nav-item {% if request.resolver_match.url_name == 'crm_reports_list' or request.resolver_match.url_name == 'crm_report_detail' %}active{% endif %}">
-            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_rapport.png' %}" alt=""></span>
-            Rapports CRM
         </a>
         {% endif %}
         {% if is_stock %}
