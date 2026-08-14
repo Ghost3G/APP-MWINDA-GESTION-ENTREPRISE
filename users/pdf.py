@@ -251,7 +251,12 @@ def build_presence_monthly_pdf(payload) -> bytes:
     return buffer.getvalue()
 
 
-def build_overtime_pdf(*, period_label, start, end, summary_rows, grand_total) -> bytes:
+def build_overtime_pdf(*, agent, period_label, start, end, summary_row) -> bytes:
+    """PDF individuel — fiche heures sup. d'un seul collaborateur."""
+    total_days = summary_row['total_days']
+    entries = summary_row['entries']
+    total_label = str(total_days).replace('.', ',')
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -260,7 +265,7 @@ def build_overtime_pdf(*, period_label, start, end, summary_rows, grand_total) -
         rightMargin=16 * mm,
         topMargin=14 * mm,
         bottomMargin=14 * mm,
-        title=f'Heures supplémentaires {period_label}',
+        title=f'Heures sup. {agent.get_display_name()} {period_label}',
     )
     styles = getSampleStyleSheet()
     title = ParagraphStyle(
@@ -290,51 +295,50 @@ def build_overtime_pdf(*, period_label, start, end, summary_rows, grand_total) -
     story = [
         Paragraph('Agence Mwinda — Heures supplémentaires', title),
         Paragraph(
-            f'{period_label}<br/>Période : {start.strftime("%d/%m/%Y")} → {end.strftime("%d/%m/%Y")}',
+            f'{agent.get_labeled_name()} (@{agent.username})<br/>'
+            f'{agent.get_title_label()}<br/>'
+            f'{period_label}<br/>'
+            f'Période : {start.strftime("%d/%m/%Y")} → {end.strftime("%d/%m/%Y")}<br/>'
+            f'Horaires de référence : lun–ven 08h30–17h30 · sam 09h00–13h00',
             subtitle,
         ),
-        Paragraph(f'Total général : <b>{grand_total}</b> jour(s)', section),
     ]
 
-    totals_data = [['Agent', 'Rôle', 'Total jours']]
-    for row in summary_rows:
-        totals_data.append([
-            row['user'].get_labeled_name(),
-            row['user'].get_title_label(),
-            str(row['total_days']).replace('.', ','),
-        ])
-    totals_table = Table(totals_data, colWidths=[85 * mm, 55 * mm, 30 * mm])
-    totals_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    summary_data = [
+        ['Total jours comptabilisés', f'{total_label} jour(s)'],
+        ['Nombre de saisies', str(len(entries))],
+    ]
+    summary_table = Table(summary_data, colWidths=[70 * mm, 100 * mm])
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
-        ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e5e7eb')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
-    story.append(totals_table)
+    story.append(summary_table)
     story.append(Spacer(1, 10))
 
-    detail_data = [['Agent', 'Date', 'Jours', 'Origine', 'Notes', 'Saisi par']]
-    for row in summary_rows:
-        for entry in row['entries']:
-            detail_data.append([
-                row['user'].get_display_name(),
-                entry.work_date.strftime('%d/%m/%Y'),
-                str(entry.days).replace('.', ','),
-                entry.get_source_display(),
-                Paragraph(entry.notes or '—', small),
-                entry.created_by.get_display_name() if entry.created_by_id else '—',
-            ])
+    detail_data = [['Date', 'Jours', 'Origine', 'Notes', 'Saisi par']]
+    for entry in entries:
+        detail_data.append([
+            entry.work_date.strftime('%d/%m/%Y'),
+            str(entry.days).replace('.', ','),
+            entry.get_source_display(),
+            Paragraph(entry.notes or '—', small),
+            entry.created_by.get_display_name() if entry.created_by_id else '—',
+        ])
     if len(detail_data) == 1:
-        story.append(Paragraph('Aucune ligne enregistrée sur cette période.', small))
+        story.append(Paragraph('Aucune saisie enregistrée sur cette période.', small))
     else:
         story.append(Paragraph('Détail des saisies', section))
-        detail_table = Table(detail_data, colWidths=[32 * mm, 22 * mm, 16 * mm, 28 * mm, 52 * mm, 28 * mm])
+        detail_table = Table(detail_data, colWidths=[28 * mm, 18 * mm, 32 * mm, 72 * mm, 38 * mm])
         detail_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),

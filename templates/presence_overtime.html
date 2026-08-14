@@ -7,7 +7,7 @@
     <title>Heures supplémentaires — AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/presence.css' %}?v=20260814a">
-    <link rel="stylesheet" href="{% static 'css/overtime.css' %}?v=20260814b">
+    <link rel="stylesheet" href="{% static 'css/overtime.css' %}?v=20260814c">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -92,12 +92,25 @@
                         <div class="form-group overtime-export-actions">
                             <label class="overtime-action-label">&nbsp;</label>
                             <div class="pdf-actions">
-                                <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="download">Exporter PDF</a>
+                                {% if can_view_all_overtime %}
+                                    {% if selected_agent %}
+                                        <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}&agent={{ selected_agent_id }}" class="download">Exporter PDF</a>
+                                    {% else %}
+                                        <span class="pdf-export-disabled" title="Sélectionnez un collaborateur et appliquez le filtre">Exporter PDF</span>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}" class="download">Exporter PDF</a>
+                                {% endif %}
                                 <a href="{% url 'overtime_export_csv' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}">Exporter Excel</a>
                             </div>
                         </div>
                     </form>
-                    <p class="filter-hint">{{ period_label }}</p>
+                    <p class="filter-hint">
+                        {{ period_label }}
+                        {% if can_view_all_overtime and not selected_agent %}
+                            · Le PDF individuel nécessite la sélection d’un collaborateur.
+                        {% endif %}
+                    </p>
                 </div>
 
                 {% if can_manage_overtime %}

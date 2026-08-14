@@ -827,18 +827,38 @@ def overtime_dashboard(request):
 def overtime_export_pdf(request):
     from datetime import datetime
     from django.http import HttpResponse
+    from django.urls import reverse
+    from .overtime import build_overtime_summary
     from .pdf import build_overtime_pdf
 
     context = _overtime_context(request)
+    if can_view_all_overtime(request.user):
+        agent = context.get('selected_agent')
+        if not agent:
+            messages.error(
+                request,
+                'Sélectionnez un collaborateur puis cliquez sur « Appliquer » avant d’exporter le PDF.',
+            )
+            query = f"?period={context['period_key']}&date={context['anchor_date']}"
+            return redirect(reverse('overtime_dashboard') + query)
+    else:
+        agent = request.user
+
+    summary_row = next((row for row in context['summary_rows'] if row['user'].id == agent.id), None)
+    if not summary_row:
+        start = datetime.strptime(context['period_start'], '%Y-%m-%d').date()
+        end = datetime.strptime(context['period_end'], '%Y-%m-%d').date()
+        rows, _ = build_overtime_summary([agent], start, end)
+        summary_row = rows[0]
+
     pdf_bytes = build_overtime_pdf(
+        agent=agent,
         period_label=context['period_label'],
         start=datetime.strptime(context['period_start'], '%Y-%m-%d').date(),
         end=datetime.strptime(context['period_end'], '%Y-%m-%d').date(),
-        summary_rows=context['summary_rows'],
-        grand_total=context['grand_total'],
+        summary_row=summary_row,
     )
-    slug = context['period_key']
-    filename = f'heures_sup_{slug}_{context["anchor_date"]}.pdf'
+    filename = f'heures_sup_{agent.username}_{context["period_key"]}_{context["anchor_date"]}.pdf'
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
