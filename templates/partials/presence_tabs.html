@@ -1,0 +1,4 @@
+<nav class="presence-tabs" aria-label="Navigation Présence">
+    <a href="{% url 'presence_dashboard' %}" class="presence-tab {% if request.resolver_match.url_name == 'presence_dashboard' %}active{% endif %}">Présence</a>
+    <a href="{% url 'overtime_dashboard' %}" class="presence-tab {% if request.resolver_match.url_name == 'overtime_dashboard' %}active{% endif %}">Heures supplémentaires</a>
+</nav>

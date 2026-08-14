@@ -249,3 +249,99 @@ def build_presence_monthly_pdf(payload) -> bytes:
 
     doc.build(story)
     return buffer.getvalue()
+
+
+def build_overtime_pdf(*, period_label, start, end, summary_rows, grand_total) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
+        title=f'Heures supplémentaires {period_label}',
+    )
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle(
+        'OtTitle',
+        parent=styles['Heading1'],
+        alignment=TA_CENTER,
+        fontSize=15,
+        spaceAfter=6,
+    )
+    subtitle = ParagraphStyle(
+        'OtSub',
+        parent=styles['Normal'],
+        alignment=TA_CENTER,
+        fontSize=10,
+        textColor=colors.HexColor('#4b5563'),
+        spaceAfter=12,
+    )
+    section = ParagraphStyle(
+        'OtSec',
+        parent=styles['Heading2'],
+        fontSize=11,
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    small = ParagraphStyle('OtSmall', parent=styles['Normal'], fontSize=8, leading=11)
+
+    story = [
+        Paragraph('Agence Mwinda — Heures supplémentaires', title),
+        Paragraph(
+            f'{period_label}<br/>Période : {start.strftime("%d/%m/%Y")} → {end.strftime("%d/%m/%Y")}',
+            subtitle,
+        ),
+        Paragraph(f'Total général : <b>{grand_total}</b> jour(s)', section),
+    ]
+
+    totals_data = [['Agent', 'Rôle', 'Total jours']]
+    for row in summary_rows:
+        totals_data.append([
+            row['user'].get_labeled_name(),
+            row['user'].get_title_label(),
+            str(row['total_days']).replace('.', ','),
+        ])
+    totals_table = Table(totals_data, colWidths=[85 * mm, 55 * mm, 30 * mm])
+    totals_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+        ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+    ]))
+    story.append(totals_table)
+    story.append(Spacer(1, 10))
+
+    detail_data = [['Agent', 'Date', 'Jours', 'Origine', 'Notes', 'Saisi par']]
+    for row in summary_rows:
+        for entry in row['entries']:
+            detail_data.append([
+                row['user'].get_display_name(),
+                entry.work_date.strftime('%d/%m/%Y'),
+                str(entry.days).replace('.', ','),
+                entry.get_source_display(),
+                Paragraph(entry.notes or '—', small),
+                entry.created_by.get_display_name() if entry.created_by_id else '—',
+            ])
+    if len(detail_data) == 1:
+        story.append(Paragraph('Aucune ligne enregistrée sur cette période.', small))
+    else:
+        story.append(Paragraph('Détail des saisies', section))
+        detail_table = Table(detail_data, colWidths=[32 * mm, 22 * mm, 16 * mm, 28 * mm, 52 * mm, 28 * mm])
+        detail_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#e5e7eb')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        story.append(detail_table)
+
+    doc.build(story)
+    return buffer.getvalue()

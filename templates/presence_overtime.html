@@ -1,0 +1,212 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Heures supplémentaires — AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/presence.css' %}">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="presence-page">
+                <div class="page-header">
+                    <h1>{% if can_view_all_overtime %}Heures supplémentaires{% else %}Mes heures supplémentaires{% endif %}</h1>
+                    <p>
+                        Comptabilisation des <strong>jours prestés hors horaires officiels</strong>
+                        (lun–ven 08:30–17:30 · sam 09:00–13:00).
+                        Les techniciens peuvent être saisis <strong>manuellement</strong> par le DT ;
+                        les connexions détectées hors plage restent des <strong>suggestions à valider</strong>.
+                    </p>
+                </div>
+
+                {% include "partials/presence_tabs.html" %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="panel filter-panel">
+                    <form method="get" class="filter-row overtime-filter-row">
+                        <div class="form-group">
+                            <label for="ot-period">Période</label>
+                            <select id="ot-period" name="period">
+                                <option value="week" {% if period_key == 'week' %}selected{% endif %}>Semaine</option>
+                                <option value="month" {% if period_key == 'month' %}selected{% endif %}>Mois</option>
+                                <option value="year" {% if period_key == 'year' %}selected{% endif %}>Année</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ot-date">Référence</label>
+                            <input id="ot-date" type="date" name="date" value="{{ anchor_date }}">
+                        </div>
+                        {% if can_view_all_overtime %}
+                            <div class="form-group">
+                                <label for="ot-agent">Agent</label>
+                                <select id="ot-agent" name="agent">
+                                    <option value="">Toute l'équipe</option>
+                                    {% for agent in all_agents %}
+                                        <option value="{{ agent.id }}" {% if selected_agent_id == agent.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ agent.get_labeled_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        <div class="form-group overtime-filter-actions">
+                            <button type="submit" class="btn-primary">Appliquer</button>
+                            <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="btn-secondary">PDF</a>
+                            <a href="{% url 'overtime_export_csv' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="btn-secondary">Excel</a>
+                        </div>
+                    </form>
+                    <p class="filter-hint">{{ period_label }} · Total période : <strong>{{ grand_total_label }}</strong></p>
+                </div>
+
+                {% if can_manage_overtime %}
+                <div class="panel overtime-manual-panel">
+                    <h3>Saisie manuelle (DT / adjoint DT)</h3>
+                    <p class="filter-hint">Ajoutez ou mettez à jour les jours sup. sans tenir compte des connexions.</p>
+                    <form method="post" class="overtime-manual-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_entry">
+                        <div class="filter-row">
+                            <div class="form-group">
+                                <label for="m-user">Agent</label>
+                                <select id="m-user" name="user_id" required>
+                                    <option value="">— Choisir —</option>
+                                    {% for agent in all_agents %}
+                                        <option value="{{ agent.id }}">{{ agent.get_labeled_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="m-date">Date prestée</label>
+                                <input id="m-date" type="date" name="work_date" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="m-days">Jours</label>
+                                <input id="m-days" type="text" name="days" placeholder="1 ou 0,5" required>
+                            </div>
+                            <div class="form-group overtime-notes-field">
+                                <label for="m-notes">Motif / notes</label>
+                                <input id="m-notes" type="text" name="notes" placeholder="Ex. Chantier samedi après-midi">
+                            </div>
+                            <div class="form-group overtime-filter-actions">
+                                <button type="submit" class="btn-primary">Enregistrer</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                {% if suggestions %}
+                <div class="panel overtime-suggestions-panel">
+                    <h3>Suggestions depuis connexions (à valider)</h3>
+                    <p class="filter-hint">Hors horaires détectés (≥ 30 min). Non comptés tant que vous ne validez pas.</p>
+                    <div class="table-wrap">
+                        <table class="presence-table overtime-table">
+                            <thead>
+                                <tr>
+                                    <th>Agent</th>
+                                    <th>Date</th>
+                                    <th>Durée détectée</th>
+                                    <th>Jours suggérés</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sug in suggestions %}
+                                    <tr>
+                                        <td>{{ sug.user.get_labeled_name }}</td>
+                                        <td>{{ sug.work_date|date:"d/m/Y" }}</td>
+                                        <td>{{ sug.hours }} h</td>
+                                        <td>{{ sug.suggested_days }}</td>
+                                        <td>
+                                            <form method="post" class="inline-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="validate_suggestion">
+                                                <input type="hidden" name="user_id" value="{{ sug.user.id }}">
+                                                <input type="hidden" name="work_date" value="{{ sug.work_date|date:'Y-m-d' }}">
+                                                <input type="hidden" name="days" value="{{ sug.suggested_days }}">
+                                                <button type="submit" class="link-button">Valider</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Synthèse par agent</h3>
+                    {% if summary_rows %}
+                        <div class="table-wrap">
+                            <table class="presence-table overtime-table">
+                                <thead>
+                                    <tr>
+                                        <th>Agent</th>
+                                        <th>Total jours</th>
+                                        <th>Détail</th>
+                                        {% if can_manage_overtime %}<th></th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in summary_rows %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ row.user.get_labeled_name }}</strong>
+                                                <div class="muted small">@{{ row.user.username }}</div>
+                                            </td>
+                                            <td><span class="overtime-total-badge">{{ row.total_days }} j</span></td>
+                                            <td>
+                                                {% if row.entries %}
+                                                    <ul class="overtime-entry-list">
+                                                        {% for entry in row.entries %}
+                                                            <li>
+                                                                {{ entry.work_date|date:"d/m/Y" }} —
+                                                                <strong>{{ entry.days }} j</strong>
+                                                                · {{ entry.get_source_display }}
+                                                                {% if entry.notes %}· {{ entry.notes }}{% endif %}
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                {% else %}
+                                                    <span class="muted">Aucune saisie sur la période</span>
+                                                {% endif %}
+                                            </td>
+                                            {% if can_manage_overtime %}
+                                                <td>
+                                                    {% for entry in row.entries %}
+                                                        <form method="post" class="inline-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="delete_entry">
+                                                            <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                                                            <button type="submit" class="link-button link-button--danger" onclick="return confirm('Supprimer cette ligne ?');">Suppr. {{ entry.work_date|date:"d/m/Y" }}</button>
+                                                        </form>
+                                                    {% endfor %}
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="muted">Aucune donnée pour cette période.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

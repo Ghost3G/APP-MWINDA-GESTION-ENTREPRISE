@@ -185,3 +185,57 @@ class AuditLog(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
+
+
+class OvertimeDayEntry(models.Model):
+    """Journée(s) d'heures supplémentaires comptabilisées (saisie manuelle DT ou validation auto)."""
+
+    SOURCE_CHOICES = (
+        ('manual', 'Saisie manuelle'),
+        ('auto_validated', 'Validé depuis connexion'),
+    )
+
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='overtime_entries',
+        verbose_name='Agent',
+    )
+    work_date = models.DateField(db_index=True, verbose_name='Date prestée')
+    days = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name='Nombre de jours',
+        help_text='Ex. 1 = journée entière, 0.5 = demi-journée.',
+    )
+    notes = models.CharField(max_length=500, blank=True, verbose_name='Motif / notes')
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='manual',
+        verbose_name='Origine',
+    )
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='overtime_entries_created',
+        verbose_name='Saisi par',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-work_date', '-id')
+        verbose_name = 'Jour supplémentaire'
+        verbose_name_plural = 'Jours supplémentaires'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'work_date'),
+                name='unique_overtime_user_date',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} · {self.work_date} · {self.days} j'

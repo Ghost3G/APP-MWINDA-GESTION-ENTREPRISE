@@ -16,7 +16,14 @@ from .security import (
     record_login_attempt,
     write_audit_log,
 )
-from .permissions import is_admin_user, is_management_user, management_required
+from .permissions import (
+    is_admin_user,
+    is_management_user,
+    management_required,
+    can_manage_overtime,
+    can_view_all_overtime,
+    can_view_overtime_for,
+)
 from .uploads import validate_avatar_upload, store_user_avatar
 
 User = get_user_model()
@@ -681,4 +688,225 @@ def presence_a4_view(request, agent_id):
         **payload,
         'selected_month': f"{payload['year']}-{payload['month']:02d}",
     })
+
+
+def _parse_decimal_days(raw):
+    from decimal import Decimal, InvalidOperation
+    value = (raw or '').strip().replace(',', '.')
+    if not value:
+        return None
+    try:
+        days = Decimal(value)
+    except InvalidOperation:
+        return None
+    if days <= 0 or days > 31:
+        return None
+    return days.quantize(Decimal('0.01'))
+
+
+def _overtime_visible_users(request):
+    if can_view_all_overtime(request.user):
+        return list(User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username'))
+    return [request.user]
+
+
+def _overtime_context(request):
+    from datetime import datetime
+    from .overtime import (
+        build_overtime_suggestions,
+        build_overtime_summary,
+        format_days_label,
+        parse_overtime_period,
+    )
+    from .models import OvertimeDayEntry
+    from .presence import parse_presence_date
+
+    period_key = (request.GET.get('period') or 'month').strip().lower()
+    anchor = parse_presence_date(request.GET.get('date', '').strip())
+    period_key, start, end, period_label = parse_overtime_period(period_key, anchor)
+    visible_users = _overtime_visible_users(request)
+
+    agent_filter = request.GET.get('agent', '').strip()
+    selected_agent = None
+    if agent_filter.isdigit() and can_view_all_overtime(request.user):
+        selected_agent = next((u for u in visible_users if u.id == int(agent_filter)), None)
+        if selected_agent:
+            visible_users = [selected_agent]
+
+    summary_rows, grand_total = build_overtime_summary(visible_users, start, end)
+    suggestions = []
+    if can_manage_overtime(request.user):
+        suggestion_users = list(User.objects.filter(is_active=True).order_by('first_name', 'last_name'))
+        suggestions = build_overtime_suggestions(suggestion_users, start, end)
+
+    return {
+        'period_key': period_key,
+        'period_label': period_label,
+        'period_start': start.isoformat(),
+        'period_end': end.isoformat(),
+        'anchor_date': anchor.isoformat(),
+        'summary_rows': summary_rows,
+        'grand_total': grand_total,
+        'grand_total_label': format_days_label(grand_total),
+        'suggestions': suggestions,
+        'visible_users': visible_users,
+        'all_agents': list(User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')),
+        'selected_agent': selected_agent,
+        'selected_agent_id': str(selected_agent.id) if selected_agent else '',
+        'can_manage_overtime': can_manage_overtime(request.user),
+        'can_view_all_overtime': can_view_all_overtime(request.user),
+        'source_choices': OvertimeDayEntry.SOURCE_CHOICES,
+    }
+
+
+@login_required(login_url='login')
+def overtime_dashboard(request):
+    """Heures supplémentaires — jours prestés hors horaires (saisie DT + consultation équipe)."""
+    from datetime import datetime
+    from .models import OvertimeDayEntry
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '').strip()
+        redirect_url = request.get_full_path() or 'overtime_dashboard'
+
+        if action in {'add_entry', 'validate_suggestion', 'update_entry'} and not can_manage_overtime(request.user):
+            messages.error(request, 'Seuls le DT et l’adjoint DT peuvent saisir des jours supplémentaires.')
+            return redirect(redirect_url)
+
+        if action == 'add_entry':
+            try:
+                agent = User.objects.get(pk=int(request.POST.get('user_id', '0')), is_active=True)
+            except (TypeError, ValueError, User.DoesNotExist):
+                messages.error(request, 'Agent invalide.')
+                return redirect(redirect_url)
+            work_date_raw = request.POST.get('work_date', '').strip()
+            try:
+                work_date = datetime.strptime(work_date_raw, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Date invalide.')
+                return redirect(redirect_url)
+            days = _parse_decimal_days(request.POST.get('days'))
+            if days is None:
+                messages.error(request, 'Nombre de jours invalide (ex. 1 ou 0,5).')
+                return redirect(redirect_url)
+            notes = request.POST.get('notes', '').strip()
+            entry, created = OvertimeDayEntry.objects.update_or_create(
+                user=agent,
+                work_date=work_date,
+                defaults={
+                    'days': days,
+                    'notes': notes,
+                    'source': 'manual',
+                    'created_by': request.user,
+                },
+            )
+            verb = 'ajoutée' if created else 'mise à jour'
+            messages.success(
+                request,
+                f'{days} jour(s) sup. {verb} pour {agent.get_labeled_name()} '
+                f'({work_date.strftime("%d/%m/%Y")}).',
+            )
+            return redirect(redirect_url)
+
+        if action == 'validate_suggestion':
+            try:
+                agent = User.objects.get(pk=int(request.POST.get('user_id', '0')), is_active=True)
+            except (TypeError, ValueError, User.DoesNotExist):
+                messages.error(request, 'Agent invalide.')
+                return redirect(redirect_url)
+            work_date_raw = request.POST.get('work_date', '').strip()
+            try:
+                work_date = datetime.strptime(work_date_raw, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'Date invalide.')
+                return redirect(redirect_url)
+            days = _parse_decimal_days(request.POST.get('days'))
+            if days is None:
+                messages.error(request, 'Nombre de jours invalide.')
+                return redirect(redirect_url)
+            OvertimeDayEntry.objects.update_or_create(
+                user=agent,
+                work_date=work_date,
+                defaults={
+                    'days': days,
+                    'notes': 'Validé depuis connexion hors horaires',
+                    'source': 'auto_validated',
+                    'created_by': request.user,
+                },
+            )
+            messages.success(request, 'Suggestion validée et comptabilisée.')
+            return redirect(redirect_url)
+
+        if action == 'delete_entry':
+            if not can_manage_overtime(request.user):
+                messages.error(request, 'Action non autorisée.')
+                return redirect(redirect_url)
+            entry = OvertimeDayEntry.objects.filter(id=request.POST.get('entry_id')).first()
+            if not entry:
+                messages.error(request, 'Ligne introuvable.')
+                return redirect(redirect_url)
+            label = f'{entry.user.get_display_name()} · {entry.work_date.strftime("%d/%m/%Y")}'
+            entry.delete()
+            messages.success(request, f'Ligne supprimée : {label}.')
+            return redirect(redirect_url)
+
+    context = _overtime_context(request)
+    return render(request, 'presence_overtime.html', context)
+
+
+@login_required(login_url='login')
+def overtime_export_pdf(request):
+    from datetime import datetime
+    from django.http import HttpResponse
+    from .pdf import build_overtime_pdf
+
+    context = _overtime_context(request)
+    pdf_bytes = build_overtime_pdf(
+        period_label=context['period_label'],
+        start=datetime.strptime(context['period_start'], '%Y-%m-%d').date(),
+        end=datetime.strptime(context['period_end'], '%Y-%m-%d').date(),
+        summary_rows=context['summary_rows'],
+        grand_total=context['grand_total'],
+    )
+    slug = context['period_key']
+    filename = f'heures_sup_{slug}_{context["anchor_date"]}.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='login')
+def overtime_export_csv(request):
+    import csv
+    from django.http import HttpResponse
+
+    context = _overtime_context(request)
+    filename = f'heures_sup_{context["period_key"]}_{context["anchor_date"]}.csv'
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.write('\ufeff')
+    writer = csv.writer(response)
+    writer.writerow(['Période', context['period_label']])
+    writer.writerow(['Du', context['period_start'], 'Au', context['period_end']])
+    writer.writerow([])
+    writer.writerow(['Agent', 'Rôle', 'Total jours'])
+    for row in context['summary_rows']:
+        writer.writerow([
+            row['user'].get_labeled_name(),
+            row['user'].get_title_label(),
+            str(row['total_days']).replace('.', ','),
+        ])
+    writer.writerow([])
+    writer.writerow(['Agent', 'Date', 'Jours', 'Origine', 'Notes', 'Saisi par'])
+    for row in context['summary_rows']:
+        for entry in row['entries']:
+            writer.writerow([
+                row['user'].get_display_name(),
+                entry.work_date.isoformat(),
+                str(entry.days).replace('.', ','),
+                entry.get_source_display(),
+                entry.notes,
+                entry.created_by.get_display_name() if entry.created_by_id else '',
+            ])
+    return response
 

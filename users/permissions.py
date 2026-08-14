@@ -53,6 +53,25 @@ def can_manage_projects(user):
     return (user.username or '').strip().lower() in PROJECT_MANAGER_USERNAMES
 
 
+def can_manage_overtime(user):
+    """Saisie manuelle des jours supplémentaires : DT + adjoint DT."""
+    return can_manage_projects(user)
+
+
+def can_view_all_overtime(user):
+    """Voir les heures sup de toute l'équipe."""
+    return is_management_user(user)
+
+
+def can_view_overtime_for(user, agent):
+    """Consulter le détail d'un agent."""
+    if not user or not user.is_authenticated or not agent:
+        return False
+    if can_view_all_overtime(user):
+        return True
+    return user.id == agent.id
+
+
 def is_commercial_lead(user):
     if not user or not user.is_authenticated:
         return False
