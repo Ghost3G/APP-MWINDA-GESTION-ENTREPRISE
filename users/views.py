@@ -733,6 +733,8 @@ def _overtime_context(request):
             visible_users = [selected_agent]
 
     summary_rows, grand_total = build_overtime_summary(visible_users, start, end)
+    agents_with_days = sum(1 for row in summary_rows if row['total_days'] > 0)
+    total_entries = sum(len(row['entries']) for row in summary_rows)
 
     return {
         'period_key': period_key,
@@ -743,6 +745,8 @@ def _overtime_context(request):
         'summary_rows': summary_rows,
         'grand_total': grand_total,
         'grand_total_label': format_days_label(grand_total),
+        'agents_with_days': agents_with_days,
+        'total_entries': total_entries,
         'visible_users': visible_users,
         'all_agents': list(User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')),
         'selected_agent': selected_agent,

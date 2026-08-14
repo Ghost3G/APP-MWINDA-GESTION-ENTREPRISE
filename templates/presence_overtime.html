@@ -7,7 +7,7 @@
     <title>Heures supplémentaires — AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/presence.css' %}?v=20260814a">
-    <link rel="stylesheet" href="{% static 'css/overtime.css' %}?v=20260814a">
+    <link rel="stylesheet" href="{% static 'css/overtime.css' %}?v=20260814b">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -20,9 +20,17 @@
                 <div class="page-header">
                     <h1>{% if can_view_all_overtime %}Heures supplémentaires{% else %}Mes heures supplémentaires{% endif %}</h1>
                     <p>
-                        Comptabilisation des <strong>jours prestés hors horaires officiels</strong>
-                        (lun–ven 08:30–17:30 · sam 09:00–13:00).
-                        Saisie <strong>manuelle</strong> par le DT et l’adjoint DT pour toute l’équipe.
+                        {% if can_view_all_overtime %}
+                            Suivi des jours prestés en dehors des horaires officiels de l'agence.
+                            Consultez la synthèse par collaborateur et exportez les données par période.
+                            Les saisies sont enregistrées manuellement par le directeur technique et son adjoint.
+                        {% else %}
+                            Consultez les jours comptabilisés en heures supplémentaires sur la période sélectionnée.
+                            Les enregistrements sont validés et saisis par la direction technique.
+                        {% endif %}
+                    </p>
+                    <p class="overtime-schedule-hint">
+                        Horaires de référence : lundi–vendredi 08h30–17h30 · samedi 09h00–13h00.
                     </p>
                 </div>
 
@@ -32,7 +40,25 @@
                     {% endfor %}
                 {% endif %}
 
+                <div class="summary-card {% if can_view_all_overtime %}three{% else %}two{% endif %}">
+                    <div class="summary-item">
+                        <small>Total période</small>
+                        <strong>{{ grand_total_label }}</strong>
+                    </div>
+                    {% if can_view_all_overtime %}
+                        <div class="summary-item">
+                            <small>Collaborateurs concernés</small>
+                            <strong>{{ agents_with_days }}</strong>
+                        </div>
+                    {% endif %}
+                    <div class="summary-item">
+                        <small>Saisies enregistrées</small>
+                        <strong>{{ total_entries }}</strong>
+                    </div>
+                </div>
+
                 <div class="panel filter-panel">
+                    <h3>Filtres et export</h3>
                     <form method="get" class="filter-row overtime-filter-row">
                         <div class="form-group">
                             <label for="ot-period">Période</label>
@@ -43,12 +69,12 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="ot-date">Référence</label>
+                            <label for="ot-date">Date de référence</label>
                             <input id="ot-date" type="date" name="date" value="{{ anchor_date }}">
                         </div>
                         {% if can_view_all_overtime %}
                             <div class="form-group">
-                                <label for="ot-agent">Agent</label>
+                                <label for="ot-agent">Collaborateur</label>
                                 <select id="ot-agent" name="agent">
                                     <option value="">Toute l'équipe</option>
                                     {% for agent in all_agents %}
@@ -60,62 +86,67 @@
                             </div>
                         {% endif %}
                         <div class="form-group overtime-filter-actions">
-                            <button type="submit" class="btn-primary">Appliquer</button>
-                            <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="btn-secondary">PDF</a>
-                            <a href="{% url 'overtime_export_csv' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="btn-secondary">Excel</a>
+                            <label class="overtime-action-label">&nbsp;</label>
+                            <button type="submit" class="btn-filter">Appliquer</button>
+                        </div>
+                        <div class="form-group overtime-export-actions">
+                            <label class="overtime-action-label">&nbsp;</label>
+                            <div class="pdf-actions">
+                                <a href="{% url 'overtime_export_pdf' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}" class="download">Exporter PDF</a>
+                                <a href="{% url 'overtime_export_csv' %}?period={{ period_key }}&date={{ anchor_date }}{% if selected_agent_id %}&agent={{ selected_agent_id }}{% endif %}">Exporter Excel</a>
+                            </div>
                         </div>
                     </form>
-                    <p class="filter-hint">{{ period_label }} · Total période : <strong>{{ grand_total_label }}</strong></p>
+                    <p class="filter-hint">{{ period_label }}</p>
                 </div>
 
                 {% if can_manage_overtime %}
                 <div class="panel overtime-manual-panel">
-                    <h3>Saisie manuelle (DT / adjoint DT)</h3>
-                    <p class="filter-hint">Ajoutez ou mettez à jour les jours sup. sans tenir compte des connexions.</p>
-                    <form method="post" class="overtime-manual-form">
+                    <h3>Nouvelle saisie</h3>
+                    <p class="filter-hint">Enregistrez ou mettez à jour les jours prestés hors horaires pour un collaborateur.</p>
+                    <form method="post" class="overtime-manual-form filter-row">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="add_entry">
-                        <div class="filter-row">
-                            <div class="form-group">
-                                <label for="m-user">Agent</label>
-                                <select id="m-user" name="user_id" required>
-                                    <option value="">— Choisir —</option>
-                                    {% for agent in all_agents %}
-                                        <option value="{{ agent.id }}">{{ agent.get_labeled_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="m-date">Date prestée</label>
-                                <input id="m-date" type="date" name="work_date" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="m-days">Jours</label>
-                                <input id="m-days" type="text" name="days" placeholder="1 ou 0,5" required>
-                            </div>
-                            <div class="form-group overtime-notes-field">
-                                <label for="m-notes">Motif / notes</label>
-                                <input id="m-notes" type="text" name="notes" placeholder="Ex. Chantier samedi après-midi">
-                            </div>
-                            <div class="form-group overtime-filter-actions">
-                                <button type="submit" class="btn-primary">Enregistrer</button>
-                            </div>
+                        <div class="form-group">
+                            <label for="m-user">Collaborateur</label>
+                            <select id="m-user" name="user_id" required>
+                                <option value="">— Choisir —</option>
+                                {% for agent in all_agents %}
+                                    <option value="{{ agent.id }}">{{ agent.get_labeled_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-date">Date prestée</label>
+                            <input id="m-date" type="date" name="work_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-days">Nombre de jours</label>
+                            <input id="m-days" type="text" name="days" placeholder="1 ou 0,5" required>
+                        </div>
+                        <div class="form-group overtime-notes-field">
+                            <label for="m-notes">Motif / notes</label>
+                            <input id="m-notes" type="text" name="notes" placeholder="Ex. Chantier, réunion client…">
+                        </div>
+                        <div class="form-group overtime-filter-actions">
+                            <label class="overtime-action-label">&nbsp;</label>
+                            <button type="submit" class="btn-filter">Enregistrer</button>
                         </div>
                     </form>
                 </div>
                 {% endif %}
 
                 <div class="panel">
-                    <h3>Synthèse par agent</h3>
+                    <h3>Synthèse par collaborateur</h3>
                     {% if summary_rows %}
                         <div class="table-wrap">
                             <table class="presence-table overtime-table">
                                 <thead>
                                     <tr>
-                                        <th>Agent</th>
+                                        <th>Collaborateur</th>
                                         <th>Total jours</th>
-                                        <th>Détail</th>
-                                        {% if can_manage_overtime %}<th></th>{% endif %}
+                                        <th>Détail des saisies</th>
+                                        {% if can_manage_overtime %}<th>Actions</th>{% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -144,14 +175,18 @@
                                             </td>
                                             {% if can_manage_overtime %}
                                                 <td>
-                                                    {% for entry in row.entries %}
-                                                        <form method="post" class="inline-form">
-                                                            {% csrf_token %}
-                                                            <input type="hidden" name="action" value="delete_entry">
-                                                            <input type="hidden" name="entry_id" value="{{ entry.id }}">
-                                                            <button type="submit" class="link-button link-button--danger" onclick="return confirm('Supprimer cette ligne ?');">Suppr. {{ entry.work_date|date:"d/m/Y" }}</button>
-                                                        </form>
-                                                    {% endfor %}
+                                                    <div class="overtime-row-actions">
+                                                        {% for entry in row.entries %}
+                                                            <form method="post" class="inline-form">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="action" value="delete_entry">
+                                                                <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                                                                <button type="submit" class="ot-btn-delete" onclick="return confirm('Supprimer la saisie du {{ entry.work_date|date:'d/m/Y' }} ?');">
+                                                                    Supprimer · {{ entry.work_date|date:"d/m/Y" }}
+                                                                </button>
+                                                            </form>
+                                                        {% endfor %}
+                                                    </div>
                                                 </td>
                                             {% endif %}
                                         </tr>
