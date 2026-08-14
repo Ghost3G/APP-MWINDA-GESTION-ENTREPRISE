@@ -713,7 +713,6 @@ def _overtime_visible_users(request):
 def _overtime_context(request):
     from datetime import datetime
     from .overtime import (
-        build_overtime_suggestions,
         build_overtime_summary,
         format_days_label,
         parse_overtime_period,
@@ -734,10 +733,6 @@ def _overtime_context(request):
             visible_users = [selected_agent]
 
     summary_rows, grand_total = build_overtime_summary(visible_users, start, end)
-    suggestions = []
-    if can_manage_overtime(request.user):
-        suggestion_users = list(User.objects.filter(is_active=True).order_by('first_name', 'last_name'))
-        suggestions = build_overtime_suggestions(suggestion_users, start, end)
 
     return {
         'period_key': period_key,
@@ -748,7 +743,6 @@ def _overtime_context(request):
         'summary_rows': summary_rows,
         'grand_total': grand_total,
         'grand_total_label': format_days_label(grand_total),
-        'suggestions': suggestions,
         'visible_users': visible_users,
         'all_agents': list(User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')),
         'selected_agent': selected_agent,
@@ -769,7 +763,7 @@ def overtime_dashboard(request):
         action = request.POST.get('action', '').strip()
         redirect_url = request.get_full_path() or 'overtime_dashboard'
 
-        if action in {'add_entry', 'validate_suggestion', 'update_entry'} and not can_manage_overtime(request.user):
+        if action in {'add_entry', 'update_entry'} and not can_manage_overtime(request.user):
             messages.error(request, 'Seuls le DT et l’adjoint DT peuvent saisir des jours supplémentaires.')
             return redirect(redirect_url)
 
@@ -806,35 +800,6 @@ def overtime_dashboard(request):
                 f'{days} jour(s) sup. {verb} pour {agent.get_labeled_name()} '
                 f'({work_date.strftime("%d/%m/%Y")}).',
             )
-            return redirect(redirect_url)
-
-        if action == 'validate_suggestion':
-            try:
-                agent = User.objects.get(pk=int(request.POST.get('user_id', '0')), is_active=True)
-            except (TypeError, ValueError, User.DoesNotExist):
-                messages.error(request, 'Agent invalide.')
-                return redirect(redirect_url)
-            work_date_raw = request.POST.get('work_date', '').strip()
-            try:
-                work_date = datetime.strptime(work_date_raw, '%Y-%m-%d').date()
-            except ValueError:
-                messages.error(request, 'Date invalide.')
-                return redirect(redirect_url)
-            days = _parse_decimal_days(request.POST.get('days'))
-            if days is None:
-                messages.error(request, 'Nombre de jours invalide.')
-                return redirect(redirect_url)
-            OvertimeDayEntry.objects.update_or_create(
-                user=agent,
-                work_date=work_date,
-                defaults={
-                    'days': days,
-                    'notes': 'Validé depuis connexion hors horaires',
-                    'source': 'auto_validated',
-                    'created_by': request.user,
-                },
-            )
-            messages.success(request, 'Suggestion validée et comptabilisée.')
             return redirect(redirect_url)
 
         if action == 'delete_entry':

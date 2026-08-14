@@ -42,32 +42,7 @@
     align-items: flex-end;
 }
 
-.presence-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-}
-
-.presence-tab {
-    display: inline-flex;
-    align-items: center;
-    padding: 10px 16px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 700;
-    color: #d4d4d8;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.presence-tab.active {
-    color: #111827;
-    background: #fde047;
-    border-color: #fde047;
-}
-
-.overtime-filter-row .form-group label,
+.presence-page .panel h3 {
 .overtime-manual-form label {
     display: block;
     font-size: 12px;
@@ -126,8 +101,7 @@
     color: #f87171;
 }
 
-.overtime-manual-panel,
-.overtime-suggestions-panel {
+.overtime-manual-panel {
     margin-bottom: 16px;
 }
 

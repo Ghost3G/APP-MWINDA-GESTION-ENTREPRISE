@@ -21,12 +21,9 @@
                     <p>
                         Comptabilisation des <strong>jours prestés hors horaires officiels</strong>
                         (lun–ven 08:30–17:30 · sam 09:00–13:00).
-                        Les techniciens peuvent être saisis <strong>manuellement</strong> par le DT ;
-                        les connexions détectées hors plage restent des <strong>suggestions à valider</strong>.
+                        Saisie <strong>manuelle</strong> par le DT et l’adjoint DT pour toute l’équipe.
                     </p>
                 </div>
-
-                {% include "partials/presence_tabs.html" %}
 
                 {% if messages %}
                     {% for message in messages %}
@@ -105,46 +102,6 @@
                         </div>
                     </form>
                 </div>
-
-                {% if suggestions %}
-                <div class="panel overtime-suggestions-panel">
-                    <h3>Suggestions depuis connexions (à valider)</h3>
-                    <p class="filter-hint">Hors horaires détectés (≥ 30 min). Non comptés tant que vous ne validez pas.</p>
-                    <div class="table-wrap">
-                        <table class="presence-table overtime-table">
-                            <thead>
-                                <tr>
-                                    <th>Agent</th>
-                                    <th>Date</th>
-                                    <th>Durée détectée</th>
-                                    <th>Jours suggérés</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for sug in suggestions %}
-                                    <tr>
-                                        <td>{{ sug.user.get_labeled_name }}</td>
-                                        <td>{{ sug.work_date|date:"d/m/Y" }}</td>
-                                        <td>{{ sug.hours }} h</td>
-                                        <td>{{ sug.suggested_days }}</td>
-                                        <td>
-                                            <form method="post" class="inline-form">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="validate_suggestion">
-                                                <input type="hidden" name="user_id" value="{{ sug.user.id }}">
-                                                <input type="hidden" name="work_date" value="{{ sug.work_date|date:'Y-m-d' }}">
-                                                <input type="hidden" name="days" value="{{ sug.suggested_days }}">
-                                                <button type="submit" class="link-button">Valider</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endif %}
                 {% endif %}
 
                 <div class="panel">

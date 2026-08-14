@@ -60,10 +60,17 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements
         </a>
-        <a href="{% url 'presence_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'presence_dashboard' or request.resolver_match.url_name == 'overtime_dashboard' %}active{% endif %}">
-            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
-            Présence
-        </a>
+        <div class="sidebar-nav-group{% if request.resolver_match.url_name == 'presence_dashboard' or request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' or request.resolver_match.url_name == 'presence_pdf' or request.resolver_match.url_name == 'presence_a4_view' %} is-open{% endif %}">
+            <a href="{% url 'presence_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'presence_dashboard' %}active{% elif request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' %}active{% endif %}">
+                <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
+                Présence
+            </a>
+            {% if request.resolver_match.url_name == 'presence_dashboard' or request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' or request.resolver_match.url_name == 'presence_pdf' or request.resolver_match.url_name == 'presence_a4_view' %}
+                <a href="{% url 'overtime_dashboard' %}" class="nav-subitem {% if request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' %}active{% endif %}">
+                    Heures supplémentaires
+                </a>
+            {% endif %}
+        </div>
         {% if is_management or is_admin %}
         <a href="{% url 'manage_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_tasks' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>
