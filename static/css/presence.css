@@ -42,69 +42,6 @@
     align-items: flex-end;
 }
 
-.presence-page .panel h3 {
-.overtime-manual-form label {
-    display: block;
-    font-size: 12px;
-    color: var(--mw-muted);
-    margin-bottom: 4px;
-}
-
-.overtime-filter-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.overtime-notes-field {
-    flex: 1 1 220px;
-    min-width: 200px;
-}
-
-.overtime-total-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(253, 224, 71, 0.15);
-    color: #fde047;
-    font-weight: 800;
-}
-
-.overtime-entry-list {
-    margin: 0;
-    padding-left: 18px;
-    color: var(--mw-muted);
-    font-size: 13px;
-}
-
-.overtime-entry-list li {
-    margin-bottom: 4px;
-}
-
-.overtime-table .inline-form {
-    display: inline;
-    margin-right: 8px;
-}
-
-.link-button {
-    background: none;
-    border: none;
-    color: #fde047;
-    cursor: pointer;
-    padding: 0;
-    font: inherit;
-    text-decoration: underline;
-}
-
-.link-button--danger {
-    color: #f87171;
-}
-
-.overtime-manual-panel {
-    margin-bottom: 16px;
-}
-
 .filter-panel .form-group {
     display: flex;
     flex-direction: column;
