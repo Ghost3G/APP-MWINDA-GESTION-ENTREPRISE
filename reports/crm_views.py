@@ -32,7 +32,6 @@ from .views import (
     _client_financial_snapshot,
     _client_form_payload,
     _commercial_agents_queryset,
-    _create_crm_project_for_client,
     _crm_clients_queryset,
     _find_duplicate_client,
     _link_project_to_client,
@@ -48,7 +47,6 @@ CRM_ROUTE_NAMES = frozenset({
     'crm_relance_prospect',
     'crm_relance_recouvrement',
     'crm_new_client',
-    'crm_create_project',
     'crm_reassign',
     'crm_reports_list',
     'crm_report_detail',
@@ -228,25 +226,6 @@ def _handle_crm_post(request, *, default_redirect):
             )
             messages.success(request, 'Suivi ajouté.')
         return _crm_redirect(request, path=default_redirect, edit=str(client.id))
-
-    if action == 'add_project':
-        client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
-        if not client or not can_edit_crm_client(request.user, client):
-            messages.error(request, 'Client introuvable ou non autorisé.')
-            return redirect(default_redirect)
-        project, error = _create_crm_project_for_client(request, client)
-        if error:
-            messages.error(request, error)
-            return redirect(default_redirect)
-        messages.success(
-            request,
-            f'Projet « {project.name} » créé pour « {client.name} » ({client.code}).',
-        )
-        return _crm_redirect(
-            request,
-            path=reverse('crm_my_clients'),
-            edit=str(client.id),
-        )
 
     if action == 'link_project':
         client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
@@ -533,27 +512,6 @@ def crm_new_client(request):
         ),
     })
     return render(request, 'crm/new_client.html', ctx)
-
-
-@login_required(login_url='login')
-def crm_create_project(request):
-    blocked = _crm_guard(request)
-    if blocked:
-        return blocked
-    default = reverse('crm_create_project')
-    post_response = _handle_crm_post(request, default_redirect=default)
-    if post_response:
-        return post_response
-
-    ctx = _crm_shared_context(request, page_key='create_project')
-    ctx.update({
-        'page_title': 'Créer un projet',
-        'page_intro': (
-            'Ouvrez un projet rattaché à un client existant de votre portefeuille. '
-            'Les encaissements seront saisis par le service Finance.'
-        ),
-    })
-    return render(request, 'crm/create_project.html', ctx)
 
 
 @login_required(login_url='login')

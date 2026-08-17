@@ -11,6 +11,29 @@
     color: #71717a;
 }
 
+.sidebar-nav a.nav-subgroup-label--link {
+    display: block;
+    margin: 6px 8px 2px 54px;
+    padding: 6px 14px;
+    border-radius: var(--mw-radius-sm);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #a1a1aa;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.sidebar-nav a.nav-subgroup-label--link:hover {
+    color: #fde047;
+    background: rgba(253, 224, 71, 0.08);
+}
+
+.sidebar-nav a.nav-subgroup-label--link.is-active {
+    color: #fde047;
+}
+
 .sidebar-nav .nav-subitem--nested {
     margin-left: 66px;
     font-size: 12px;

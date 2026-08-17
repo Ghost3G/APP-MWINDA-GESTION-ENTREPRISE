@@ -18,7 +18,6 @@ from .crm_views import (
     crm_relance_prospect,
     crm_relance_recouvrement,
     crm_new_client,
-    crm_create_project,
     crm_reassign,
 )
 
@@ -33,7 +32,6 @@ urlpatterns = [
     path('crm/relance/prospect/', crm_relance_prospect, name='crm_relance_prospect'),
     path('crm/relance/recouvrement/', crm_relance_recouvrement, name='crm_relance_recouvrement'),
     path('crm/nouveau-client/', crm_new_client, name='crm_new_client'),
-    path('crm/projet/nouveau/', crm_create_project, name='crm_create_project'),
     path('crm/affecter/', crm_reassign, name='crm_reassign'),
     path('crm/reports/', crm_reports_list, name='crm_reports_list'),
     path('crm/reports/<int:report_id>/', crm_report_detail, name='crm_report_detail'),

@@ -7,8 +7,8 @@
     <title>Rapports commerciaux — CRM — AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/finance.css' %}">
-    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}">
-    <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817a">
+    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}?v=20260817b">
+    <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817b">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -116,8 +116,8 @@
                             <input id="f-to" type="date" name="to" value="{{ date_to }}">
                         </div>
                         <div class="form-group crm-filter-actions">
-                            <button type="submit" class="btn-primary">Filtrer</button>
-                            <a href="{% url 'crm_reports_list' %}" class="btn-secondary">Réinitialiser</a>
+                            <button type="submit" class="btn-crm btn-crm--primary">Filtrer</button>
+                            <a href="{% url 'crm_reports_list' %}" class="btn-crm btn-crm--ghost">Réinitialiser</a>
                         </div>
                     </form>
                 </div>
@@ -190,7 +190,7 @@
                                 <input id="r-file" type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                             </div>
                         </div>
-                        <button type="submit" class="btn-primary">Enregistrer le rapport</button>
+                        <button type="submit" class="btn-crm btn-crm--primary">Enregistrer le rapport</button>
                     </form>
                 </div>
                 {% endif %}

@@ -7,7 +7,8 @@
     <title>Rapport commercial — {{ report.client.name }} — AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/finance.css' %}">
-    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}?v=20260817b">
+    <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817b">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -25,7 +26,6 @@
                             · {{ report.activity_date|date:"d/m/Y" }}
                         </p>
                     </div>
-                    {% include "partials/crm_header_action.html" %}
                 </div>
 
                 {% if messages %}
@@ -36,16 +36,16 @@
 
                 <div class="panel crm-report-detail">
                     <div class="crm-report-detail__actions">
-                        <a href="{% url 'crm_reports_list' %}" class="btn-secondary">← Retour à la liste</a>
-                        <a href="{% url 'crm_report_pdf' report.id %}" class="btn-primary">Télécharger PDF</a>
+                        <a href="{% url 'crm_reports_list' %}" class="btn-crm btn-crm--ghost">← Retour à la liste</a>
+                        <a href="{% url 'crm_report_pdf' report.id %}" class="btn-crm btn-crm--primary">Télécharger PDF</a>
                         {% if can_mark_read %}
                             <form method="post" class="inline-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="mark_read">
-                                <button type="submit" class="btn-primary">Marquer comme lu</button>
+                                <button type="submit" class="btn-crm btn-crm--primary">Marquer comme lu</button>
                             </form>
                         {% endif %}
-                        <a href="{% url 'crm_my_clients' %}?edit={{ report.client.id }}" class="btn-secondary">Fiche client</a>
+                        <a href="{% url 'crm_my_clients' %}?edit={{ report.client.id }}" class="btn-crm btn-crm--ghost">Fiche client</a>
                     </div>
 
                     <div class="crm-report-meta-grid">
