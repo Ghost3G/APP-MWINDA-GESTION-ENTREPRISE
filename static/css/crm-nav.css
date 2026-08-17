@@ -20,13 +20,6 @@
     transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem--child {
-    margin-left: 68px;
-    padding: 8px 14px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
 .sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem:hover {
     color: #fde047;
     background: rgba(253, 224, 71, 0.08);
