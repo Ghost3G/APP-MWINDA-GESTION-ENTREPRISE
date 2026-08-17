@@ -1,0 +1,54 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+<div class="summary-card crm-summary" style="grid-template-columns: 1fr 1fr;">
+    <div class="summary-item balance loss">
+        <small>Clients avec reste à payer</small>
+        <strong>{{ recouvrement_rows|length }}</strong>
+    </div>
+    <div class="summary-item expense">
+        <small>Total reste à encaisser</small>
+        <strong class="crm-reste">{{ total_remaining }} $</strong>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Priorité recouvrement</h3>
+    {% if recouvrement_rows %}
+        <div class="crm-client-cards">
+            {% for row in recouvrement_rows %}
+                <article class="crm-client-card">
+                    <div class="crm-client-card__head">
+                        <div>
+                            <h4>{% if row.client.code %}<span class="crm-client-code">{{ row.client.code }}</span>{% endif %}{{ row.client.name }}</h4>
+                            <div class="crm-client-card__meta">
+                                {% if row.client.commercial_owner %}<span>{{ row.client.commercial_owner.get_display_name }}</span>{% endif %}
+                                <span class="crm-status crm-status--{{ row.client.status }}">{{ row.client.get_status_display }}</span>
+                            </div>
+                        </div>
+                        <a href="{% url 'crm_my_clients' %}?edit={{ row.client.id }}" class="btn-crm btn-crm--ghost">Gérer</a>
+                    </div>
+                    <div class="crm-money-grid">
+                        <div class="crm-money-chip"><span class="crm-money-chip__label">Total</span><strong>{{ row.total_contract }} $</strong></div>
+                        <div class="crm-money-chip crm-money-chip--paid"><span class="crm-money-chip__label">Payé</span><strong>{{ row.paid }} $</strong></div>
+                        <div class="crm-money-chip crm-money-chip--reste"><span class="crm-money-chip__label">Reste</span><strong class="crm-reste">{{ row.remaining }} $</strong></div>
+                    </div>
+                    {% if row.projects %}
+                        <table class="table crm-projects-table" style="margin-top:10px;">
+                            <thead><tr><th>Projet</th><th>Reste</th></tr></thead>
+                            <tbody>
+                                {% for p in row.projects %}
+                                    {% if p.remaining > 0 %}
+                                        <tr><td>{{ p.project.name }}</td><td class="crm-reste">{{ p.remaining }} $</td></tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">Aucun reste à encaisser sur votre portefeuille.</p>
+    {% endif %}
+</div>
+{% endblock %}

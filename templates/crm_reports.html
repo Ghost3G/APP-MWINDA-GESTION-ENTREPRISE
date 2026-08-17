@@ -8,6 +8,7 @@
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/finance.css' %}">
     <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -26,7 +27,6 @@
                             les encaissements restent enregistrés par le service Finance.
                         </p>
                     </div>
-                    {% include "partials/crm_header_action.html" %}
                 </div>
 
                 {% if messages %}

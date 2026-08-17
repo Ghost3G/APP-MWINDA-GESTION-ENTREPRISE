@@ -1,0 +1,96 @@
+<form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_client %}update{% else %}create{% endif %}">
+    {% if edit_client %}
+        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+    {% endif %}
+    <div class="form-grid two-cols">
+        {% if edit_client and edit_client.code %}
+        <div class="form-group">
+            <label>Code client</label>
+            <input type="text" value="{{ edit_client.code }}" disabled>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label>Nom / Société *</label>
+            <input type="text" name="name" value="{{ edit_client.name|default:'' }}" required placeholder="Ex: Société ABC">
+        </div>
+        <div class="form-group">
+            <label>Personne de contact</label>
+            <input type="text" name="contact_name" value="{{ edit_client.contact_name|default:'' }}" placeholder="Ex: Jean Mukendi">
+        </div>
+        {% if can_reassign_crm %}
+        <div class="form-group">
+            <label>Commercial responsable *</label>
+            <select name="commercial_owner_id" required>
+                {% for agent in commercial_agents %}
+                    <option value="{{ agent.id }}"
+                        {% if edit_client and edit_client.commercial_owner_id == agent.id %}selected
+                        {% elif not edit_client and agent.id == request.user.id %}selected{% endif %}>
+                        {{ agent.get_display_name }}
+                    </option>
+                {% empty %}
+                    <option value="{{ request.user.id }}">{{ request.user.get_display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label>Commercial responsable</label>
+            <input type="text" value="{% if edit_client and edit_client.commercial_owner %}{{ edit_client.commercial_owner.get_display_name }}{% else %}{{ request.user.get_display_name }} (vous){% endif %}" disabled>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label>Téléphone</label>
+            <input type="text" name="phone" value="{{ edit_client.phone|default:'' }}" placeholder="+243 ...">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ edit_client.email|default:'' }}" placeholder="contact@exemple.com">
+        </div>
+        <div class="form-group">
+            <label>Adresse</label>
+            <input type="text" name="address" value="{{ edit_client.address|default:'' }}" placeholder="Avenue / commune">
+        </div>
+        <div class="form-group">
+            <label>Ville</label>
+            <input type="text" name="city" value="{{ edit_client.city|default:'' }}" placeholder="Kinshasa">
+        </div>
+        <div class="form-group">
+            <label>Pays</label>
+            <input type="text" name="country" value="{{ edit_client.country|default:'RDC' }}">
+        </div>
+        <div class="form-group">
+            <label>NIF / RCCM</label>
+            <input type="text" name="tax_id" value="{{ edit_client.tax_id|default:'' }}" placeholder="Optionnel">
+        </div>
+        <div class="form-group">
+            <label>Statut</label>
+            <select name="status">
+                {% for value, label in client_status_choices %}
+                    <option value="{{ value }}" {% if edit_client and edit_client.status == value %}selected{% elif not edit_client and value == 'prospect' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Prochaine action</label>
+            <input type="text" name="next_action" value="{{ edit_client.next_action|default:'' }}" placeholder="Ex: Relancer devis, RDV...">
+        </div>
+        <div class="form-group">
+            <label>Date prochaine action</label>
+            <input type="date" name="next_action_date" value="{% if edit_client and edit_client.next_action_date %}{{ edit_client.next_action_date|date:'Y-m-d' }}{% endif %}">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Notes</label>
+            <textarea name="notes" placeholder="Informations utiles, historique commercial...">{{ edit_client.notes|default:'' }}</textarea>
+        </div>
+    </div>
+    <div class="client-form-actions">
+        <button type="submit" class="btn-crm btn-crm--primary">
+            {% if edit_client %}Enregistrer les modifications{% else %}Créer le client{% endif %}
+        </button>
+        {% if edit_client %}
+            <a href="{% url 'crm_my_clients' %}" class="btn-crm btn-crm--ghost">Retour à la liste</a>
+        {% endif %}
+    </div>
+</form>

@@ -252,7 +252,7 @@ def collect_team_alerts(*, limit=120):
                         f'Action prévue le {client.next_action_date.strftime("%d/%m/%Y")}'
                         + (f' — {client.next_action}' if client.next_action else '')
                     ),
-                    url=reverse('crm_portfolio') + f'?edit={client.id}',
+                    url=reverse('crm_my_clients') + f'?edit={client.id}',
                     sort_date=client.next_action_date,
                 )
             )
@@ -269,7 +269,7 @@ def collect_team_alerts(*, limit=120):
                     module='CRM',
                     title=f'Client « {client.name} » — relance aujourd’hui',
                     detail=client.next_action or 'Prochaine action commerciale',
-                    url=reverse('crm_portfolio') + f'?edit={client.id}',
+                    url=reverse('crm_my_clients') + f'?edit={client.id}',
                     sort_date=today,
                 )
             )

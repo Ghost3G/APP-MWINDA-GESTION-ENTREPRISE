@@ -1,0 +1,131 @@
+{% if edit_client %}
+<div class="panel" style="margin-bottom:16px;">
+    <h3>Modifier — {% if edit_client.code %}{{ edit_client.code }} · {% endif %}{{ edit_client.name }}</h3>
+    {% include "crm/partials/client_form.html" %}
+</div>
+
+{% if merge_candidates %}
+<div class="panel crm-merge-panel" style="margin-bottom:16px;">
+    <h3>Fusionner un doublon</h3>
+    <form method="POST" onsubmit="return confirm('Confirmer la fusion ?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="merge_clients">
+        <input type="hidden" name="keep_id" value="{{ edit_client.id }}">
+        <div class="form-group">
+            <label>Doublon à fusionner *</label>
+            <select name="absorb_id" required>
+                <option value="">— Choisir —</option>
+                {% for c in merge_candidates %}
+                    <option value="{{ c.id }}">#{{ c.id }} — {{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-crm btn-crm--primary">Fusionner</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="panel" style="margin-bottom:16px;">
+    <h3>Suivis — {{ edit_client.name }}</h3>
+    <form method="POST" style="margin-bottom:16px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_followup">
+        <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+        <div class="form-grid two-cols">
+            <div class="form-group">
+                <label>Type</label>
+                <select name="follow_type">
+                    {% for value, label in followup_type_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Contenu</label>
+                <textarea name="content" required placeholder="Compte-rendu, note de relance..."></textarea>
+            </div>
+        </div>
+        <button type="submit" class="btn-crm btn-crm--primary">Ajouter un suivi</button>
+    </form>
+    {% if edit_follow_ups %}
+        <ul class="crm-followup-list">
+            {% for fu in edit_follow_ups %}
+                <li>
+                    <strong>{{ fu.get_follow_type_display }}</strong> · {{ fu.created_at|date:"d/m/Y H:i" }}
+                    {% if fu.author %}· {{ fu.author.get_display_name }}{% endif %}
+                    <div>{{ fu.content }}</div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">Aucun suivi.</p>
+    {% endif %}
+</div>
+
+<div class="panel" style="margin-bottom:16px;">
+    <h3>Projets — {{ edit_client.name }}</h3>
+    {% if edit_finance %}
+        <div class="crm-money-grid">
+            <div class="crm-money-chip"><span class="crm-money-chip__label">Projets</span><strong>{{ edit_finance.project_count }}</strong></div>
+            <div class="crm-money-chip"><span class="crm-money-chip__label">Total</span><strong>{{ edit_finance.total_contract }} $</strong></div>
+            <div class="crm-money-chip crm-money-chip--paid"><span class="crm-money-chip__label">Payé</span><strong>{{ edit_finance.paid }} $</strong></div>
+            <div class="crm-money-chip crm-money-chip--reste"><span class="crm-money-chip__label">Reste</span><strong class="crm-reste">{{ edit_finance.remaining }} $</strong></div>
+        </div>
+        {% if edit_finance.projects %}
+            <table class="table crm-projects-table" style="margin:12px 0;">
+                <thead><tr><th>Projet</th><th>Montant</th><th>Payé</th><th>Reste</th></tr></thead>
+                <tbody>
+                    {% for row in edit_finance.projects %}
+                        <tr>
+                            <td>{{ row.project.name }}</td>
+                            <td>{{ row.contract }} $</td>
+                            <td class="positive">{{ row.paid }} $</td>
+                            <td class="crm-reste">{{ row.remaining }} $</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+    {% if can_edit_crm and linkable_projects %}
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="link_project">
+            <input type="hidden" name="client_id" value="{{ edit_client.id }}">
+            <div class="form-group">
+                <label>Lier un projet existant *</label>
+                <select name="project_id" required>
+                    <option value="">— Choisir —</option>
+                    {% for p in linkable_projects %}
+                        <option value="{{ p.id }}">{{ p.name }} · {{ p.contract_amount }} $</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-crm btn-crm--primary">Lier le projet</button>
+        </form>
+    {% endif %}
+    <p style="margin-top:12px;">
+        <a href="{% url 'crm_create_project' %}?client={{ edit_client.id }}" class="btn-crm btn-crm--ghost">+ Créer un nouveau projet</a>
+    </p>
+</div>
+
+<div class="panel crm-client-reports-panel">
+    <h3>Rapports — {{ edit_client.name }}</h3>
+    {% if edit_commercial_reports %}
+        <ul class="crm-followup-list">
+            {% for rep in edit_commercial_reports %}
+                <li>
+                    <strong>{{ rep.get_activity_type_display }}</strong> · {{ rep.activity_date|date:"d/m/Y" }}
+                    <div>{{ rep.summary|truncatechars:160 }}</div>
+                    <a href="{% url 'crm_report_detail' rep.id %}">Voir</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">Aucun rapport.</p>
+    {% endif %}
+    {% if can_create_crm_report %}
+        <a href="{% url 'crm_reports_list' %}?client={{ edit_client.id }}#nouveau-rapport" class="btn-crm btn-crm--primary" style="margin-top:12px;display:inline-flex;">+ Nouveau rapport</a>
+    {% endif %}
+</div>
+{% endif %}

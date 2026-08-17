@@ -1,0 +1,127 @@
+<div class="summary-card crm-summary">
+    <div class="summary-item income">
+        <small>{% if selected_owner_user %}Clients de {{ selected_owner_user.get_display_name }}{% elif can_view_all_crm %}Clients visibles{% else %}Mon portefeuille{% endif %}</small>
+        <strong>{{ portfolio_count }}</strong>
+    </div>
+    <div class="summary-item balance gain">
+        <small>{% if selected_owner_user %}Assignés à {{ selected_owner_user.get_display_name }}{% else %}Mes clients{% endif %}</small>
+        <strong>{{ my_portfolio_count }}</strong>
+    </div>
+    <div class="summary-item income">
+        <small>Total projets</small>
+        <strong>{{ portfolio_total }} $</strong>
+    </div>
+    <div class="summary-item expense">
+        <small>Payé</small>
+        <strong>{{ portfolio_paid }} $</strong>
+    </div>
+    <div class="summary-item balance loss">
+        <small>Reste à encaisser</small>
+        <strong class="crm-reste">{{ portfolio_remaining }} $</strong>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="clients-panel-header">
+        <h3>{% if show_archived %}Clients archivés{% else %}{% if can_view_all_crm %}Portefeuilles{% else %}Mon portefeuille{% endif %}{% endif %}</h3>
+        <div class="clients-panel-links">
+            {% if show_archived %}
+                <a href="{% url 'crm_my_clients' %}">Voir les actifs</a>
+            {% else %}
+                <a href="?archived=1{% if selected_owner %}&owner={{ selected_owner }}{% endif %}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}">Voir les archivés</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="GET" class="crm-filters">
+        {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+        {% if edit_client %}<input type="hidden" name="edit" value="{{ edit_client.id }}">{% endif %}
+        <div class="form-group">
+            <label>Recherche</label>
+            <input type="search" name="q" value="{{ search_q }}" placeholder="Code, nom, téléphone, email…">
+        </div>
+        <div class="form-group">
+            <label>Statut</label>
+            <select name="status">
+                <option value="">Tous</option>
+                {% for value, label in client_status_choices %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if can_view_all_crm %}
+        <div class="form-group">
+            <label>Commercial</label>
+            <select name="owner">
+                <option value="">Tous</option>
+                {% for agent in commercial_agents %}
+                    <option value="{{ agent.id }}" {% if selected_owner == agent.id|stringformat:"s" %}selected{% endif %}>{{ agent.get_display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="form-group crm-filter-check">
+            <label class="crm-check-label">
+                <input type="checkbox" name="reste" value="1" {% if reste_filter %}checked{% endif %}>
+                Reste à payer &gt; 0
+            </label>
+        </div>
+        <div class="form-group crm-filter-actions">
+            <button type="submit" class="btn-crm btn-crm--primary">Filtrer</button>
+            <a class="btn-crm btn-crm--ghost" href="{% url 'crm_my_clients' %}{% if show_archived %}?archived=1{% endif %}">Réinitialiser</a>
+        </div>
+    </form>
+
+    {% if clients_with_finance %}
+        <div class="crm-client-cards">
+            {% for row in clients_with_finance %}
+                <article class="crm-client-card">
+                    <div class="crm-client-card__head">
+                        <div>
+                            <h4>
+                                {% if row.client.code %}<span class="crm-client-code">{{ row.client.code }}</span>{% endif %}
+                                {{ row.client.name }}
+                            </h4>
+                            <div class="crm-client-card__meta">
+                                {% if row.client.commercial_owner %}<span>{{ row.client.commercial_owner.get_display_name }}</span>{% endif %}
+                                <span class="crm-status crm-status--{{ row.client.status }}">{{ row.client.get_status_display }}</span>
+                                {% if row.client.phone %}<span>{{ row.client.phone }}</span>{% endif %}
+                            </div>
+                        </div>
+                        {% if can_edit_crm %}
+                        <div class="crm-card-actions">
+                            <a href="{% url 'crm_my_clients' %}?edit={{ row.client.id }}{% if show_archived %}&archived=1{% endif %}{% if selected_owner %}&owner={{ selected_owner }}{% endif %}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" class="btn-crm btn-crm--ghost">Gérer</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="crm-money-grid">
+                        <div class="crm-money-chip">
+                            <span class="crm-money-chip__label">Projets</span>
+                            <strong>{{ row.project_count }}</strong>
+                        </div>
+                        <div class="crm-money-chip">
+                            <span class="crm-money-chip__label">Total</span>
+                            <strong>{{ row.total_contract }} $</strong>
+                        </div>
+                        <div class="crm-money-chip crm-money-chip--paid">
+                            <span class="crm-money-chip__label">Payé</span>
+                            <strong>{{ row.paid }} $</strong>
+                        </div>
+                        <div class="crm-money-chip crm-money-chip--reste">
+                            <span class="crm-money-chip__label">Reste</span>
+                            <strong class="crm-reste">{{ row.remaining }} $</strong>
+                        </div>
+                    </div>
+                    {% if row.client.next_action or row.client.next_action_date %}
+                        <div class="crm-next-action">
+                            <span class="crm-next-action__label">Prochaine action</span>
+                            <span>{{ row.client.next_action|default:"—" }}{% if row.client.next_action_date %} · {{ row.client.next_action_date|date:"d/m/Y" }}{% endif %}</span>
+                        </div>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">Aucun client dans ce portefeuille.</p>
+    {% endif %}
+</div>

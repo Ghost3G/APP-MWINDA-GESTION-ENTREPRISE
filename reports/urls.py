@@ -13,6 +13,14 @@ from .views import (
     crm_report_detail,
     crm_report_pdf,
 )
+from .crm_views import (
+    crm_my_clients,
+    crm_relance_prospect,
+    crm_relance_recouvrement,
+    crm_new_client,
+    crm_create_project,
+    crm_reassign,
+)
 
 urlpatterns = [
     path('', reports_list, name='reports_list'),
@@ -20,7 +28,13 @@ urlpatterns = [
     path('<int:report_id>/a4/', report_a4_view, name='report_a4'),
     path('finance/', finance_dashboard, name='finance_dashboard'),
     path('finance/clients/', finance_clients, name='finance_clients'),
-    path('crm/', finance_clients, name='crm_portfolio'),
+    path('crm/', crm_my_clients, name='crm_my_clients'),
+    path('crm/mes-clients/', crm_my_clients, name='crm_portfolio'),
+    path('crm/relance/prospect/', crm_relance_prospect, name='crm_relance_prospect'),
+    path('crm/relance/recouvrement/', crm_relance_recouvrement, name='crm_relance_recouvrement'),
+    path('crm/nouveau-client/', crm_new_client, name='crm_new_client'),
+    path('crm/projet/nouveau/', crm_create_project, name='crm_create_project'),
+    path('crm/affecter/', crm_reassign, name='crm_reassign'),
     path('crm/reports/', crm_reports_list, name='crm_reports_list'),
     path('crm/reports/<int:report_id>/', crm_report_detail, name='crm_report_detail'),
     path('crm/reports/<int:report_id>/pdf/', crm_report_pdf, name='crm_report_pdf'),

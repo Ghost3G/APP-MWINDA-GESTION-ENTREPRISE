@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{{ page_title }} — CRM — AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/finance.css' %}">
+    <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="finance-page">
+                <div class="page-header page-header--crm">
+                    <div class="page-header__text">
+                        <h1>CRM — {{ page_title }}</h1>
+                        <p>{{ page_intro }}</p>
+                    </div>
+                </div>
+
+                {% if is_commercial_lead_user %}
+                    <div class="finance-banner finance-banner-lead">
+                        Profil Responsable Commercial — accès à l’ensemble des portefeuilles.
+                    </div>
+                {% endif %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message {{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if not can_edit_crm %}
+                    <div class="finance-banner finance-banner-readonly">
+                        Mode consultation sur les fiches clients.
+                    </div>
+                {% endif %}
+
+                {% block crm_content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

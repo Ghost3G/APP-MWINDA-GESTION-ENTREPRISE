@@ -1,0 +1,22 @@
+/* Sous-menu CRM — navigation nested (Relance > Prospect / Recouvrement) */
+
+.sidebar-nav .nav-subgroup-label {
+    display: block;
+    margin: 6px 8px 2px 54px;
+    padding: 4px 14px 0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #71717a;
+}
+
+.sidebar-nav .nav-subitem--nested {
+    margin-left: 66px;
+    font-size: 12px;
+    padding: 8px 12px;
+}
+
+.sidebar-nav-group--crm.is-open {
+    margin-bottom: 4px;
+}

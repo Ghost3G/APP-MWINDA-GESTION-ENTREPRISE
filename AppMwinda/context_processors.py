@@ -9,6 +9,7 @@ def app_notifications(request):
             'is_admin': False,
             'is_finance': False,
             'is_crm': False,
+            'can_reassign_crm': False,
             'is_stock': False,
             'alerts_actionable_count': 0,
             'current_user_profile': None,
@@ -51,6 +52,7 @@ def app_notifications(request):
         can_access_finance,
         can_access_crm,
         can_access_stock,
+        can_reassign_crm_client,
     )
     from users.presence import agent_logout_warning_payload, service_hours_banner_payload
 
@@ -153,6 +155,7 @@ def app_notifications(request):
         'is_admin': is_admin,
         'is_finance': is_finance,
         'is_crm': is_crm,
+        'can_reassign_crm': can_reassign_crm_client(user) if is_crm else False,
         'is_stock': is_stock,
         'project_deadline_alerts': project_deadline_alerts,
         'agent_logout_warning': agent_logout_warning,

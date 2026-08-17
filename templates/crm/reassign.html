@@ -1,0 +1,33 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+<div class="panel crm-reassign-panel">
+    <h3>Réaffectation commerciale</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reassign">
+        <div class="form-grid two-cols">
+            <div class="form-group">
+                <label>Client *</label>
+                <select name="client_id" required>
+                    <option value="">— Sélectionner —</option>
+                    {% for c in active_clients_for_project %}
+                        <option value="{{ c.id }}">
+                            {% if c.code %}{{ c.code }} — {% endif %}{{ c.name }}{% if c.commercial_owner %} → {{ c.commercial_owner.get_display_name }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Affecter à *</label>
+                <select name="commercial_owner_id" required>
+                    <option value="">— Choisir le commercial —</option>
+                    {% for agent in commercial_agents %}
+                        <option value="{{ agent.id }}">{{ agent.get_display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn-crm btn-crm--primary">Affecter le client</button>
+    </form>
+</div>
+{% endblock %}

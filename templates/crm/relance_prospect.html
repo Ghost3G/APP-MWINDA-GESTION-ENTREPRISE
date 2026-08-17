@@ -1,0 +1,65 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+<div class="panel crm-agenda-panel">
+    <h3>Prospects à relancer</h3>
+    <div class="crm-agenda-grid">
+        <div class="crm-agenda-col crm-agenda-col--overdue">
+            <h4>En retard ({{ overdue_clients|length }})</h4>
+            {% if overdue_clients %}
+                <ul class="crm-agenda-list">
+                    {% for c in overdue_clients %}
+                        <li>
+                            <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                            <span class="crm-reste">{{ c.next_action_date|date:"d/m/Y" }}</span>
+                            <span class="muted">{{ c.next_action|default:"—" }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Aucune relance en retard.</p>
+            {% endif %}
+        </div>
+        <div class="crm-agenda-col">
+            <h4>Aujourd'hui ({{ due_today_clients|length }})</h4>
+            {% if due_today_clients %}
+                <ul class="crm-agenda-list">
+                    {% for c in due_today_clients %}
+                        <li>
+                            <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                            <span class="muted">{{ c.next_action|default:"—" }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Rien prévu aujourd'hui.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if upcoming_clients %}
+<div class="panel">
+    <h3>À venir</h3>
+    <ul class="crm-agenda-list">
+        {% for c in upcoming_clients %}
+            <li>
+                <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                · {{ c.next_action_date|date:"d/m/Y" }}
+                <span class="muted">{{ c.next_action|default:"—" }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if without_date_clients %}
+<div class="panel">
+    <h3>Prospects sans date de relance</h3>
+    <ul class="crm-agenda-list">
+        {% for c in without_date_clients %}
+            <li><a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}

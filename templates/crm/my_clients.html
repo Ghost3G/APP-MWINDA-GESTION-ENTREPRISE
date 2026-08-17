@@ -1,0 +1,8 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+    {% if edit_client %}
+        {% include "crm/partials/client_edit_panels.html" %}
+    {% else %}
+        {% include "crm/partials/client_list.html" %}
+    {% endif %}
+{% endblock %}
