@@ -1,0 +1,79 @@
+/* MWINDA — panneaux graphiques unifiés (Chart.js) */
+.mw-charts-section {
+    margin: 20px 0 24px;
+}
+
+.mw-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.mw-chart-card {
+    background: linear-gradient(145deg, rgba(24, 24, 27, 0.92), rgba(15, 15, 18, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    position: relative;
+    overflow: hidden;
+}
+
+.mw-chart-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.35), transparent);
+    pointer-events: none;
+}
+
+.mw-chart-card--wide {
+    grid-column: 1 / -1;
+}
+
+.mw-chart-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mw-chart-card__head h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #f4f4f5;
+    letter-spacing: -0.01em;
+}
+
+.mw-chart-card__subtitle {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #71717a;
+}
+
+.mw-chart-card__canvas-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 220px;
+}
+
+.mw-chart-card__canvas-wrap canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@media (max-width: 960px) {
+    .mw-charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mw-chart-card--wide {
+        grid-column: auto;
+    }
+}

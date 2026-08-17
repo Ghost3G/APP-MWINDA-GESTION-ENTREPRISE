@@ -1095,6 +1095,8 @@ def projects_list(request):
     completed_by_month = _group_completed_projects_by_month(completed_projects)
     completed_total = sum(group['count'] for group in completed_by_month)
 
+    from reports.chart_data import build_projects_branch_chart, build_projects_status_chart, pack_charts
+
     context = {
         'projects': projects,
         'active_projects': active_projects,
@@ -1121,6 +1123,10 @@ def projects_list(request):
         'home_featured_max': HOME_FEATURED_MAX,
         'home_featured_count': Project.objects.filter(show_on_home=True).count(),
         'home_next_order': _next_free_home_order(),
+        'mw_charts': pack_charts(
+            build_projects_status_chart(projects),
+            build_projects_branch_chart(projects),
+        ),
     }
     return render(request, 'projects.html', context)
 

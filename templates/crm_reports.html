@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/finance.css' %}">
     <link rel="stylesheet" href="{% static 'css/crm-reports.css' %}?v=20260817b">
     <link rel="stylesheet" href="{% static 'css/crm-nav.css' %}?v=20260817c">
+    <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -62,6 +63,8 @@
                         </div>
                     {% endif %}
                 </div>
+
+                {% include "partials/mw_charts_section.html" %}
 
                 <div class="panel crm-report-filters">
                     <form method="get" class="form-grid crm-report-filter-grid">
@@ -279,5 +282,10 @@
         refreshProjects();
     })();
     </script>
+    {% if mw_charts %}
+        {{ mw_charts|json_script:"mw-charts-data" }}
+        <script src="{% static 'js/chart.umd.min.js' %}"></script>
+        <script src="{% static 'js/mw-charts.js' %}?v=20260817a"></script>
+    {% endif %}
 </body>
 </html>

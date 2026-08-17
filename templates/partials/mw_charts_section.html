@@ -1,0 +1,21 @@
+{% if mw_charts %}
+<section class="mw-charts-section" aria-label="Indicateurs visuels">
+    <div class="mw-charts-grid">
+        {% for chart in mw_charts %}
+            <article class="mw-chart-card{% if chart.wide %} mw-chart-card--wide{% endif %}">
+                <header class="mw-chart-card__head">
+                    <div>
+                        <h3>{{ chart.title }}</h3>
+                        {% if chart.subtitle %}
+                            <span class="mw-chart-card__subtitle">{{ chart.subtitle }}</span>
+                        {% endif %}
+                    </div>
+                </header>
+                <div class="mw-chart-card__canvas-wrap">
+                    <canvas id="{{ chart.id }}" aria-label="{{ chart.title }}"></canvas>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

@@ -754,7 +754,21 @@ def _overtime_context(request):
         'can_manage_overtime': can_manage_overtime(request.user),
         'can_view_all_overtime': can_view_all_overtime(request.user),
         'source_choices': OvertimeDayEntry.SOURCE_CHOICES,
+        'mw_charts': _overtime_charts(summary_rows),
     }
+
+
+def _overtime_charts(summary_rows):
+    from reports.chart_data import (
+        build_overtime_by_agent_chart,
+        build_overtime_monthly_chart,
+        pack_charts,
+    )
+
+    return pack_charts(
+        build_overtime_by_agent_chart(summary_rows),
+        build_overtime_monthly_chart(summary_rows),
+    )
 
 
 @login_required(login_url='login')

@@ -45,6 +45,12 @@ from .models import (
     INCOME_CATEGORY_CHOICES,
     PAYMENT_METHOD_CHOICES,
 )
+from .chart_data import (
+    build_finance_category_donut,
+    build_finance_monthly_trend,
+    crm_reports_charts,
+    pack_charts,
+)
 from .pdf import build_report_pdf, build_finance_pdf, build_crm_commercial_report_pdf
 
 CLIENT_STATUS_CHOICES = getattr(
@@ -993,6 +999,22 @@ def finance_dashboard(request):
         ],
     }
 
+    mw_charts = pack_charts(
+        build_finance_category_donut(
+            monthly_income_categories,
+            'finance-chart-income-cat',
+            'Entrées par catégorie',
+            subtitle='Mois en cours',
+        ),
+        build_finance_category_donut(
+            monthly_expense_categories,
+            'finance-chart-expense-cat',
+            'Sorties par catégorie',
+            subtitle='Mois en cours',
+        ),
+        build_finance_monthly_trend(selected_date),
+    )
+
     expense_days = {
         row['expense_date']: row
         for row in FinanceExpense.objects.values('expense_date').annotate(total=Sum('amount'), count=Count('id'))
@@ -1046,6 +1068,7 @@ def finance_dashboard(request):
         'finance_clients': finance_clients,
         'finance_section': 'caisse',
         'chart_data': chart_data,
+        'mw_charts': mw_charts,
         'recent_daily_totals': recent_daily_totals,
         'is_admin': is_admin_user(request.user),
         'is_management': is_management_user(request.user),
@@ -2260,6 +2283,7 @@ def crm_reports_list(request):
         'is_commercial_lead_user': is_commercial_lead(request.user),
         'is_management': is_management_user(request.user),
         'crm_mode': True,
+        'mw_charts': crm_reports_charts(reports_qs, show_leaderboard=can_view_all),
     })
 
 

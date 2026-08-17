@@ -22,6 +22,12 @@ from users.permissions import (
     is_commercial_lead,
 )
 
+from .chart_data import (
+    crm_hub_charts,
+    crm_my_clients_charts,
+    crm_prospect_charts,
+    crm_recouvrement_charts,
+)
 from .models import CrmCommercialReport, CrmFollowUp, FinanceClient
 from .views import (
     CLIENT_STATUS_CHOICES,
@@ -422,7 +428,8 @@ def crm_my_clients(request):
     edit_client, edit_follow_ups, edit_commercial_reports, edit_finance, merge_candidates = (
         _load_edit_client(request, see_all=ctx['view_all'], follow_ups_qs=ctx['follow_ups_qs'])
     )
-    ctx.update(_portfolio_list_context(request, ctx))
+    portfolio_ctx = _portfolio_list_context(request, ctx)
+    ctx.update(portfolio_ctx)
     ctx.update({
         'edit_client': edit_client,
         'edit_follow_ups': edit_follow_ups,
@@ -434,6 +441,12 @@ def crm_my_clients(request):
             'Consultez votre portefeuille : fiches clients, projets liés et montants '
             'payés / restants (mis à jour par le service Finance).'
         ),
+        'mw_charts': crm_my_clients_charts(
+            request.user,
+            see_all=ctx['view_all'],
+            owner_filter=ctx['filter_owner_id'],
+            clients_with_finance=portfolio_ctx['clients_with_finance'],
+        ) if not edit_client else [],
     })
     return render(request, 'crm/my_clients.html', ctx)
 
@@ -467,6 +480,15 @@ def crm_relance(request):
             'Centre de relance commerciale : consultez vos priorités prospect '
             'et recouvrement, puis accédez au détail de chaque vue.'
         ),
+        'mw_charts': crm_hub_charts(
+            request.user,
+            see_all=ctx['view_all'],
+            owner_filter=ctx['filter_owner_id'],
+            prospect_overdue=len(overdue),
+            prospect_today=len(due_today),
+            prospect_upcoming=len(upcoming),
+            recouvrement_rows=recouvrement_rows,
+        ),
     })
     return render(request, 'crm/relance.html', ctx)
 
@@ -497,6 +519,14 @@ def crm_relance_prospect(request):
             'Suivi des prospects à contacter : relances en retard, du jour et à venir. '
             'Mettez à jour la prochaine action depuis la fiche client.'
         ),
+        'mw_charts': crm_prospect_charts(
+            request.user,
+            see_all=ctx['view_all'],
+            owner_filter=ctx['filter_owner_id'],
+            overdue=overdue,
+            due_today=due_today,
+            upcoming=upcoming,
+        ),
     })
     return render(request, 'crm/relance_prospect.html', ctx)
 
@@ -521,6 +551,11 @@ def crm_relance_recouvrement(request):
             'Clients avec un reste à encaisser sur leurs projets. '
             'Les paiements sont enregistrés par le service Finance ; '
             'utilisez cette vue pour prioriser vos relances de recouvrement.'
+        ),
+        'mw_charts': crm_recouvrement_charts(
+            request.user,
+            see_all=ctx['view_all'],
+            clients_with_finance=rows,
         ),
     })
     return render(request, 'crm/relance_recouvrement.html', ctx)
