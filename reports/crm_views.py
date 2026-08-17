@@ -44,6 +44,7 @@ User = get_user_model()
 
 CRM_ROUTE_NAMES = frozenset({
     'crm_my_clients',
+    'crm_relance',
     'crm_relance_prospect',
     'crm_relance_recouvrement',
     'crm_new_client',
@@ -435,6 +436,39 @@ def crm_my_clients(request):
         ),
     })
     return render(request, 'crm/my_clients.html', ctx)
+
+
+@login_required(login_url='login')
+def crm_relance(request):
+    """Vue d'ensemble relances — distincte de Prospect et Recouvrement."""
+    blocked = _crm_guard(request)
+    if blocked:
+        return blocked
+
+    ctx = _crm_shared_context(request, page_key='relance')
+    overdue, due_today, upcoming, without_date = _crm_prospect_relance(
+        request.user,
+        owner_filter=ctx['filter_owner_id'],
+        see_all=ctx['view_all'],
+    )
+    recouvrement_rows, total_remaining = _crm_recouvrement_rows(
+        request.user,
+        owner_filter=ctx['filter_owner_id'],
+        see_all=ctx['view_all'],
+    )
+    ctx.update({
+        'prospect_overdue_count': len(overdue),
+        'prospect_today_count': len(due_today),
+        'prospect_upcoming_count': len(upcoming),
+        'recouvrement_count': len(recouvrement_rows),
+        'total_remaining': total_remaining,
+        'page_title': 'Relance',
+        'page_intro': (
+            'Centre de relance commerciale : consultez vos priorités prospect '
+            'et recouvrement, puis accédez au détail de chaque vue.'
+        ),
+    })
+    return render(request, 'crm/relance.html', ctx)
 
 
 @login_required(login_url='login')

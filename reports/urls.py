@@ -15,6 +15,7 @@ from .views import (
 )
 from .crm_views import (
     crm_my_clients,
+    crm_relance,
     crm_relance_prospect,
     crm_relance_recouvrement,
     crm_new_client,
@@ -29,6 +30,7 @@ urlpatterns = [
     path('finance/clients/', finance_clients, name='finance_clients'),
     path('crm/', crm_my_clients, name='crm_my_clients'),
     path('crm/mes-clients/', crm_my_clients, name='crm_portfolio'),
+    path('crm/relance/', crm_relance, name='crm_relance'),
     path('crm/relance/prospect/', crm_relance_prospect, name='crm_relance_prospect'),
     path('crm/relance/recouvrement/', crm_relance_recouvrement, name='crm_relance_recouvrement'),
     path('crm/nouveau-client/', crm_new_client, name='crm_new_client'),

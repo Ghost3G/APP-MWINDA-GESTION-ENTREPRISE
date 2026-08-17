@@ -1,45 +1,92 @@
-/* Sous-menu CRM — navigation nested (Relance > Prospect / Recouvrement) */
+/* Sous-menu CRM — alignement uniforme */
 
-.sidebar-nav .nav-subgroup-label {
-    display: block;
-    margin: 6px 8px 2px 54px;
-    padding: 4px 14px 0;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #71717a;
+.sidebar-nav-group--crm .crm-sidebar-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 2px;
 }
 
-.sidebar-nav a.nav-subgroup-label--link {
+.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem {
     display: block;
-    margin: 6px 8px 2px 54px;
-    padding: 6px 14px;
+    margin: 0 8px 0 54px;
+    padding: 10px 14px;
     border-radius: var(--mw-radius-sm);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
     color: #a1a1aa;
-    transition: background 0.18s ease, color 0.18s ease;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-.sidebar-nav a.nav-subgroup-label--link:hover {
+.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem--child {
+    margin-left: 68px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem:hover {
     color: #fde047;
     background: rgba(253, 224, 71, 0.08);
+    transform: translateX(2px);
 }
 
-.sidebar-nav a.nav-subgroup-label--link.is-active {
-    color: #fde047;
+.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem.active {
+    color: #111827;
+    background: var(--mw-yellow);
+    border-color: rgba(202, 138, 4, 0.35);
+    box-shadow: 0 4px 14px var(--mw-yellow-glow);
+    transform: none;
 }
 
-.sidebar-nav .nav-subitem--nested {
-    margin-left: 66px;
-    font-size: 12px;
-    padding: 8px 12px;
+.crm-relance-hub-stats {
+    grid-template-columns: repeat(4, 1fr);
 }
 
-.sidebar-nav-group--crm.is-open {
-    margin-bottom: 4px;
+.crm-relance-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.crm-relance-hub-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.crm-relance-hub-card:hover {
+    border-color: rgba(253, 224, 71, 0.45) !important;
+    transform: translateY(-2px);
+}
+
+.crm-relance-hub-card h3 {
+    margin: 0;
+    color: var(--mw-text);
+}
+
+.crm-relance-hub-card .btn-crm {
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+    .crm-relance-hub-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .crm-relance-hub-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .crm-relance-hub-stats {
+        grid-template-columns: 1fr;
+    }
 }

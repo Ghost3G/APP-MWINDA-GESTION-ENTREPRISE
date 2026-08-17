@@ -1,0 +1,16 @@
+{% load static %}
+{% with rn=request.resolver_match.url_name %}
+{% if rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_relance' or rn == 'crm_relance_prospect' or rn == 'crm_relance_recouvrement' or rn == 'crm_new_client' or rn == 'crm_reassign' or rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %}
+<div class="crm-sidebar-sub">
+    <a href="{% url 'crm_relance' %}" class="nav-subitem {% if rn == 'crm_relance' %}active{% endif %}">Relance</a>
+    <a href="{% url 'crm_relance_prospect' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_relance_prospect' %}active{% endif %}">Prospect</a>
+    <a href="{% url 'crm_relance_recouvrement' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_relance_recouvrement' %}active{% endif %}">Recouvrement</a>
+    <a href="{% url 'crm_new_client' %}" class="nav-subitem {% if rn == 'crm_new_client' %}active{% endif %}">Nouveau client</a>
+    {% if can_reassign_crm %}
+    <a href="{% url 'crm_reassign' %}" class="nav-subitem {% if rn == 'crm_reassign' %}active{% endif %}">Affecter un client</a>
+    {% endif %}
+    <a href="{% url 'crm_my_clients' %}" class="nav-subitem {% if rn == 'crm_my_clients' or rn == 'crm_portfolio' %}active{% endif %}">Mes clients</a>
+    <a href="{% url 'crm_reports_list' %}" class="nav-subitem {% if rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %}active{% endif %}">Rapports</a>
+</div>
+{% endif %}
+{% endwith %}

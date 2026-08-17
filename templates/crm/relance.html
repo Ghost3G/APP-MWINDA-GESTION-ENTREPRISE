@@ -1,0 +1,40 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+<div class="summary-card crm-summary crm-relance-hub-stats">
+    <div class="summary-item late">
+        <small>Prospects en retard</small>
+        <strong>{{ prospect_overdue_count }}</strong>
+    </div>
+    <div class="summary-item">
+        <small>Prospects aujourd'hui</small>
+        <strong>{{ prospect_today_count }}</strong>
+    </div>
+    <div class="summary-item balance loss">
+        <small>Clients à recouvrer</small>
+        <strong>{{ recouvrement_count }}</strong>
+    </div>
+    <div class="summary-item expense">
+        <small>Reste total à encaisser</small>
+        <strong class="crm-reste">{{ total_remaining }} $</strong>
+    </div>
+</div>
+
+<div class="crm-relance-hub-grid">
+    <a href="{% url 'crm_relance_prospect' %}" class="panel crm-relance-hub-card">
+        <h3>Prospect</h3>
+        <p class="muted panel-hint">
+            Relances commerciales sur les fiches en statut prospect :
+            retards, actions du jour et prochaines échéances.
+        </p>
+        <span class="btn-crm btn-crm--primary">Ouvrir Prospect</span>
+    </a>
+    <a href="{% url 'crm_relance_recouvrement' %}" class="panel crm-relance-hub-card">
+        <h3>Recouvrement</h3>
+        <p class="muted panel-hint">
+            Suivi des soldes restants sur les projets clients.
+            Priorisez les relances de paiement après saisie Finance.
+        </p>
+        <span class="btn-crm btn-crm--primary">Ouvrir Recouvrement</span>
+    </a>
+</div>
+{% endblock %}
