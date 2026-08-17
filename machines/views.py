@@ -189,6 +189,8 @@ def machines_list(request):
     else:
         machines = all_machines
 
+    from reports.chart_data import build_machines_charts
+
     return render(
         request,
         'machines/machines_list.html',
@@ -205,6 +207,12 @@ def machines_list(request):
             'part_alerts': part_alerts,
             'today': today,
             'soon': soon,
+            'mw_charts': build_machines_charts(
+                all_machines,
+                maintenance_count=len(maintenance_alerts),
+                broken_count=len(broken_alerts),
+                part_count=len(part_alerts),
+            ),
         },
     )
 

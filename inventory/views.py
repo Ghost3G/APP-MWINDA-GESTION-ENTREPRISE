@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
 from users.permissions import can_access_stock, can_edit_stock, is_stock_manager
@@ -219,6 +220,14 @@ def stock_dashboard(request):
     open_purchases = PurchaseRequest.objects.filter(
         status__in=['proposed', 'approved', 'ordered']
     ).count()
+    purchase_status_rows = list(
+        PurchaseRequest.objects.exclude(status='cancelled')
+        .values('status')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    from reports.chart_data import build_stock_charts
 
     return render(request, 'inventory/stock.html', {
         'items': items,
@@ -239,4 +248,5 @@ def stock_dashboard(request):
         'can_edit_stock': can_write,
         'is_stock_manager_user': is_stock_manager(request.user),
         'stock_section': 'dashboard',
+        'mw_charts': build_stock_charts(all_items, purchase_status_rows=purchase_status_rows),
     })

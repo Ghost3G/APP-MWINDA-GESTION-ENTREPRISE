@@ -7,6 +7,7 @@
     <title>Gestion des machines - AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/machines.css' %}">
+    <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -57,6 +58,8 @@
                         <strong>{{ part_alerts|length }}</strong>
                     </div>
                 </div>
+
+                {% include "partials/mw_charts_section.html" %}
 
                 {% if broken_alerts or maintenance_alerts or part_alerts %}
                 <div class="panel machines-alerts">
@@ -275,5 +278,6 @@
             </div>
         </main>
     </div>
+    {% include "partials/mw_charts_scripts.html" %}
 </body>
 </html>

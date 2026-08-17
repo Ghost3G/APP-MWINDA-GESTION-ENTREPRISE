@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Tableau de bord - AppMwinda</title>
     {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -16,6 +17,7 @@
 
         <!-- Contenu principal du dashboard -->
         <main class="dashboard-content">
+            {% include "partials/mw_charts_section.html" %}
             <!-- Contenu principal du dashboard -->
             <section class="content-grid">
                 <!-- Colonne gauche : profil et progression -->
@@ -115,5 +117,6 @@
     </script>
 
     <script src="{% static 'js/dashboard.js' %}?v=20260729d"></script>
+    {% include "partials/mw_charts_scripts.html" %}
 </body>
 </html>

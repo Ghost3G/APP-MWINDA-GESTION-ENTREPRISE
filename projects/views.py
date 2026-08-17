@@ -628,6 +628,14 @@ def dashboard(request):
                 'is_work_running': open_work_entry is not None,
             },
         }
+        from reports.chart_data import build_management_dashboard_charts
+
+        context['mw_charts'] = build_management_dashboard_charts(
+            project_status_counts,
+            task_status_counts,
+            department_stats,
+            worker_stats,
+        )
         return render(request, "management_dashboard.html", context)
 
     projects = Project.objects.all()
@@ -713,6 +721,14 @@ def dashboard(request):
         "task_labels": [task['label'] for task in open_tasks],
     }
 
+    from reports.chart_data import build_agent_dashboard_charts
+
+    context["mw_charts"] = build_agent_dashboard_charts(
+        open_count=len(open_tasks),
+        done_count=len(done_tasks),
+        overdue_count=len(overdue_tasks),
+        due_soon_count=len(due_soon_tasks),
+    )
     return render(request, "dashboard.html", context)
 
 
@@ -1299,6 +1315,9 @@ def manage_tasks(request):
         'is_management': True,
         'ai_assignment_enabled': ai_available(),
     }
+    from reports.chart_data import build_tasks_manage_charts
+
+    context['mw_charts'] = build_tasks_manage_charts(stats)
     return render(request, 'manage_tasks.html', context)
 
 

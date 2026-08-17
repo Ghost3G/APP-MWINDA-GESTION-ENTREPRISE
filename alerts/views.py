@@ -60,6 +60,8 @@ def alerts_center(request):
 
     alert_groups = _group_by_category(alerts)
 
+    from reports.chart_data import build_alerts_charts
+
     return render(
         request,
         'alerts/center.html',
@@ -71,5 +73,6 @@ def alerts_center(request):
             'modules': modules,
             'selected_level': level,
             'selected_module': module,
+            'mw_charts': build_alerts_charts(counts, category_tabs),
         },
     )

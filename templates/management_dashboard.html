@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Tableau de bord de gestion - AppMwinda</title>
     {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
     <style>
         .management-page { padding: 24px 28px; }
         .header { margin-bottom: 22px; }
@@ -217,6 +218,8 @@
                     </div>
                 </div>
 
+                {% include "partials/mw_charts_section.html" %}
+
                 <div class="panel">
                     <div class="progress-wrap">
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
@@ -407,5 +410,6 @@
         };
     </script>
     <script src="{% static 'js/dashboard.js' %}?v=20260729e"></script>
+    {% include "partials/mw_charts_scripts.html" %}
 </body>
 </html>

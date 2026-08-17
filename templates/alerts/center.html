@@ -7,6 +7,7 @@
     <title>Centre des alertes - AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/alerts.css' %}">
+    <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -59,6 +60,8 @@
                         </a>
                     </div>
                 </div>
+
+                {% include "partials/mw_charts_section.html" %}
 
                 <div class="alerts-section">
                     <h3>Catégories</h3>
@@ -151,5 +154,6 @@
             </div>
         </main>
     </div>
+    {% include "partials/mw_charts_scripts.html" %}
 </body>
 </html>

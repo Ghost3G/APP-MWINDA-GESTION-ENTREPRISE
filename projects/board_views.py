@@ -100,6 +100,16 @@ def task_board(request):
         'status_choices': ProjectTask.STATUS_CHOICES,
         'can_create': bool(selected_project and can_create_board_task(request.user, selected_project)),
     }
+    from reports.chart_data import build_task_board_charts
+
+    context['mw_charts'] = (
+        build_task_board_charts(
+            columns,
+            project_name=selected_project.name if selected_project else '',
+        )
+        if selected_project
+        else []
+    )
     return render(request, 'task_board.html', context)
 
 

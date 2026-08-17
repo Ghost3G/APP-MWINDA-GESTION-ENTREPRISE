@@ -482,3 +482,294 @@ def crm_reports_charts(reports_qs, *, show_leaderboard):
         if author_chart:
             charts.append(author_chart)
     return pack_charts(*charts)
+
+
+PROJECT_STATUS_LABELS = {
+    'pending': 'En attente',
+    'progress': 'En cours',
+    'urgent': 'Urgent',
+    'awaiting_delivery': 'Attente livraison',
+    'done': 'Terminé',
+}
+
+TASK_STATUS_LABELS = {
+    'pending': 'À faire',
+    'in_progress': 'En cours',
+    'done': 'Terminées',
+}
+
+
+def build_management_dashboard_charts(project_status_counts, task_status_counts, department_stats, worker_stats):
+    proj_labels = []
+    proj_values = []
+    proj_colors = []
+    color_map = {
+        'pending': '#fde047',
+        'progress': '#60a5fa',
+        'urgent': '#f87171',
+        'awaiting_delivery': '#fb923c',
+        'done': '#4ade80',
+    }
+    for key, label in PROJECT_STATUS_LABELS.items():
+        count = project_status_counts.get(key, 0)
+        if count:
+            proj_labels.append(label)
+            proj_values.append(count)
+            proj_colors.append(color_map.get(key, MW_PALETTE[len(proj_colors) % len(MW_PALETTE)]))
+
+    task_labels = []
+    task_values = []
+    task_colors = []
+    task_color_map = {
+        'pending': '#fde047',
+        'in_progress': '#60a5fa',
+        'done': '#4ade80',
+    }
+    for key, label in TASK_STATUS_LABELS.items():
+        count = task_status_counts.get(key, 0)
+        if count:
+            task_labels.append(label)
+            task_values.append(count)
+            task_colors.append(task_color_map.get(key, '#fde047'))
+
+    dept_rows = [row for row in department_stats if row.get('total', 0) > 0]
+    dept_labels = [row['label'][:18] for row in dept_rows[:8]]
+    dept_values = [row['total'] for row in dept_rows[:8]]
+
+    worker_rows = sorted(worker_stats, key=lambda r: -r.get('total', 0))[:8]
+    worker_labels = [row['user'].get_display_name()[:16] for row in worker_rows]
+    worker_values = [row['total'] for row in worker_rows]
+
+    return pack_charts(
+        _doughnut(
+            'dash-chart-projects',
+            'Projets par statut',
+            proj_labels,
+            proj_values,
+            colors=proj_colors,
+            subtitle='Vue direction',
+        ),
+        _doughnut(
+            'dash-chart-tasks',
+            'Tâches par statut',
+            task_labels,
+            task_values,
+            colors=task_colors,
+            subtitle='Ensemble des chantiers',
+        ),
+        _bar(
+            'dash-chart-branches',
+            'Charge par branche',
+            dept_labels,
+            dept_values,
+            colors=['#60a5fa'] * len(dept_labels),
+            subtitle='Nombre de tâches actives',
+            wide=True,
+        ) if dept_labels else None,
+        _bar_horizontal(
+            'dash-chart-agents',
+            'Charge par agent',
+            worker_labels,
+            worker_values,
+            colors=['#fde047'] * len(worker_labels),
+            subtitle='Tâches assignées',
+        ) if worker_labels else None,
+    )
+
+
+def build_agent_dashboard_charts(*, open_count, done_count, overdue_count, due_soon_count):
+    charts = []
+    if open_count + done_count > 0:
+        charts.append(_doughnut(
+            'dash-agent-tasks',
+            'Mes tâches',
+            ['À traiter', 'Terminées'],
+            [open_count, done_count],
+            colors=['#60a5fa', '#4ade80'],
+            subtitle='Mon portefeuille',
+        ))
+    on_track = max(open_count - overdue_count - due_soon_count, 0)
+    if overdue_count + due_soon_count + on_track > 0:
+        charts.append(_bar(
+            'dash-agent-deadlines',
+            'Échéances',
+            ['En retard', '≤ 3 jours', 'Dans les temps'],
+            [overdue_count, due_soon_count, on_track],
+            colors=['#f87171', '#fde047', '#4ade80'],
+            subtitle='Priorités du jour',
+        ))
+    return pack_charts(*charts)
+
+
+def build_tasks_manage_charts(stats):
+    status_total = stats.get('pending', 0) + stats.get('in_progress', 0) + stats.get('done', 0)
+    deadline_total = stats.get('overdue', 0) + stats.get('due_soon', 0)
+    return pack_charts(
+        _doughnut(
+            'tasks-chart-status',
+            'Répartition des statuts',
+            ['À faire', 'En cours', 'Terminées'],
+            [stats.get('pending', 0), stats.get('in_progress', 0), stats.get('done', 0)],
+            colors=['#fde047', '#60a5fa', '#4ade80'],
+            subtitle='Filtres actifs inclus',
+        ) if status_total else None,
+        _bar(
+            'tasks-chart-deadlines',
+            'Suivi des échéances',
+            ['En retard', '≤ 3 jours'],
+            [stats.get('overdue', 0), stats.get('due_soon', 0)],
+            colors=['#f87171', '#fde047'],
+            subtitle='Tâches non terminées',
+        ) if deadline_total else None,
+    )
+
+
+def build_task_board_charts(columns, *, project_name=''):
+    pending = len(columns.get('pending', []))
+    in_progress = len(columns.get('in_progress', []))
+    done = len(columns.get('done', []))
+    total = pending + in_progress + done
+    if total <= 0:
+        return []
+    subtitle = project_name[:40] if project_name else 'Projet sélectionné'
+    return pack_charts(
+        _doughnut(
+            'board-chart-columns',
+            'Tableau Kanban',
+            ['À faire', 'En cours', 'Terminées'],
+            [pending, in_progress, done],
+            colors=['#fde047', '#60a5fa', '#4ade80'],
+            subtitle=subtitle,
+        ),
+    )
+
+
+def build_stock_charts(all_items, *, purchase_status_rows=None):
+    from inventory.models import ITEM_CATEGORY_CHOICES
+
+    cat_counts = Counter(item.category for item in all_items)
+    cat_labels = []
+    cat_values = []
+    for key, label in ITEM_CATEGORY_CHOICES:
+        count = cat_counts.get(key, 0)
+        if count:
+            cat_labels.append(label[:20])
+            cat_values.append(count)
+
+    critical = sum(1 for item in all_items if getattr(item, 'is_critical', False))
+    ok_count = max(len(all_items) - critical, 0)
+
+    charts = [
+        _doughnut(
+            'stock-chart-category',
+            'Articles par catégorie',
+            cat_labels,
+            cat_values,
+            subtitle='Stock actif',
+        ) if cat_labels else None,
+        _doughnut(
+            'stock-chart-critical',
+            'Niveaux de stock',
+            ['Critique', 'Conforme'],
+            [critical, ok_count],
+            colors=['#f87171', '#4ade80'],
+            subtitle='Seuils minimum',
+        ) if all_items else None,
+    ]
+
+    if purchase_status_rows:
+        from inventory.models import PURCHASE_STATUS_CHOICES
+
+        status_labels = dict(PURCHASE_STATUS_CHOICES)
+        p_labels = []
+        p_values = []
+        p_colors = ['#fde047', '#60a5fa', '#fb923c', '#4ade80', '#71717a']
+        for idx, row in enumerate(purchase_status_rows):
+            count = row.get('count', 0)
+            if count:
+                p_labels.append(status_labels.get(row.get('status'), row.get('status', '—'))[:18])
+                p_values.append(count)
+        if p_labels:
+            charts.append(_doughnut(
+                'stock-chart-purchases',
+                'Demandes d\'achat',
+                p_labels,
+                p_values,
+                colors=p_colors[: len(p_labels)],
+                subtitle='Hors annulées',
+            ))
+
+    return pack_charts(*charts)
+
+
+def build_alerts_charts(counts, category_tabs):
+    level_labels = []
+    level_values = []
+    level_colors = {'red': '#f87171', 'orange': '#fb923c', 'green': '#4ade80'}
+    colors = []
+    for key, label in (('red', 'Urgent'), ('orange', 'Attention'), ('green', 'Info')):
+        value = counts.get(key, 0)
+        if value:
+            level_labels.append(label)
+            level_values.append(value)
+            colors.append(level_colors[key])
+
+    module_labels = [tab['label'][:16] for tab in category_tabs[:8]]
+    module_values = [tab['count'] for tab in category_tabs[:8]]
+
+    return pack_charts(
+        _doughnut(
+            'alerts-chart-levels',
+            'Alertes par niveau',
+            level_labels,
+            level_values,
+            colors=colors,
+            subtitle=f"{counts.get('total', 0)} alertes actives",
+        ) if level_labels else None,
+        _bar_horizontal(
+            'alerts-chart-modules',
+            'Alertes par module',
+            module_labels,
+            module_values,
+            colors=['#fde047'] * len(module_labels),
+            subtitle='Vue équipe',
+            wide=True,
+        ) if module_labels else None,
+    )
+
+
+def build_machines_charts(machines, *, maintenance_count, broken_count, part_count):
+    from machines.models import MACHINE_STATUS_CHOICES
+
+    status_labels = dict(MACHINE_STATUS_CHOICES)
+    status_counts = Counter(m.status for m in machines)
+    labels = []
+    values = []
+    colors = []
+    color_map = {'ok': '#4ade80', 'broken': '#f87171', 'standby': '#71717a'}
+    for key, label in MACHINE_STATUS_CHOICES:
+        count = status_counts.get(key, 0)
+        if count:
+            labels.append(label)
+            values.append(count)
+            colors.append(color_map.get(key, MW_PALETTE[len(colors) % len(MW_PALETTE)]))
+
+    alert_total = maintenance_count + broken_count + part_count
+    return pack_charts(
+        _doughnut(
+            'machines-chart-status',
+            'Parc par statut',
+            labels,
+            values,
+            colors=colors,
+            subtitle=f'{len(machines)} machine(s) active(s)',
+        ) if labels else None,
+        _bar(
+            'machines-chart-alerts',
+            'Types d\'alertes',
+            ['Maintenance', 'En panne', 'Pièce à remplacer'],
+            [maintenance_count, broken_count, part_count],
+            colors=['#fde047', '#f87171', '#fb923c'],
+            subtitle='Priorités techniques',
+        ) if alert_total else None,
+    )

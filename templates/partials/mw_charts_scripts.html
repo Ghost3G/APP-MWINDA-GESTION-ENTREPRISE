@@ -1,0 +1,6 @@
+{% load static %}
+{% if mw_charts %}
+    {{ mw_charts|json_script:"mw-charts-data" }}
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
+    <script src="{% static 'js/mw-charts.js' %}?v=20260817a"></script>
+{% endif %}
