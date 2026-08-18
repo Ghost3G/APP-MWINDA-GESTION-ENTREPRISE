@@ -189,6 +189,54 @@ function renderAvatar(data, className = 'user-avatar') {
     return `<div class="${className}">${escapeHtml(initial)}</div>`;
 }
 
+function todayDateKey() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function yesterdayDateKey() {
+    const now = new Date();
+    now.setDate(now.getDate() - 1);
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function formatDateLabel(dateKey) {
+    if (!dateKey) return '';
+    if (dateKey === todayDateKey()) return "Aujourd'hui";
+    if (dateKey === yesterdayDateKey()) return 'Hier';
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+function renderDateSeparator(dateKey) {
+    const label = formatDateLabel(dateKey);
+    if (!label) return '';
+    return `
+        <div class="message-date-separator" data-date-key="${escapeHtml(dateKey)}">
+            <span>${escapeHtml(label)}</span>
+        </div>
+    `;
+}
+
+function getLastDateKeyInContainer(container) {
+    if (!container) return null;
+    const separators = container.querySelectorAll('.message-date-separator[data-date-key]');
+    if (!separators.length) return null;
+    return separators[separators.length - 1].getAttribute('data-date-key');
+}
+
 function renderReadTicks(msg) {
     if (!msg.is_sent) return '';
     const read = Boolean(msg.is_read);
@@ -244,7 +292,14 @@ function appendMessage(msg, { forceScroll = true } = {}) {
     const empty = container.querySelector('.empty-state');
     if (empty) empty.remove();
 
-    container.insertAdjacentHTML('beforeend', renderMessage(msg));
+    const dateKey = msg.date_key || todayDateKey();
+    const lastDateKey = getLastDateKeyInContainer(container);
+    let html = '';
+    if (dateKey !== lastDateKey) {
+        html += renderDateSeparator(dateKey);
+    }
+    html += renderMessage(msg);
+    container.insertAdjacentHTML('beforeend', html);
     scrollMessagesToBottom({ force: forceScroll });
 }
 
@@ -345,7 +400,17 @@ function renderMessages(messages, { soft = false } = {}) {
             </div>`;
         return;
     }
-    container.innerHTML = list.map(renderMessage).join('');
+    let html = '';
+    let lastDateKey = null;
+    list.forEach((msg) => {
+        const dateKey = msg.date_key || null;
+        if (dateKey && dateKey !== lastDateKey) {
+            html += renderDateSeparator(dateKey);
+            lastDateKey = dateKey;
+        }
+        html += renderMessage(msg);
+    });
+    container.innerHTML = html;
     scrollMessagesToBottom({ force: true });
 }
 
@@ -711,14 +776,22 @@ async function sendMessage(event) {
         if (empty) empty.remove();
         container.insertAdjacentHTML(
             'beforeend',
-            renderMessage({
-                content,
-                is_sent: true,
-                is_read: false,
-                pending: true,
-                message_type: 'text',
-                time_short: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            }),
+            (() => {
+                const dateKey = todayDateKey();
+                const lastDateKey = getLastDateKeyInContainer(container);
+                let html = '';
+                if (dateKey !== lastDateKey) html += renderDateSeparator(dateKey);
+                html += renderMessage({
+                    content,
+                    is_sent: true,
+                    is_read: false,
+                    pending: true,
+                    message_type: 'text',
+                    date_key: dateKey,
+                    time_short: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                });
+                return html;
+            })(),
         );
         scrollMessagesToBottom({ force: true });
     }

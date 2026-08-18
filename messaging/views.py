@@ -30,12 +30,14 @@ def _conversation_messages(user, other_user):
 
 
 def _serialize_message(msg, current_user):
+    local_dt = timezone.localtime(msg.created_at)
     return {
         'id': msg.id,
         'sender_id': msg.sender.id,
         'content': msg.content,
-        'created_at': msg.created_at.strftime('%d/%m %H:%M'),
-        'time_short': msg.created_at.strftime('%H:%M'),
+        'created_at': local_dt.strftime('%d/%m %H:%M'),
+        'time_short': local_dt.strftime('%H:%M'),
+        'date_key': local_dt.strftime('%Y-%m-%d'),
         'is_sent': msg.sender.id == current_user.id,
         'is_read': msg.is_read,
         'message_type': msg.message_type,
