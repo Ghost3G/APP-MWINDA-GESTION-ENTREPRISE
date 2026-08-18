@@ -76,6 +76,30 @@ function updateTaskProgress() {
     if (progressValue) {
         progressValue.textContent = percent + "%";
     }
+
+    const panelDone = document.querySelector(".task-panel-progress__done");
+    const panelTotal = document.querySelector(".task-panel-progress__total");
+    const panelFill = document.querySelector(".task-panel-progress__fill");
+    const panelTrack = document.querySelector(".task-panel-progress__track");
+    if (panelDone) {
+        panelDone.textContent = String(completedCount);
+    }
+    if (panelTotal) {
+        panelTotal.textContent = String(total);
+    }
+    if (panelFill) {
+        panelFill.style.width = percent + "%";
+    }
+    if (panelTrack) {
+        panelTrack.setAttribute("aria-valuenow", String(percent));
+        panelTrack.setAttribute("aria-valuetext", percent + " pourcent");
+    }
+}
+
+function wait(ms) {
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -114,7 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
             empty.remove();
         }
         taskItem.classList.add('completed');
-        taskItem.classList.remove('active', 'task-new', 'next');
+        taskItem.classList.remove('active', 'task-new', 'next', 'is-completing', 'is-exiting', 'is-started');
         taskItem.dataset.taskStatus = 'done';
         const badge = taskItem.querySelector('.task-new-badge, .task-new-label, .task-new-dot');
         if (badge) {
@@ -142,6 +166,48 @@ document.addEventListener("DOMContentLoaded", function () {
         if (doneTab) {
             doneTab.textContent = String(document.querySelectorAll('.task-list-panel[data-task-panel="done"] .task-item').length);
         }
+        bumpTabCounts();
+    }
+
+    function bumpTabCounts() {
+        document.querySelectorAll('.task-tab-count').forEach((badge) => {
+            badge.classList.remove('is-bump');
+            void badge.offsetWidth;
+            badge.classList.add('is-bump');
+        });
+    }
+
+    function showTaskToast(type, message) {
+        const stack = document.querySelector('.task-toast-stack');
+        if (!stack) {
+            if (type === 'error') {
+                window.alert(message);
+            }
+            return null;
+        }
+        const toast = document.createElement('div');
+        toast.className = 'task-toast is-' + type;
+        const icon = type === 'success' ? '✓' : (type === 'error' ? '!' : '…');
+        toast.innerHTML = '<span class="task-toast__icon" aria-hidden="true">' + icon + '</span><span class="task-toast__text"></span>';
+        toast.querySelector('.task-toast__text').textContent = message;
+        stack.appendChild(toast);
+        window.setTimeout(() => {
+            toast.style.animation = 'taskToastOut 0.28s ease forwards';
+            window.setTimeout(() => toast.remove(), 280);
+        }, type === 'error' ? 4200 : 2800);
+        return toast;
+    }
+
+    function dismissToast(toast) {
+        if (!toast || !toast.isConnected) {
+            return;
+        }
+        toast.style.animation = 'taskToastOut 0.22s ease forwards';
+        window.setTimeout(() => toast.remove(), 220);
+    }
+
+    function getTaskTitle(taskItem) {
+        return taskItem.querySelector('.task-item-title')?.textContent?.trim() || 'Tâche';
     }
 
     function initTaskTabs() {
@@ -229,37 +295,58 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function showTaskFeedback(message) {
-        window.alert(message);
+        showTaskToast('error', message);
     }
 
     async function completeTask(taskItem, switchEl) {
         const taskLabel = taskItem.dataset.taskLabel || "";
         const taskId = taskItem.dataset.taskId || "";
+        const taskTitle = getTaskTitle(taskItem);
         if (!taskLabel && !taskId) {
             return;
         }
-        if (switchEl.classList.contains("active") || taskItem.dataset.taskStatus === "done") {
+        if (switchEl.classList.contains("active") || taskItem.dataset.taskStatus === "done" || taskItem.classList.contains("is-completing")) {
             return;
         }
+
         switchEl.classList.add("is-loading");
+        taskItem.classList.add("is-completing");
+        switchEl.classList.add("active");
+        switchEl.setAttribute("aria-checked", "true");
+        const loadingToast = showTaskToast('loading', 'Validation de « ' + taskTitle + ' »…');
+
         try {
             const payload = { task_label: taskLabel };
             if (taskId) {
                 payload.task_id = taskId;
             }
             await postTimer(config.completeTaskUrl, payload);
-            switchEl.classList.add("active");
-            switchEl.setAttribute("aria-checked", "true");
+            dismissToast(loadingToast);
+            showTaskToast('success', 'Terminée : ' + taskTitle);
+
             taskItem.dataset.taskStatus = "done";
             if (state.activeTaskLabel === taskLabel) {
                 state.activeTaskLabel = "";
                 state.activeTaskStartedAt = "";
             }
             setActiveTaskVisual("");
+            taskItem.classList.add("is-exiting");
+
+            const openPanel = document.querySelector('.task-list-panel[data-task-panel="open"]');
+            if (openPanel) {
+                openPanel.classList.add('is-celebrate');
+                window.setTimeout(() => openPanel.classList.remove('is-celebrate'), 550);
+            }
+
+            await wait(420);
             moveTaskToDonePanel(taskItem);
             updateTaskProgress();
             revealNextTaskBatch();
         } catch (error) {
+            dismissToast(loadingToast);
+            taskItem.classList.remove("is-completing", "is-exiting");
+            switchEl.classList.remove("active", "is-loading");
+            switchEl.setAttribute("aria-checked", "false");
             showTaskFeedback(error.message || "Impossible de valider la tâche.");
             console.error(error);
         } finally {
@@ -270,10 +357,11 @@ document.addEventListener("DOMContentLoaded", function () {
     async function startTask(taskItem) {
         const taskLabel = taskItem.dataset.taskLabel || "";
         const taskId = taskItem.dataset.taskId || "";
+        const taskTitle = getTaskTitle(taskItem);
         if (!taskLabel && !taskId) {
             return;
         }
-        if (taskItem.dataset.taskStatus === "done") {
+        if (taskItem.dataset.taskStatus === "done" || taskItem.classList.contains("is-completing")) {
             return;
         }
         try {
@@ -290,6 +378,9 @@ document.addEventListener("DOMContentLoaded", function () {
             state.activePauseStartedAt = "";
             setActiveTaskVisual(taskLabel);
             updatePauseButtonLabel();
+            taskItem.classList.add('is-started');
+            window.setTimeout(() => taskItem.classList.remove('is-started'), 900);
+            showTaskToast('loading', 'Chrono démarré — ' + taskTitle);
         } catch (error) {
             showTaskFeedback(error.message || "Impossible de démarrer la tâche.");
             console.error(error);

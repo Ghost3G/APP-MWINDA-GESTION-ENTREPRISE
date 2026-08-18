@@ -30,6 +30,23 @@
         </button>
     </div>
 
+    <div class="task-panel-progress" aria-live="polite">
+        <div class="task-panel-progress__meta">
+            <span class="task-panel-progress__label">Avancement du panneau</span>
+            <strong class="task-panel-progress__value">
+                <span class="task-panel-progress__done">{{ done_tasks|length }}</span>
+                /
+                <span class="task-panel-progress__total">{{ open_tasks|length|add:done_tasks|length }}</span>
+                terminées
+            </strong>
+        </div>
+        <div class="task-panel-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div class="task-panel-progress__fill"></div>
+        </div>
+    </div>
+
+    <div class="task-toast-stack" aria-live="assertive" aria-atomic="true"></div>
+
     <div class="task-list task-list-panel active" data-task-panel="open">
         {% for task in open_tasks %}
         <div class="task-item {% if task.active %}active{% endif %} {% if task.is_new %}task-new{% endif %}" data-task-id="{{ task.id }}" data-task-label="{{ task.label }}" data-task-status="{{ task.status }}">
@@ -41,7 +58,7 @@
                 </span>
                 <span class="task-item-project">{{ task.project_name }}</span>
             </div>
-            <button type="button" class="toggle-switch {% if task.status == 'done' %}active{% endif %}" aria-label="Marquer comme terminée" title="Marquer comme terminée"></button>
+            <button type="button" class="toggle-switch {% if task.status == 'done' %}active{% endif %}" aria-label="Marquer « {{ task.label }} » comme terminée" title="Marquer comme terminée"></button>
         </div>
         {% empty %}
         <p class="task-empty">Aucune tâche en cours.</p>

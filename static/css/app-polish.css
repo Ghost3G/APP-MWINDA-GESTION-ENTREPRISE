@@ -827,6 +827,8 @@ body {
     padding: 18px 16px !important;
     gap: 14px !important;
     border-radius: 22px !important;
+    position: relative;
+    overflow: hidden;
 }
 
 .right-column .task-card-header {
@@ -956,6 +958,196 @@ body {
     display: grid;
     gap: 8px;
     padding-right: 2px;
+}
+
+.task-panel-progress {
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.48);
+    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.08);
+}
+
+.task-panel-progress__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.task-panel-progress__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(17, 24, 39, 0.55);
+}
+
+.task-panel-progress__value {
+    font-size: 13px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.task-panel-progress__track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.1);
+    overflow: hidden;
+}
+
+.task-panel-progress__fill {
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+}
+
+.task-toast-stack {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 5;
+    display: grid;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.task-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(17, 24, 39, 0.18);
+    transform: translateY(-8px);
+    opacity: 0;
+    animation: taskToastIn 0.32s ease forwards;
+}
+
+.task-toast.is-success {
+    border-left: 4px solid #22c55e;
+}
+
+.task-toast.is-error {
+    border-left: 4px solid #ef4444;
+}
+
+.task-toast.is-loading {
+    border-left: 4px solid #fde047;
+}
+
+.task-toast__icon {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+    background: rgba(34, 197, 94, 0.14);
+    color: #15803d;
+}
+
+.task-toast.is-error .task-toast__icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+}
+
+.task-toast.is-loading .task-toast__icon {
+    background: rgba(253, 224, 71, 0.22);
+    color: #854d0e;
+}
+
+@keyframes taskToastIn {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes taskToastOut {
+    to {
+        transform: translateY(-6px);
+        opacity: 0;
+    }
+}
+
+@keyframes tabCountBump {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+
+.task-tab-count.is-bump {
+    animation: tabCountBump 0.45s ease;
+}
+
+.my-tasks-panel .task-item.is-completing {
+    background: rgba(255, 255, 255, 0.82) !important;
+    box-shadow:
+        inset 0 0 0 2px rgba(34, 197, 94, 0.55),
+        0 12px 24px rgba(22, 163, 74, 0.16) !important;
+}
+
+.my-tasks-panel .task-item.is-completing .task-item-title {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    color: rgba(17, 24, 39, 0.72);
+}
+
+.my-tasks-panel .task-item.is-completing .toggle-switch.active::before {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    color: #fff;
+    z-index: 1;
+}
+
+.my-tasks-panel .task-item.is-exiting {
+    animation: taskSlideOut 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    pointer-events: none;
+}
+
+@keyframes taskSlideOut {
+    to {
+        opacity: 0;
+        transform: translateX(28px) scale(0.96);
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+}
+
+.my-tasks-panel .task-item.is-started {
+    box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.22) !important;
+}
+
+.task-list-panel.is-celebrate {
+    animation: taskListCelebrate 0.55s ease;
+}
+
+@keyframes taskListCelebrate {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.01); }
+    100% { transform: scale(1); }
 }
 
 .my-tasks-panel .task-item {
