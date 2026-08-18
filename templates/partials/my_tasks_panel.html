@@ -41,7 +41,7 @@
                 </span>
                 <span class="task-item-project">{{ task.project_name }}</span>
             </div>
-            <span class="toggle-switch {% if task.status == 'done' %}active{% endif %}"></span>
+            <button type="button" class="toggle-switch {% if task.status == 'done' %}active{% endif %}" aria-label="Marquer comme terminée" title="Marquer comme terminée"></button>
         </div>
         {% empty %}
         <p class="task-empty">Aucune tâche en cours.</p>
@@ -55,7 +55,7 @@
                 <span class="task-item-title">{{ task.label }}</span>
                 <span class="task-item-project">{{ task.project_name }}</span>
             </div>
-            <span class="toggle-switch active"></span>
+            <span class="toggle-switch active" role="switch" aria-checked="true" aria-label="Tâche terminée : {{ task.label }}" tabindex="-1"></span>
         </div>
         {% empty %}
         <p class="task-empty">Aucune tâche terminée pour le moment.</p>

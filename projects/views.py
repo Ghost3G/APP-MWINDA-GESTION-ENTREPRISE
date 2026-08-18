@@ -783,27 +783,41 @@ def complete_task_timer(request):
     task_id = request.POST.get('task_id', '').strip()
     now = timezone.now()
 
-    project_task = get_task_for_user(request.user, task_id=task_id or None, task_label=task_label or None)
+    project_task = None
+    if task_id:
+        try:
+            project_task = ProjectTask.objects.filter(
+                id=int(task_id),
+                assigned_to=request.user,
+            ).exclude(status='done').first()
+        except (TypeError, ValueError):
+            project_task = None
+    if not project_task:
+        project_task = get_task_for_user(
+            request.user,
+            task_id=None,
+            task_label=task_label or None,
+        )
 
+    if not project_task:
+        return JsonResponse({'error': 'Tâche introuvable ou déjà terminée'}, status=404)
+
+    resolved_label = project_task.title
+    duration_seconds = 0
     open_task = _open_entry_for_user(request.user, 'task')
-    if not open_task:
-        if project_task and project_task.status != 'done':
-            set_task_status(project_task, 'done')
-        return JsonResponse({'ok': True, 'duration_seconds': 0, 'status': 'done'})
+    if open_task:
+        _close_entry(open_task, now)
+        if open_task.task_label == resolved_label:
+            duration_seconds = open_task.duration_seconds or 0
 
-    if task_label and open_task.task_label != task_label:
-        return JsonResponse({'error': 'Cette tâche n’est pas active'}, status=409)
-
-    _close_entry(open_task, now)
-
-    if project_task:
-        set_task_status(project_task, 'done')
+    set_task_status(project_task, 'done')
 
     return JsonResponse({
         'ok': True,
-        'duration_seconds': open_task.duration_seconds,
+        'duration_seconds': duration_seconds,
         'status': 'done',
-        'task_id': project_task.id if project_task else None,
+        'task_id': project_task.id,
+        'task_label': resolved_label,
     })
 
 

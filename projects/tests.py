@@ -1,11 +1,11 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 
 from .models import Project
-from .models import AgentTimeEntry, ProjectAssignmentNotification
+from .models import AgentTimeEntry, ProjectAssignmentNotification, ProjectTask
 
 User = get_user_model()
 
@@ -33,6 +33,30 @@ class ProjectsFeatureTests(TestCase):
             role='agent',
             direction='branding',
         )
+
+    def _create_agent_tasks(self, count=2):
+        project = Project.objects.create(
+            name='Projet Tâches Test',
+            description='Description test',
+            start_date='2026-04-01',
+            end_date='2026-04-30',
+            status='progress',
+            manager=self.directeur,
+        )
+        project.members.add(self.agent)
+        tasks = []
+        for index in range(count):
+            tasks.append(
+                ProjectTask.objects.create(
+                    project=project,
+                    assigned_to=self.agent,
+                    title=f'Tâche test {index + 1}',
+                    department='metal_design',
+                    status='pending',
+                    order=index,
+                )
+            )
+        return tasks
 
     def test_directeur_can_create_project(self):
         commercial = User.objects.create_user(
@@ -159,12 +183,14 @@ class ProjectsFeatureTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    @override_settings(SECURE_SSL_REDIRECT=False)
     def test_task_timer_start_and_complete(self):
-        self.client.login(username='agent1', password='testpass123')
+        tasks = self._create_agent_tasks(count=1)
+        self.client.force_login(self.agent)
 
         start_response = self.client.post(
             reverse('start_task_timer'),
-            {'task_label': 'Conception du logo'},
+            {'task_label': tasks[0].title, 'task_id': tasks[0].id},
         )
         self.assertEqual(start_response.status_code, 200)
 
@@ -174,13 +200,56 @@ class ProjectsFeatureTests(TestCase):
 
         complete_response = self.client.post(
             reverse('complete_task_timer'),
-            {'task_label': 'Conception du logo'},
+            {'task_label': tasks[0].title, 'task_id': tasks[0].id},
         )
         self.assertEqual(complete_response.status_code, 200)
 
         task_entry.refresh_from_db()
+        tasks[0].refresh_from_db()
         self.assertIsNotNone(task_entry.ended_at)
         self.assertGreaterEqual(task_entry.duration_seconds, 120)
+        self.assertEqual(tasks[0].status, 'done')
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_complete_task_without_active_timer(self):
+        tasks = self._create_agent_tasks(count=1)
+        self.client.force_login(self.agent)
+
+        response = self.client.post(
+            reverse('complete_task_timer'),
+            {'task_id': tasks[0].id, 'task_label': tasks[0].title},
+        )
+        self.assertEqual(response.status_code, 200)
+        tasks[0].refresh_from_db()
+        self.assertEqual(tasks[0].status, 'done')
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_complete_different_task_while_another_timer_runs(self):
+        tasks = self._create_agent_tasks(count=2)
+        self.client.force_login(self.agent)
+
+        start_response = self.client.post(
+            reverse('start_task_timer'),
+            {'task_id': tasks[0].id, 'task_label': tasks[0].title},
+        )
+        self.assertEqual(start_response.status_code, 200)
+
+        complete_response = self.client.post(
+            reverse('complete_task_timer'),
+            {'task_id': tasks[1].id, 'task_label': tasks[1].title},
+        )
+        self.assertEqual(complete_response.status_code, 200)
+
+        tasks[0].refresh_from_db()
+        tasks[1].refresh_from_db()
+        self.assertEqual(tasks[1].status, 'done')
+        self.assertFalse(
+            AgentTimeEntry.objects.filter(
+                user=self.agent,
+                entry_type='task',
+                ended_at__isnull=True,
+            ).exists()
+        )
 
     def test_pause_timer_toggle(self):
         self.client.login(username='agent1', password='testpass123')

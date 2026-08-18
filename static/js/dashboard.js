@@ -54,27 +54,22 @@ function updateNotificationBadges() {
 }
 
 function updateTaskProgress() {
-    const taskItems = Array.from(document.querySelectorAll(".task-item"));
+    const openItems = Array.from(document.querySelectorAll('.task-list-panel[data-task-panel="open"] .task-item'));
+    const doneItems = Array.from(document.querySelectorAll('.task-list-panel[data-task-panel="done"] .task-item'));
     const progressCircle = document.querySelector(".progress-circle");
     const progressValue = document.querySelector(".progress-value");
-    let completedCount = 0;
+    const total = openItems.length + doneItems.length;
+    const completedCount = doneItems.length;
 
-    taskItems.forEach((taskItem) => {
-        const switchEl = taskItem.querySelector(".toggle-switch");
-        const isCompleted = switchEl && switchEl.classList.contains("active");
-        taskItem.classList.toggle("completed", isCompleted);
+    openItems.forEach((taskItem) => {
         taskItem.classList.remove("next");
-        if (isCompleted) {
-            completedCount += 1;
-        }
     });
-
-    const nextTask = taskItems.find((taskItem) => !taskItem.classList.contains("completed") && !taskItem.classList.contains("hidden-task"));
+    const nextTask = openItems.find((taskItem) => taskItem.dataset.taskStatus !== "done");
     if (nextTask) {
         nextTask.classList.add("next");
     }
 
-    const percent = taskItems.length ? Math.round((completedCount / taskItems.length) * 100) : 0;
+    const percent = total ? Math.round((completedCount / total) * 100) : 0;
     if (progressCircle) {
         progressCircle.style.setProperty("--progress", percent);
     }
@@ -220,69 +215,109 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: new URLSearchParams(payload).toString(),
         });
-        if (!response.ok) {
-            throw new Error("Timer API error");
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = {};
         }
-        return response.json();
+        if (!response.ok) {
+            const message = data.error || "Impossible de mettre à jour la tâche. Réessayez.";
+            throw new Error(message);
+        }
+        return data;
+    }
+
+    function showTaskFeedback(message) {
+        window.alert(message);
+    }
+
+    async function completeTask(taskItem, switchEl) {
+        const taskLabel = taskItem.dataset.taskLabel || "";
+        const taskId = taskItem.dataset.taskId || "";
+        if (!taskLabel && !taskId) {
+            return;
+        }
+        if (switchEl.classList.contains("active") || taskItem.dataset.taskStatus === "done") {
+            return;
+        }
+        switchEl.classList.add("is-loading");
+        try {
+            const payload = { task_label: taskLabel };
+            if (taskId) {
+                payload.task_id = taskId;
+            }
+            await postTimer(config.completeTaskUrl, payload);
+            switchEl.classList.add("active");
+            switchEl.setAttribute("aria-checked", "true");
+            taskItem.dataset.taskStatus = "done";
+            if (state.activeTaskLabel === taskLabel) {
+                state.activeTaskLabel = "";
+                state.activeTaskStartedAt = "";
+            }
+            setActiveTaskVisual("");
+            moveTaskToDonePanel(taskItem);
+            updateTaskProgress();
+            revealNextTaskBatch();
+        } catch (error) {
+            showTaskFeedback(error.message || "Impossible de valider la tâche.");
+            console.error(error);
+        } finally {
+            switchEl.classList.remove("is-loading");
+        }
+    }
+
+    async function startTask(taskItem) {
+        const taskLabel = taskItem.dataset.taskLabel || "";
+        const taskId = taskItem.dataset.taskId || "";
+        if (!taskLabel && !taskId) {
+            return;
+        }
+        if (taskItem.dataset.taskStatus === "done") {
+            return;
+        }
+        try {
+            const payload = { task_label: taskLabel };
+            if (taskId) {
+                payload.task_id = taskId;
+            }
+            await postTimer(config.startTaskUrl, payload);
+            state.activeTaskLabel = taskLabel;
+            state.activeTaskStartedAt = new Date().toISOString();
+            taskItem.dataset.taskStatus = "in_progress";
+            state.baseTaskSeconds = 0;
+            state.isPauseRunning = false;
+            state.activePauseStartedAt = "";
+            setActiveTaskVisual(taskLabel);
+            updatePauseButtonLabel();
+        } catch (error) {
+            showTaskFeedback(error.message || "Impossible de démarrer la tâche.");
+            console.error(error);
+        }
     }
 
     taskItems.forEach((taskItem) => {
-        taskItem.addEventListener("click", async function (event) {
-            const clickedSwitch = event.target.classList.contains("toggle-switch");
-            const taskLabel = taskItem.dataset.taskLabel || "";
-            const taskId = taskItem.dataset.taskId || "";
-            if (!taskLabel && !taskId) {
+        const switchEl = taskItem.querySelector(".toggle-switch");
+        if (switchEl) {
+            switchEl.addEventListener("click", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                completeTask(taskItem, switchEl);
+            });
+            switchEl.addEventListener("keydown", function (event) {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    completeTask(taskItem, switchEl);
+                }
+            });
+        }
+
+        taskItem.addEventListener("click", function (event) {
+            if (event.target.closest(".toggle-switch")) {
                 return;
             }
-
-            if (clickedSwitch) {
-                const switchEl = event.target;
-                if (switchEl.classList.contains("active")) {
-                    return;
-                }
-                try {
-                    const payload = { task_label: taskLabel };
-                    if (taskId) {
-                        payload.task_id = taskId;
-                    }
-                    await postTimer(config.completeTaskUrl, payload);
-                    switchEl.classList.add("active");
-                    taskItem.dataset.taskStatus = "done";
-                    if (state.activeTaskLabel === taskLabel) {
-                        state.activeTaskLabel = "";
-                        state.activeTaskStartedAt = "";
-                    }
-                    setActiveTaskVisual("");
-                    moveTaskToDonePanel(taskItem);
-                    updateTaskProgress();
-                    revealNextTaskBatch();
-                } catch (error) {
-                    console.error(error);
-                }
-                return;
-            }
-
-            if (taskItem.querySelector(".toggle-switch")?.classList.contains("active") || taskItem.dataset.taskStatus === "done") {
-                return;
-            }
-
-            try {
-                const payload = { task_label: taskLabel };
-                if (taskId) {
-                    payload.task_id = taskId;
-                }
-                await postTimer(config.startTaskUrl, payload);
-                state.activeTaskLabel = taskLabel;
-                state.activeTaskStartedAt = new Date().toISOString();
-                taskItem.dataset.taskStatus = "in_progress";
-                state.baseTaskSeconds = 0;
-                state.isPauseRunning = false;
-                state.activePauseStartedAt = "";
-                setActiveTaskVisual(taskLabel);
-                updatePauseButtonLabel();
-            } catch (error) {
-                console.error(error);
-            }
+            startTask(taskItem);
         });
     });
 
