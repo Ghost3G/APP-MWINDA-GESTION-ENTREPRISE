@@ -158,6 +158,44 @@
             flex: 1;
         }
 
+        .project-item.is-collapsed .project-body {
+            padding: 14px 16px 14px;
+            gap: 10px;
+        }
+
+        .project-item.is-collapsed:hover {
+            transform: none;
+        }
+
+        .btn-voir-plus {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid rgba(253, 224, 71, 0.35);
+            border-radius: 10px;
+            background: rgba(253, 224, 71, 0.08);
+            color: #fde047;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .btn-voir-plus:hover {
+            background: rgba(253, 224, 71, 0.16);
+            border-color: rgba(253, 224, 71, 0.55);
+            color: #fef08a;
+        }
+
+        .project-item.is-collapsed .project-details {
+            display: none;
+        }
+
+        .project-details {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
         .project-header {
             display: block;
             margin: 0;
@@ -759,7 +797,7 @@
                     </h2>
                     <div class="projects-grid">
                         {% for project in active_projects %}
-                            <div class="project-item {% if project.status == 'urgent' %}is-urgent{% elif project.status == 'awaiting_delivery' %}is-awaiting-delivery{% endif %}">
+                            <div class="project-item is-collapsed {% if project.status == 'urgent' %}is-urgent{% elif project.status == 'awaiting_delivery' %}is-awaiting-delivery{% endif %}">
                                 <div class="project-cover">
                                     {% if project.cover_url %}
                                         <img
@@ -786,6 +824,8 @@
                                     <div class="project-header">
                                         <h3 class="project-title">{{ project.name }}</h3>
                                     </div>
+                                    <button type="button" class="btn-voir-plus" aria-expanded="false">Voir plus</button>
+                                    <div class="project-details">
                                     {% if project.description %}
                                         <p class="project-desc">{{ project.description|truncatewords:22 }}</p>
                                     {% endif %}
@@ -942,6 +982,7 @@
                                         </div>
                                         {% endif %}
                                     </div>
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}
@@ -969,7 +1010,7 @@
                             <div class="completed-month-body">
                                 <div class="projects-grid">
                                     {% for project in month.projects %}
-                                    <div class="project-item is-done">
+                                    <div class="project-item is-collapsed is-done">
                                         <div class="project-cover">
                                             {% if project.cover_url %}
                                                 <img
@@ -991,6 +1032,8 @@
                                             <div class="project-header">
                                                 <h3 class="project-title">{{ project.name }}</h3>
                                             </div>
+                                            <button type="button" class="btn-voir-plus" aria-expanded="false">Voir plus</button>
+                                            <div class="project-details">
                                             {% if project.description %}
                                                 <p class="project-desc">{{ project.description|truncatewords:18 }}</p>
                                             {% endif %}
@@ -1025,6 +1068,7 @@
                                                     <button type="submit" class="btn-delete-project" data-project-name="{{ project.name|escapejs }}">Supprimer</button>
                                                 </form>
                                                 {% endif %}
+                                            </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1108,6 +1152,46 @@
             }
             if (confirmField) confirmField.value = text.trim();
         });
+    });
+
+    function collapseProjectItem(item) {
+        if (!item) return;
+        item.classList.add('is-collapsed');
+        const btn = item.querySelector('.btn-voir-plus');
+        if (btn) {
+            btn.setAttribute('aria-expanded', 'false');
+            btn.textContent = 'Voir plus';
+        }
+    }
+
+    function collapseAllProjectItems() {
+        document.querySelectorAll('.project-item:not(.is-collapsed)').forEach(collapseProjectItem);
+    }
+
+    document.querySelectorAll('.btn-voir-plus').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const item = btn.closest('.project-item');
+            if (!item) return;
+
+            const willOpen = item.classList.contains('is-collapsed');
+            document.querySelectorAll('.project-item:not(.is-collapsed)').forEach((openItem) => {
+                if (openItem !== item) collapseProjectItem(openItem);
+            });
+
+            if (willOpen) {
+                item.classList.remove('is-collapsed');
+                btn.setAttribute('aria-expanded', 'true');
+                btn.textContent = 'Voir moins';
+            } else {
+                collapseProjectItem(item);
+            }
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('.project-item')) return;
+        collapseAllProjectItems();
     });
     </script>
 </body>
