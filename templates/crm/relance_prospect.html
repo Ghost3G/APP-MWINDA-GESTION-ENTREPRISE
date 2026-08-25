@@ -10,7 +10,7 @@
                 <ul class="crm-agenda-list">
                     {% for c in overdue_clients %}
                         <li>
-                            <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                            <a href="{% url 'crm_my_clients' %}?open={{ c.id }}">{{ c.name }}</a>
                             <span class="crm-reste">{{ c.next_action_date|date:"d/m/Y" }}</span>
                             <span class="muted">{{ c.next_action|default:"—" }}</span>
                         </li>
@@ -26,7 +26,7 @@
                 <ul class="crm-agenda-list">
                     {% for c in due_today_clients %}
                         <li>
-                            <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                            <a href="{% url 'crm_my_clients' %}?open={{ c.id }}">{{ c.name }}</a>
                             <span class="muted">{{ c.next_action|default:"—" }}</span>
                         </li>
                     {% endfor %}
@@ -44,7 +44,7 @@
     <ul class="crm-agenda-list">
         {% for c in upcoming_clients %}
             <li>
-                <a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a>
+                <a href="{% url 'crm_my_clients' %}?open={{ c.id }}">{{ c.name }}</a>
                 · {{ c.next_action_date|date:"d/m/Y" }}
                 <span class="muted">{{ c.next_action|default:"—" }}</span>
             </li>
@@ -58,7 +58,7 @@
     <h3>Prospects sans date de relance</h3>
     <ul class="crm-agenda-list">
         {% for c in without_date_clients %}
-            <li><a href="{% url 'crm_my_clients' %}?edit={{ c.id }}">{{ c.name }}</a></li>
+            <li><a href="{% url 'crm_my_clients' %}?open={{ c.id }}">{{ c.name }}</a></li>
         {% endfor %}
     </ul>
 </div>

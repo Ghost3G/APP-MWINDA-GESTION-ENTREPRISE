@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}
+{% block crm_content %}
+<div class="summary-card crm-summary crm-relance-hub-stats">
+    <div class="summary-item late">
+        <small>Prospects en retard</small>
+        <strong>{{ prospect_overdue_count }}</strong>
+    </div>
+    <div class="summary-item">
+        <small>Prospects aujourd'hui</small>
+        <strong>{{ prospect_today_count }}</strong>
+    </div>
+    <div class="summary-item balance loss">
+        <small>Clients à recouvrer</small>
+        <strong>{{ recouvrement_count }}</strong>
+    </div>
+    <div class="summary-item expense">
+        <small>Reste total à encaisser</small>
+        <strong class="crm-reste">{{ total_remaining }} $</strong>
+    </div>
+</div>
+
+{% include "partials/mw_charts_section.html" %}
+{% endblock %}

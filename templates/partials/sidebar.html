@@ -42,8 +42,8 @@
         {% endif %}
         {% if is_crm %}
         {% with rn=request.resolver_match.url_name %}
-        <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_relance' or rn == 'crm_relance_prospect' or rn == 'crm_relance_recouvrement' or rn == 'crm_new_client' or rn == 'crm_reassign' or rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %} is-open{% endif %}">
-            <a href="{% url 'crm_my_clients' %}" class="nav-item {% if rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_relance' or rn == 'crm_relance_prospect' or rn == 'crm_relance_recouvrement' or rn == 'crm_new_client' or rn == 'crm_reassign' or rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %}active{% endif %}">
+        <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'crm_dashboard' or rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_vente_day' or rn == 'crm_vente_month' or rn == 'crm_vente_year' or rn == 'crm_relance' or rn == 'crm_relance_prospect' or rn == 'crm_relance_recouvrement' or rn == 'crm_new_client' or rn == 'crm_reassign' or rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %} is-open{% endif %}">
+            <a href="{% url 'crm_dashboard' %}" class="nav-item {% if rn == 'crm_dashboard' or rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_vente_day' or rn == 'crm_vente_month' or rn == 'crm_vente_year' or rn == 'crm_relance' or rn == 'crm_relance_prospect' or rn == 'crm_relance_recouvrement' or rn == 'crm_new_client' or rn == 'crm_reassign' or rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %}active{% endif %}">
                 <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
                 CRM
             </a>

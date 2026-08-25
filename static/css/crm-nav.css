@@ -34,6 +34,128 @@
     transform: none;
 }
 
+.crm-sidebar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 4px 0 2px;
+}
+
+.crm-sidebar-group-label {
+    margin: 0 8px 0 54px;
+    padding: 6px 14px 2px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #71717a;
+}
+
+.crm-sidebar-group-label.is-active {
+    color: #fde047;
+}
+
+.sidebar-nav-group--crm .crm-sidebar-sub .nav-subitem--child {
+    margin-left: 68px;
+    font-size: 12px;
+    padding: 8px 12px;
+}
+
+.crm-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.crm-summary--compact {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.crm-table-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+}
+
+.crm-client-table tbody tr.crm-client-row {
+    cursor: pointer;
+}
+
+.crm-client-table tbody tr.crm-client-row.is-open {
+    background: rgba(253, 224, 71, 0.08);
+}
+
+.crm-client-table tbody tr.crm-client-detail-row > td {
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 0;
+    padding: 0 12px 16px;
+}
+
+.crm-col-expand {
+    width: 28px;
+    text-align: center;
+    color: #71717a;
+}
+
+.crm-client-row.is-open .crm-row-chevron {
+    transform: rotate(90deg);
+    color: #fde047;
+}
+
+.crm-row-chevron {
+    display: inline-block;
+    transition: transform 0.15s ease, color 0.15s ease;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.crm-client-detail {
+    padding: 14px 8px 6px;
+    display: grid;
+    gap: 14px;
+}
+
+.crm-client-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    font-size: 13px;
+    color: #d4d4d8;
+}
+
+.crm-client-detail__notes {
+    margin: 0;
+    font-size: 13px;
+    color: #a1a1aa;
+    line-height: 1.5;
+}
+
+.crm-client-detail__section h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fde047;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.crm-client-detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.crm-vente-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.crm-filters--inline {
+    margin-bottom: 12px;
+}
+
 .crm-relance-hub-stats {
     grid-template-columns: repeat(4, 1fr);
 }

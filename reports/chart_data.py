@@ -424,6 +424,39 @@ def pack_charts(*charts):
     return [chart for chart in charts if chart]
 
 
+def crm_dashboard_all_charts(
+    user,
+    *,
+    see_all,
+    owner_filter,
+    prospect_overdue,
+    prospect_today,
+    prospect_upcoming,
+    recouvrement_rows,
+    clients_with_finance,
+    reports_qs,
+    show_leaderboard,
+):
+    from .views import _crm_clients_queryset
+
+    clients_qs = _crm_clients_queryset(
+        user, show_archived=False, owner_filter=owner_filter, see_all=see_all
+    )
+    prospect_qs = clients_qs.filter(status='prospect')
+    prospect_total = prospect_overdue + prospect_today + prospect_upcoming
+    return pack_charts(
+        build_crm_relance_split(prospect_total, len(recouvrement_rows)),
+        build_crm_status_donut(clients_qs),
+        build_crm_prospect_pipeline(prospect_overdue, prospect_today, prospect_upcoming),
+        build_crm_prospect_status(prospect_qs),
+        build_crm_top_remaining(clients_with_finance, limit=8),
+        build_crm_monthly_income_line(user, see_all=see_all),
+        build_crm_new_clients_line(user, see_all=see_all),
+        build_crm_followups_line(user, see_all=see_all),
+        *crm_reports_charts(reports_qs, show_leaderboard=show_leaderboard),
+    )
+
+
 def crm_hub_charts(user, *, see_all, owner_filter, prospect_overdue, prospect_today, prospect_upcoming, recouvrement_rows):
     from .views import _build_clients_with_finance, _crm_clients_queryset
 

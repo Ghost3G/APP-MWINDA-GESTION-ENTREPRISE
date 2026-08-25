@@ -1,0 +1,105 @@
+<div class="crm-client-detail">
+    <div class="crm-client-detail__meta">
+        {% if row.client.contact_name %}<span><strong>Contact :</strong> {{ row.client.contact_name }}</span>{% endif %}
+        {% if row.client.phone %}<span><strong>Tél :</strong> {{ row.client.phone }}</span>{% endif %}
+        {% if row.client.email %}<span><strong>Email :</strong> {{ row.client.email }}</span>{% endif %}
+        {% if row.client.city %}<span><strong>Ville :</strong> {{ row.client.city }}</span>{% endif %}
+        {% if row.client.next_action_date %}<span><strong>Prochaine action :</strong> {{ row.client.next_action|default:"—" }} · {{ row.client.next_action_date|date:"d/m/Y" }}</span>{% endif %}
+    </div>
+
+    {% if row.client.notes %}
+        <p class="crm-client-detail__notes">{{ row.client.notes }}</p>
+    {% endif %}
+
+    {% if row.projects %}
+        <table class="table crm-projects-table">
+            <thead>
+                <tr><th>Projet</th><th>Montant</th><th>Payé</th><th>Reste</th></tr>
+            </thead>
+            <tbody>
+                {% for project_row in row.projects %}
+                    <tr>
+                        <td>{{ project_row.project.name }}</td>
+                        <td>{{ project_row.contract }} $</td>
+                        <td class="positive">{{ project_row.paid }} $</td>
+                        <td class="crm-reste">{{ project_row.remaining }} $</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% with followups=row.client.follow_ups.all %}
+        {% if followups %}
+            <div class="crm-client-detail__section">
+                <h4>Derniers suivis</h4>
+                <ul class="crm-followup-list">
+                    {% for fu in followups|slice:":8" %}
+                        <li>
+                            <strong>{{ fu.get_follow_type_display }}</strong> · {{ fu.created_at|date:"d/m/Y H:i" }}
+                            {% if fu.author %}· {{ fu.author.get_display_name }}{% endif %}
+                            <div>{{ fu.content }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% if can_edit_crm %}
+        <div class="crm-client-detail__section">
+            <h4>Modifier la fiche</h4>
+            {% with edit_client=row.client %}
+                {% include "crm/partials/client_form.html" %}
+            {% endwith %}
+        </div>
+
+        {% if linkable_projects %}
+            <div class="crm-client-detail__section">
+                <h4>Lier un projet</h4>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="link_project">
+                    <input type="hidden" name="client_id" value="{{ row.client.id }}">
+                    <div class="form-group">
+                        <select name="project_id" required>
+                            <option value="">— Choisir un projet —</option>
+                            {% for p in linkable_projects %}
+                                <option value="{{ p.id }}">{{ p.name }} · {{ p.contract_amount }} $</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-crm btn-crm--primary">Lier le projet</button>
+                </form>
+            </div>
+        {% endif %}
+
+        <div class="crm-client-detail__section">
+            <h4>Ajouter un suivi</h4>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_followup">
+                <input type="hidden" name="client_id" value="{{ row.client.id }}">
+                <div class="form-grid two-cols">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="follow_type">
+                            {% for value, label in followup_type_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Contenu</label>
+                        <textarea name="content" required placeholder="Compte-rendu, note de relance..."></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn-crm btn-crm--primary">Enregistrer le suivi</button>
+            </form>
+        </div>
+    {% endif %}
+
+    <div class="crm-client-detail__actions">
+        <a href="{% url 'crm_reports_list' %}?client={{ row.client.id }}#nouveau-rapport" class="btn-crm btn-crm--ghost">Voir / créer un rapport</a>
+    </div>
+</div>

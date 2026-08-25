@@ -27,7 +27,7 @@
                                 <span class="crm-status crm-status--{{ row.client.status }}">{{ row.client.get_status_display }}</span>
                             </div>
                         </div>
-                        <a href="{% url 'crm_my_clients' %}?edit={{ row.client.id }}" class="btn-crm btn-crm--ghost">Gérer</a>
+                        <a href="{% url 'crm_my_clients' %}?open={{ row.client.id }}" class="btn-crm btn-crm--ghost">Gérer</a>
                     </div>
                     <div class="crm-money-grid">
                         <div class="crm-money-chip"><span class="crm-money-chip__label">Total</span><strong>{{ row.total_contract }} $</strong></div>

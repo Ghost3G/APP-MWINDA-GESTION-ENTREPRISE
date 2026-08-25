@@ -45,7 +45,7 @@
                                 <button type="submit" class="btn-crm btn-crm--primary">Marquer comme lu</button>
                             </form>
                         {% endif %}
-                        <a href="{% url 'crm_my_clients' %}?edit={{ report.client.id }}" class="btn-crm btn-crm--ghost">Fiche client</a>
+                        <a href="{% url 'crm_my_clients' %}?open={{ report.client.id }}" class="btn-crm btn-crm--ghost">Fiche client</a>
                     </div>
 
                     <div class="crm-report-meta-grid">

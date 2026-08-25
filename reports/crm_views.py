@@ -1,11 +1,12 @@
 """Pages CRM dédiées — navigation par sous-menu (Finance inchangé)."""
-from datetime import datetime
+from calendar import monthrange
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, Sum
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -22,13 +23,8 @@ from users.permissions import (
     is_commercial_lead,
 )
 
-from .chart_data import (
-    crm_hub_charts,
-    crm_my_clients_charts,
-    crm_prospect_charts,
-    crm_recouvrement_charts,
-)
-from .models import CrmCommercialReport, CrmFollowUp, FinanceClient
+from .chart_data import crm_dashboard_all_charts
+from .models import CrmCommercialReport, CrmFollowUp, FinanceClient, FinanceIncome
 from .views import (
     CLIENT_STATUS_CHOICES,
     INCOME_CATEGORY_CHOICES,
@@ -49,7 +45,12 @@ from .views import (
 User = get_user_model()
 
 CRM_ROUTE_NAMES = frozenset({
+    'crm_dashboard',
     'crm_my_clients',
+    'crm_portfolio',
+    'crm_vente_day',
+    'crm_vente_month',
+    'crm_vente_year',
     'crm_relance',
     'crm_relance_prospect',
     'crm_relance_recouvrement',
@@ -59,6 +60,12 @@ CRM_ROUTE_NAMES = frozenset({
     'crm_report_detail',
     'crm_report_pdf',
 })
+
+CRM_VENTE_PERIODS = {
+    'jour': 'Jour',
+    'mois': 'Mois',
+    'annee': 'Année',
+}
 
 
 def _crm_guard(request):
@@ -120,6 +127,42 @@ def _crm_recouvrement_rows(user, *, owner_filter=None, see_all=None):
     return rows, total_remaining
 
 
+def _crm_income_queryset(user, *, see_all, owner_filter=None):
+    qs = FinanceIncome.objects.select_related('client', 'project', 'created_by')
+    if see_all and owner_filter:
+        qs = qs.filter(
+            Q(client__commercial_owner_id=owner_filter)
+            | Q(project__commercial_agent_id=owner_filter)
+        )
+    elif not see_all:
+        qs = qs.filter(
+            Q(client__commercial_owner=user) | Q(project__commercial_agent=user)
+        )
+    return qs
+
+
+def _crm_vente_bounds(period, selected_date):
+    if period == 'jour':
+        return selected_date, selected_date, selected_date.strftime('%d/%m/%Y')
+    if period == 'mois':
+        last_day = monthrange(selected_date.year, selected_date.month)[1]
+        start = selected_date.replace(day=1)
+        end = selected_date.replace(day=last_day)
+        return start, end, selected_date.strftime('%B %Y')
+    start = selected_date.replace(month=1, day=1)
+    end = selected_date.replace(month=12, day=31)
+    return start, end, str(selected_date.year)
+
+
+def _crm_reports_for_charts(user, *, see_all):
+    today = timezone.localdate()
+    start = today - timedelta(days=90)
+    qs = CrmCommercialReport.objects.filter(activity_date__gte=start)
+    if not see_all:
+        qs = qs.filter(author=user)
+    return qs.order_by('-activity_date', '-created_at')
+
+
 def _crm_shared_context(request, *, page_key):
     user = request.user
     can_write = can_edit_crm_clients(user)
@@ -172,13 +215,13 @@ def _crm_shared_context(request, *, page_key):
     }
 
 
-def _load_edit_client(request, *, see_all, follow_ups_qs):
-    edit_id = request.GET.get('edit', '').strip()
-    if not edit_id or not can_edit_crm_clients(request.user):
+def _load_edit_client(request, *, see_all, follow_ups_qs, client_id=None):
+    open_id = client_id or request.GET.get('open', '').strip() or request.GET.get('edit', '').strip()
+    if not open_id:
         return None, [], [], None, []
 
     candidate = (
-        FinanceClient.objects.filter(id=edit_id)
+        FinanceClient.objects.filter(id=open_id)
         .select_related('commercial_owner')
         .prefetch_related(Prefetch('follow_ups', queryset=follow_ups_qs))
         .first()
@@ -193,10 +236,12 @@ def _load_edit_client(request, *, see_all, follow_ups_qs):
         .order_by('-activity_date', '-created_at')[:15]
     )
     edit_finance = _client_financial_snapshot(candidate)
-    merge_candidates = [
-        c for c in _crm_clients_queryset(request.user, show_archived=False, see_all=see_all)
-        if c.id != candidate.id and can_edit_crm_client(request.user, c)
-    ]
+    merge_candidates = []
+    if can_edit_crm_clients(request.user):
+        merge_candidates = [
+            c for c in _crm_clients_queryset(request.user, show_archived=False, see_all=see_all)
+            if c.id != candidate.id and can_edit_crm_client(request.user, c)
+        ]
     return candidate, edit_follow_ups, edit_commercial_reports, edit_finance, merge_candidates
 
 
@@ -232,7 +277,7 @@ def _handle_crm_post(request, *, default_redirect):
                 content=content,
             )
             messages.success(request, 'Suivi ajouté.')
-        return _crm_redirect(request, path=default_redirect, edit=str(client.id))
+        return _crm_redirect(request, path=default_redirect, open=str(client.id))
 
     if action == 'link_project':
         client = FinanceClient.objects.filter(id=request.POST.get('client_id')).first()
@@ -246,10 +291,10 @@ def _handle_crm_post(request, *, default_redirect):
         project = Project.objects.filter(id=project_id, client__isnull=True).first()
         if not project:
             messages.error(request, 'Projet introuvable ou déjà lié à un client.')
-            return _crm_redirect(request, path=default_redirect, edit=str(client.id))
+            return _crm_redirect(request, path=default_redirect, open=str(client.id))
         _link_project_to_client(project, client)
         messages.success(request, f'Projet « {project.name} » lié au client « {client.name} ».')
-        return _crm_redirect(request, path=default_redirect, edit=str(client.id))
+        return _crm_redirect(request, path=default_redirect, open=str(client.id))
 
     if action == 'reassign':
         if not can_reassign:
@@ -287,9 +332,9 @@ def _handle_crm_post(request, *, default_redirect):
         ok, error = _merge_crm_clients(keep, absorb)
         if not ok:
             messages.error(request, error)
-            return _crm_redirect(request, path=default_redirect, edit=str(keep.id))
+            return _crm_redirect(request, path=default_redirect, open=str(keep.id))
         messages.success(request, f'« {absorb.name} » fusionné dans « {keep.name} ».')
-        return _crm_redirect(request, path=default_redirect, edit=str(keep.id))
+        return _crm_redirect(request, path=default_redirect, open=str(keep.id))
 
     payload = _client_form_payload(request)
     if not payload['name']:
@@ -306,7 +351,7 @@ def _handle_crm_post(request, *, default_redirect):
         )
         if duplicate:
             messages.error(request, f'Un autre client existe déjà : « {duplicate.name} ».')
-            return _crm_redirect(request, path=default_redirect, edit=str(duplicate.id))
+            return _crm_redirect(request, path=default_redirect, open=str(duplicate.id))
         for key, value in payload.items():
             setattr(client, key, value)
         old_owner_id = client.commercial_owner_id
@@ -319,12 +364,12 @@ def _handle_crm_post(request, *, default_redirect):
             )
         client.save()
         messages.success(request, f'Fiche client mise à jour ({client.code}).')
-        return _crm_redirect(request, path=reverse('crm_my_clients'), edit=str(client.id))
+        return _crm_redirect(request, path=reverse('crm_my_clients'), open=str(client.id))
 
     duplicate = _find_duplicate_client(name=payload['name'], phone=payload['phone'])
     if duplicate:
         messages.warning(request, f'Le client « {duplicate.name} » existe déjà.')
-        return _crm_redirect(request, path=reverse('crm_my_clients'), edit=str(duplicate.id))
+        return _crm_redirect(request, path=reverse('crm_my_clients'), open=str(duplicate.id))
 
     owner = _resolve_commercial_owner(request, default_owner=request.user)
     client = FinanceClient(
@@ -335,7 +380,7 @@ def _handle_crm_post(request, *, default_redirect):
     _assign_client_code(client, owner, force=True)
     client.save()
     messages.success(request, f'Client « {client.name} » ajouté ({client.code}).')
-    return _crm_redirect(request, path=reverse('crm_my_clients'), edit=str(client.id))
+    return _crm_redirect(request, path=reverse('crm_my_clients'), open=str(client.id))
 
 
 def _portfolio_list_context(request, ctx):
@@ -415,6 +460,102 @@ def _render_crm(request, template, page_key, extra=None):
 
 
 @login_required(login_url='login')
+def crm_dashboard(request):
+    blocked = _crm_guard(request)
+    if blocked:
+        return blocked
+
+    ctx = _crm_shared_context(request, page_key='dashboard')
+    overdue, due_today, upcoming, _without_date = _crm_prospect_relance(
+        request.user,
+        owner_filter=ctx['filter_owner_id'],
+        see_all=ctx['view_all'],
+    )
+    recouvrement_rows, total_remaining = _crm_recouvrement_rows(
+        request.user,
+        owner_filter=ctx['filter_owner_id'],
+        see_all=ctx['view_all'],
+    )
+    clients = list(
+        _crm_clients_queryset(
+            request.user,
+            show_archived=False,
+            owner_filter=ctx['filter_owner_id'],
+            see_all=ctx['view_all'],
+        )
+    )
+    clients_with_finance = _build_clients_with_finance(clients)
+    reports_qs = _crm_reports_for_charts(request.user, see_all=ctx['view_all'])
+    ctx.update({
+        'prospect_overdue_count': len(overdue),
+        'prospect_today_count': len(due_today),
+        'recouvrement_count': len(recouvrement_rows),
+        'total_remaining': total_remaining,
+        'page_title': 'Dashboard',
+        'page_intro': (
+            'Vue synthèse CRM : graphiques consolidés sur les prospects, '
+            'clients, encaissements et rapports commerciaux.'
+        ),
+        'mw_charts': crm_dashboard_all_charts(
+            request.user,
+            see_all=ctx['view_all'],
+            owner_filter=ctx['filter_owner_id'],
+            prospect_overdue=len(overdue),
+            prospect_today=len(due_today),
+            prospect_upcoming=len(upcoming),
+            recouvrement_rows=recouvrement_rows,
+            clients_with_finance=clients_with_finance,
+            reports_qs=reports_qs,
+            show_leaderboard=ctx['view_all'],
+        ),
+    })
+    return render(request, 'crm/dashboard.html', ctx)
+
+
+@login_required(login_url='login')
+def crm_vente(request, period):
+    blocked = _crm_guard(request)
+    if blocked:
+        return blocked
+
+    if period not in CRM_VENTE_PERIODS:
+        return redirect('crm_vente_day')
+
+    ctx = _crm_shared_context(request, page_key=f'vente_{period}')
+    selected_raw = request.GET.get('date', '').strip()
+    try:
+        selected_date = datetime.strptime(selected_raw, '%Y-%m-%d').date() if selected_raw else timezone.localdate()
+    except ValueError:
+        selected_date = timezone.localdate()
+
+    start, end, period_label = _crm_vente_bounds(period, selected_date)
+    incomes_qs = _crm_income_queryset(
+        request.user,
+        see_all=ctx['view_all'],
+        owner_filter=ctx['filter_owner_id'],
+    ).filter(income_date__gte=start, income_date__lte=end)
+    incomes = list(incomes_qs.order_by('-income_date', '-created_at'))
+    total_amount = incomes_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+    ctx.update({
+        'vente_period': period,
+        'vente_period_label': CRM_VENTE_PERIODS[period],
+        'period_range_label': period_label,
+        'selected_date': selected_date,
+        'vente_incomes': incomes,
+        'vente_total': total_amount,
+        'vente_count': len(incomes),
+        'page_title': f'Vente — {CRM_VENTE_PERIODS[period]}',
+        'page_intro': (
+            'Encaissements enregistrés par le service Finance, '
+            'filtrés sur votre portefeuille commercial.'
+        ),
+        'mw_charts': [],
+    })
+    return render(request, 'crm/vente.html', ctx)
+
+
+@login_required(login_url='login')
 def crm_my_clients(request):
     blocked = _crm_guard(request)
     if blocked:
@@ -425,28 +566,21 @@ def crm_my_clients(request):
         return post_response
 
     ctx = _crm_shared_context(request, page_key='my_clients')
-    edit_client, edit_follow_ups, edit_commercial_reports, edit_finance, merge_candidates = (
-        _load_edit_client(request, see_all=ctx['view_all'], follow_ups_qs=ctx['follow_ups_qs'])
-    )
     portfolio_ctx = _portfolio_list_context(request, ctx)
     ctx.update(portfolio_ctx)
+    open_client_id = request.GET.get('open', '').strip() or request.GET.get('edit', '').strip()
+    if open_client_id and not any(
+        str(row['client'].id) == open_client_id for row in portfolio_ctx['clients_with_finance']
+    ):
+        open_client_id = ''
     ctx.update({
-        'edit_client': edit_client,
-        'edit_follow_ups': edit_follow_ups,
-        'edit_commercial_reports': edit_commercial_reports,
-        'edit_finance': edit_finance,
-        'merge_candidates': merge_candidates,
+        'open_client_id': open_client_id,
         'page_title': 'Mes clients',
         'page_intro': (
-            'Consultez votre portefeuille : fiches clients, projets liés et montants '
-            'payés / restants (mis à jour par le service Finance).'
+            'Liste compacte de votre portefeuille. Cliquez sur une ligne '
+            'pour afficher la fiche complète du client.'
         ),
-        'mw_charts': crm_my_clients_charts(
-            request.user,
-            see_all=ctx['view_all'],
-            owner_filter=ctx['filter_owner_id'],
-            clients_with_finance=portfolio_ctx['clients_with_finance'],
-        ) if not edit_client else [],
+        'mw_charts': [],
     })
     return render(request, 'crm/my_clients.html', ctx)
 
@@ -480,15 +614,7 @@ def crm_relance(request):
             'Centre de relance commerciale : consultez vos priorités prospect '
             'et recouvrement, puis accédez au détail de chaque vue.'
         ),
-        'mw_charts': crm_hub_charts(
-            request.user,
-            see_all=ctx['view_all'],
-            owner_filter=ctx['filter_owner_id'],
-            prospect_overdue=len(overdue),
-            prospect_today=len(due_today),
-            prospect_upcoming=len(upcoming),
-            recouvrement_rows=recouvrement_rows,
-        ),
+        'mw_charts': [],
     })
     return render(request, 'crm/relance.html', ctx)
 
@@ -519,14 +645,7 @@ def crm_relance_prospect(request):
             'Suivi des prospects à contacter : relances en retard, du jour et à venir. '
             'Mettez à jour la prochaine action depuis la fiche client.'
         ),
-        'mw_charts': crm_prospect_charts(
-            request.user,
-            see_all=ctx['view_all'],
-            owner_filter=ctx['filter_owner_id'],
-            overdue=overdue,
-            due_today=due_today,
-            upcoming=upcoming,
-        ),
+        'mw_charts': [],
     })
     return render(request, 'crm/relance_prospect.html', ctx)
 
@@ -552,11 +671,7 @@ def crm_relance_recouvrement(request):
             'Les paiements sont enregistrés par le service Finance ; '
             'utilisez cette vue pour prioriser vos relances de recouvrement.'
         ),
-        'mw_charts': crm_recouvrement_charts(
-            request.user,
-            see_all=ctx['view_all'],
-            clients_with_finance=rows,
-        ),
+        'mw_charts': [],
     })
     return render(request, 'crm/relance_recouvrement.html', ctx)
 

@@ -1,11 +1,12 @@
 {% extends "crm/base.html" %}
 {% block crm_content %}
-    {% if not edit_client %}
-        {% include "partials/mw_charts_section.html" %}
-    {% endif %}
-    {% if edit_client %}
-        {% include "crm/partials/client_edit_panels.html" %}
-    {% else %}
-        {% include "crm/partials/client_list.html" %}
-    {% endif %}
+    <div class="crm-page-actions">
+        {% if can_edit_crm %}
+            <a href="{% url 'crm_new_client' %}" class="btn-crm btn-crm--primary">+ Nouveau client</a>
+        {% endif %}
+        {% if can_reassign_crm %}
+            <a href="{% url 'crm_reassign' %}" class="btn-crm btn-crm--ghost">Affecter un client</a>
+        {% endif %}
+    </div>
+    {% include "crm/partials/client_list.html" %}
 {% endblock %}
