@@ -4,13 +4,19 @@
 <div class="crm-sidebar-sub">
     <a href="{% url 'crm_dashboard' %}" class="nav-subitem {% if rn == 'crm_dashboard' %}active{% endif %}">Dashboard</a>
     <a href="{% url 'crm_relance_prospect' %}" class="nav-subitem {% if rn == 'crm_relance_prospect' %}active{% endif %}">Prospect</a>
-    <div class="crm-sidebar-group">
-        <span class="crm-sidebar-group-label {% if rn == 'crm_vente_day' or rn == 'crm_vente_month' or rn == 'crm_vente_year' or rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_new_client' or rn == 'crm_reassign' %}is-active{% endif %}">Vente</span>
-        <a href="{% url 'crm_vente_day' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_day' %}active{% endif %}">Jour</a>
-        <a href="{% url 'crm_vente_month' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_month' %}active{% endif %}">Mois</a>
-        <a href="{% url 'crm_vente_year' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_year' %}active{% endif %}">Année</a>
-        <a href="{% url 'crm_my_clients' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_new_client' or rn == 'crm_reassign' %}active{% endif %}">Mes clients</a>
-    </div>
+
+    <details class="crm-sidebar-nested" {% if rn == 'crm_vente_day' or rn == 'crm_vente_month' or rn == 'crm_vente_year' %}open{% endif %}>
+        <summary class="crm-sidebar-nested__summary {% if rn == 'crm_vente_day' or rn == 'crm_vente_month' or rn == 'crm_vente_year' %}is-active{% endif %}">
+            <span class="crm-sidebar-nested__label">Vente</span>
+        </summary>
+        <div class="crm-sidebar-nested__body">
+            <a href="{% url 'crm_vente_day' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_day' %}active{% endif %}">Jour</a>
+            <a href="{% url 'crm_vente_month' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_month' %}active{% endif %}">Mois</a>
+            <a href="{% url 'crm_vente_year' %}" class="nav-subitem nav-subitem--child {% if rn == 'crm_vente_year' %}active{% endif %}">Année</a>
+        </div>
+    </details>
+
+    <a href="{% url 'crm_my_clients' %}" class="nav-subitem {% if rn == 'crm_my_clients' or rn == 'crm_portfolio' or rn == 'crm_new_client' or rn == 'crm_reassign' %}active{% endif %}">Mes clients</a>
     <a href="{% url 'crm_relance_recouvrement' %}" class="nav-subitem {% if rn == 'crm_relance_recouvrement' %}active{% endif %}">Recouvrement</a>
     <a href="{% url 'crm_relance' %}" class="nav-subitem {% if rn == 'crm_relance' %}active{% endif %}">Relance</a>
     <a href="{% url 'crm_reports_list' %}" class="nav-subitem {% if rn == 'crm_reports_list' or rn == 'crm_report_detail' or rn == 'crm_report_pdf' %}active{% endif %}">Rapports</a>
