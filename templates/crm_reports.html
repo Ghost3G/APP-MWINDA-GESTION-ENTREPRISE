@@ -147,8 +147,10 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="r-date">Date de l’activité *</label>
-                                <input id="r-date" type="date" name="activity_date" value="{{ default_activity_date }}" required>
+                                <label for="r-date">Date de l’activité</label>
+                                <input id="r-date" type="text" value="{{ report_today|date:'d/m/Y' }}" readonly class="input-readonly">
+                                <input type="hidden" name="activity_date" value="{{ default_activity_date }}">
+                                <small class="field-hint">Un rapport ne peut être saisi que pour aujourd’hui.</small>
                             </div>
                             <div class="form-group">
                                 <label for="r-type">Type d’activité *</label>

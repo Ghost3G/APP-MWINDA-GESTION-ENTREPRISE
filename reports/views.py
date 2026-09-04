@@ -2138,8 +2138,15 @@ def crm_reports_list(request):
                 return redirect('crm_reports_list')
 
             activity_date = _parse_optional_date(request.POST.get('activity_date', '').strip())
+            today = timezone.localdate()
             if not activity_date:
-                activity_date = timezone.localdate()
+                activity_date = today
+            elif activity_date != today:
+                messages.error(
+                    request,
+                    'Le rapport commercial ne peut être enregistré que pour la date du jour.',
+                )
+                return redirect('crm_reports_list')
 
             activity_type = _valid_choice(
                 request.POST.get('activity_type', '').strip(),
@@ -2280,6 +2287,7 @@ def crm_reports_list(request):
         'date_from': date_from.isoformat() if date_from else '',
         'date_to': date_to.isoformat() if date_to else '',
         'default_activity_date': today.isoformat(),
+        'report_today': today,
         'is_commercial_lead_user': is_commercial_lead(request.user),
         'is_management': is_management_user(request.user),
         'crm_mode': True,

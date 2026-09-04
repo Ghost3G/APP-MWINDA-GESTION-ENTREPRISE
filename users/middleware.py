@@ -56,11 +56,11 @@ class AgentSessionWorkdayMiddleware:
         user = getattr(request, 'user', None)
         if user is not None and getattr(user, 'is_authenticated', False):
             from django.utils import timezone
-            from .presence import is_presence_auto_close_target, work_end_datetime
+            from .presence import is_presence_auto_close_target, work_end_datetime_for_user
 
             if is_presence_auto_close_target(user):
                 local_now = timezone.localtime()
-                work_end_dt = work_end_datetime(local_now.date())
+                work_end_dt = work_end_datetime_for_user(user, local_now.date())
                 if work_end_dt is not None:
                     # Petite marge pour que la requête de fin de service déclenche la déconnexion.
                     keep_until = int((work_end_dt - local_now).total_seconds()) + 300
@@ -96,13 +96,13 @@ class AgentWorkEndLogoutMiddleware:
             from .presence import (
                 close_open_session_for_user,
                 should_force_agent_logout_now,
-                work_schedule_for_day,
+                work_schedule_for_user,
             )
 
             # Clôture la fiche présence (départ fin de service) sans effacer les connexions du jour.
             if should_force_agent_logout_now(user):
                 day = timezone.localdate()
-                schedule = work_schedule_for_day(day)
+                schedule = work_schedule_for_user(user, day)
                 end_label = schedule.end_label if schedule.is_open else '17:30'
                 close_open_session_for_user(user, day=day)
                 logout(request)

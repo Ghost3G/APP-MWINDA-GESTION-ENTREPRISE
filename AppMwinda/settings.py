@@ -302,3 +302,4 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # Doit rester lisible en JS pour les appels fetch (messages, tableau, notifs)
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_FAILURE_VIEW = 'AppMwinda.error_views.csrf_failure'

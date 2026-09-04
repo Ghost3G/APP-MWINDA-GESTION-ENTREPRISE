@@ -68,7 +68,7 @@ def app_notifications(request):
     is_crm = can_access_crm(user)
     is_stock = can_access_stock(user)
     agent_logout_warning = agent_logout_warning_payload(user)
-    service_hours = service_hours_banner_payload()
+    service_hours = service_hours_banner_payload(user=user)
 
     try:
         unread_messages_count = (

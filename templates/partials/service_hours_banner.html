@@ -5,12 +5,12 @@
         <div class="service-hours-banner__slots">
             <span class="service-hours-banner__slot">
                 <strong>Lun – Ven</strong>
-                <em>08:30 – 17:30</em>
+                <em>{{ service_hours.weekday_short }}</em>
             </span>
             <span class="service-hours-banner__sep" aria-hidden="true">·</span>
             <span class="service-hours-banner__slot">
                 <strong>Samedi</strong>
-                <em>09:00 – 13:00</em>
+                <em>{{ service_hours.saturday_short }}</em>
             </span>
             <span class="service-hours-banner__sep" aria-hidden="true">·</span>
             <span class="service-hours-banner__slot service-hours-banner__slot--today {% if not service_hours.today_open %}is-closed{% endif %}">

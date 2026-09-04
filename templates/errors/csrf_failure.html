@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session expirée — AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <style>
+        .csrf-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: #0a0a0a;
+        }
+        .csrf-card {
+            max-width: 520px;
+            width: 100%;
+            background: #141416;
+            border: 1px solid rgba(253, 224, 71, 0.25);
+            border-radius: 16px;
+            padding: 28px 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        }
+        .csrf-card h1 {
+            margin: 0 0 12px;
+            font-size: 22px;
+            color: #fde047;
+        }
+        .csrf-card p {
+            margin: 0 0 14px;
+            color: #d4d4d8;
+            line-height: 1.55;
+            font-size: 15px;
+        }
+        .csrf-card ul {
+            margin: 0 0 18px 18px;
+            color: #a1a1aa;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .csrf-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .csrf-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            border: 0;
+            cursor: pointer;
+        }
+        .csrf-btn-primary {
+            background: #fde047;
+            color: #111827;
+        }
+        .csrf-btn-ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: #f4f4f5;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+    </style>
+</head>
+<body>
+    <div class="csrf-page">
+        <div class="csrf-card">
+            <h1>Votre session a expiré</h1>
+            <p>
+                L’enregistrement n’a pas abouti parce que la page était ouverte trop longtemps
+                ou que votre connexion a été interrompue (fin de journée, onglet en arrière-plan, etc.).
+            </p>
+            <p><strong>Que faire :</strong></p>
+            <ul>
+                <li>Rechargez la page ou reconnectez-vous</li>
+                <li>Refaites l’action (client, rapport, suivi…)</li>
+                <li>Évitez de laisser un formulaire ouvert plusieurs heures sans recharger</li>
+            </ul>
+            <div class="csrf-actions">
+                <a href="javascript:location.reload()" class="csrf-btn csrf-btn-primary">Recharger la page</a>
+                <a href="{% url 'login' %}" class="csrf-btn csrf-btn-ghost">Se reconnecter</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
