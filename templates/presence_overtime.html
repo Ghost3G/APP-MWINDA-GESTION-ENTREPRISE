@@ -114,6 +114,16 @@
                             · Le PDF individuel nécessite la sélection d’un collaborateur.
                         {% endif %}
                     </p>
+                    {% if year_hint_total %}
+                    <div class="message info" style="margin-top:12px;">
+                        Aucune saisie sur cette période, mais
+                        <strong>{{ year_hint_total_label }}</strong> sont enregistrés sur
+                        <strong>{{ year_hint_label }}</strong>.
+                        <a href="?period=year&amp;date={{ anchor_date }}{% if selected_agent_id %}&amp;agent={{ selected_agent_id }}{% endif %}">
+                            Afficher l’année
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
 
                 {% if can_manage_overtime %}
@@ -154,6 +164,22 @@
 
                 <div class="panel">
                     <h3>Synthèse par collaborateur</h3>
+                    {% if agents_with_days and not show_empty_agents and hidden_empty_count %}
+                        <p class="filter-hint">
+                            {{ agents_with_days }} collaborateur{{ agents_with_days|pluralize }} avec des jours —
+                            {{ hidden_empty_count }} sans saisie masqué{{ hidden_empty_count|pluralize }}.
+                            <a href="?period={{ period_key }}&amp;date={{ anchor_date }}{% if selected_agent_id %}&amp;agent={{ selected_agent_id }}{% endif %}&amp;show_all=1">
+                                Afficher toute l’équipe
+                            </a>
+                        </p>
+                    {% elif show_empty_agents %}
+                        <p class="filter-hint">
+                            Affichage de toute l’équipe.
+                            <a href="?period={{ period_key }}&amp;date={{ anchor_date }}{% if selected_agent_id %}&amp;agent={{ selected_agent_id }}{% endif %}">
+                                Voir seulement ceux qui ont des jours
+                            </a>
+                        </p>
+                    {% endif %}
                     {% if summary_rows %}
                         <div class="table-wrap">
                             <table class="presence-table overtime-table">
@@ -211,7 +237,16 @@
                             </table>
                         </div>
                     {% else %}
-                        <p class="muted">Aucune donnée pour cette période.</p>
+                        <p class="muted">Aucune saisie d’heures supplémentaires sur cette période.</p>
+                        {% if year_hint_total %}
+                        <p class="filter-hint">
+                            Des jours existent sur {{ year_hint_label }}
+                            ({{ year_hint_total_label }}).
+                            <a href="?period=year&amp;date={{ anchor_date }}{% if selected_agent_id %}&amp;agent={{ selected_agent_id }}{% endif %}">
+                                Afficher l’année
+                            </a>
+                        </p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

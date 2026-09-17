@@ -720,7 +720,9 @@ def _overtime_context(request):
     from .models import OvertimeDayEntry
     from .presence import parse_presence_date
 
-    period_key = (request.GET.get('period') or 'month').strip().lower()
+    # Par défaut : année en cours (évite l’impression que les HS « ont disparu »
+    # quand on arrive sur un mois sans saisie).
+    period_key = (request.GET.get('period') or 'year').strip().lower()
     anchor = parse_presence_date(request.GET.get('date', '').strip())
     period_key, start, end, period_label = parse_overtime_period(period_key, anchor)
     visible_users = _overtime_visible_users(request)
@@ -733,8 +735,23 @@ def _overtime_context(request):
             visible_users = [selected_agent]
 
     summary_rows, grand_total = build_overtime_summary(visible_users, start, end)
-    agents_with_days = sum(1 for row in summary_rows if row['total_days'] > 0)
+    # Afficher d’abord (et surtout) les collaborateurs qui ont des jours.
+    rows_with_days = [row for row in summary_rows if row['total_days'] > 0]
+    show_empty_agents = request.GET.get('show_all') == '1'
+    display_rows = summary_rows if show_empty_agents else (rows_with_days or summary_rows[:0])
+    agents_with_days = len(rows_with_days)
     total_entries = sum(len(row['entries']) for row in summary_rows)
+    hidden_empty_count = max(0, len(summary_rows) - len(rows_with_days))
+
+    # Si la période filtrée est vide mais qu’il y a des saisies sur l’année, le signaler.
+    year_hint_total = None
+    year_hint_label = None
+    if grand_total == 0 and period_key != 'year':
+        _year_key, year_start, year_end, year_label = parse_overtime_period('year', anchor)
+        _, year_total = build_overtime_summary(visible_users, year_start, year_end)
+        if year_total > 0:
+            year_hint_total = year_total
+            year_hint_label = year_label
 
     return {
         'period_key': period_key,
@@ -742,11 +759,17 @@ def _overtime_context(request):
         'period_start': start.isoformat(),
         'period_end': end.isoformat(),
         'anchor_date': anchor.isoformat(),
-        'summary_rows': summary_rows,
+        'summary_rows': display_rows,
+        'summary_rows_all_count': len(summary_rows),
         'grand_total': grand_total,
         'grand_total_label': format_days_label(grand_total),
         'agents_with_days': agents_with_days,
         'total_entries': total_entries,
+        'hidden_empty_count': hidden_empty_count,
+        'show_empty_agents': show_empty_agents,
+        'year_hint_total': year_hint_total,
+        'year_hint_label': year_hint_label,
+        'year_hint_total_label': format_days_label(year_hint_total) if year_hint_total is not None else '',
         'visible_users': visible_users,
         'all_agents': list(User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')),
         'selected_agent': selected_agent,
@@ -754,7 +777,7 @@ def _overtime_context(request):
         'can_manage_overtime': can_manage_overtime(request.user),
         'can_view_all_overtime': can_view_all_overtime(request.user),
         'source_choices': OvertimeDayEntry.SOURCE_CHOICES,
-        'mw_charts': _overtime_charts(summary_rows),
+        'mw_charts': _overtime_charts(rows_with_days if rows_with_days else summary_rows),
     }
 
 
