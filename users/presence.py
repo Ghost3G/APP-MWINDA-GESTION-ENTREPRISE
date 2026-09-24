@@ -17,16 +17,17 @@ ILLUSTRATION_PATH = '/presence/illustration/'
 # Lun–Ven : 08:30 → 17:30 | Samedi : 09:00 → 13:00 | Dimanche : fermé
 WEEKDAY_START = time(8, 30)
 WEEKDAY_END = time(17, 30)
-COMMERCIAL_WEEKDAY_END = time(21, 0)
-COMMERCIAL_WEEKDAY_WARN = time(20, 30)
+COMMERCIAL_MIDNIGHT_WARN = time(23, 30)
 SATURDAY_START = time(9, 0)
 SATURDAY_END = time(13, 0)
 WARN_BEFORE = timedelta(minutes=30)
 
 SCHEDULE_SUMMARY_LABEL = 'Lun–Ven 08:30–17:30 · Sam 09:00–13:00'
-COMMERCIAL_WEEKDAY_RANGE_LABEL = 'Lundi – Vendredi : 08:30 – 21:00'
-COMMERCIAL_SCHEDULE_SUMMARY_LABEL = 'Lun–Ven 08:30–21:00 · Sam 09:00–13:00'
-COMMERCIAL_WEEKDAY_SHORT = '08:30 – 21:00'
+COMMERCIAL_WEEKDAY_RANGE_LABEL = 'Lundi – Vendredi : 08:30 – 00:00'
+COMMERCIAL_SATURDAY_RANGE_LABEL = 'Samedi : 09:00 – 00:00'
+COMMERCIAL_SCHEDULE_SUMMARY_LABEL = 'Lun–Sam jusqu’à 00:00 (déconnexion à minuit)'
+COMMERCIAL_WEEKDAY_SHORT = '08:30 – 00:00'
+COMMERCIAL_SATURDAY_SHORT = '09:00 – 00:00'
 WEEKDAY_RANGE_LABEL = 'Lundi – Vendredi : 08:30 – 17:30'
 SATURDAY_RANGE_LABEL = 'Samedi : 09:00 – 13:00'
 SUNDAY_RANGE_LABEL = 'Dimanche : fermé'
@@ -108,8 +109,8 @@ def service_hours_banner_payload(day=None, user=None):
         return {
             'weekday_label': COMMERCIAL_WEEKDAY_RANGE_LABEL,
             'weekday_short': COMMERCIAL_WEEKDAY_SHORT,
-            'saturday_label': SATURDAY_RANGE_LABEL,
-            'saturday_short': '09:00 – 13:00',
+            'saturday_label': COMMERCIAL_SATURDAY_RANGE_LABEL,
+            'saturday_short': COMMERCIAL_SATURDAY_SHORT,
             'sunday_label': SUNDAY_RANGE_LABEL,
             'summary_label': COMMERCIAL_SCHEDULE_SUMMARY_LABEL,
             'today_open': schedule.is_open,
@@ -298,36 +299,34 @@ def build_presence_sessions(selected_date):
 
 
 def is_commercial_agent(user):
-    """Agent commercial : déconnexion auto prolongée jusqu'à 21:00 en semaine."""
+    """Agent commercial : déconnexion auto uniquement à minuit (00:00)."""
     if not is_presence_auto_close_target(user):
         return False
     return getattr(user, 'org_group', '') == 'commercial'
 
 
 def work_schedule_for_user(user, day=None):
-    """Horaires de fin de session selon le profil (commerciaux : 21:00 Lun–Ven)."""
+    """Horaires de fin de session selon le profil (commerciaux : jusqu'à 00:00)."""
     schedule = work_schedule_for_day(day)
     if not is_commercial_agent(user) or not schedule.is_open:
         return schedule
-    if schedule.day.weekday() == 5:
-        return schedule
 
-    end = COMMERCIAL_WEEKDAY_END
-    warn = COMMERCIAL_WEEKDAY_WARN
+    # Fin de session = minuit du lendemain (label 00:00).
     return SimpleNamespace(
         day=schedule.day,
         is_open=True,
         start=schedule.start,
-        end=end,
-        warn=warn,
+        end=time(0, 0),
+        warn=COMMERCIAL_MIDNIGHT_WARN,
         start_hour=schedule.start_hour,
-        end_hour=_time_to_hour_float(end),
+        end_hour=24.0,
         start_label=schedule.start_label,
-        end_label=end.strftime('%H:%M'),
-        warn_label=warn.strftime('%H:%M'),
+        end_label='00:00',
+        warn_label=COMMERCIAL_MIDNIGHT_WARN.strftime('%H:%M'),
         day_name=schedule.day_name,
-        range_label=f'{schedule.day_name} : {schedule.start_label} – {end.strftime("%H:%M")}',
-        short_label=f'{schedule.start_label} – {end.strftime("%H:%M")}',
+        range_label=f'{schedule.day_name} : {schedule.start_label} – 00:00',
+        short_label=f'{schedule.start_label} – 00:00',
+        ends_at_midnight=True,
     )
 
 
@@ -339,9 +338,11 @@ def work_end_datetime(day):
 
 
 def work_end_datetime_for_user(user, day):
-    schedule = work_schedule_for_user(user, day)
+    schedule = work_schedule_for_day(day) if is_commercial_agent(user) else work_schedule_for_user(user, day)
     if not schedule.is_open:
         return None
+    if is_commercial_agent(user):
+        return midnight_datetime(day)
     return timezone.make_aware(datetime.combine(day, schedule.end))
 
 
@@ -353,6 +354,11 @@ def work_warn_datetime(day):
 
 
 def work_warn_datetime_for_user(user, day):
+    if is_commercial_agent(user):
+        schedule = work_schedule_for_day(day)
+        if not schedule.is_open:
+            return None
+        return timezone.make_aware(datetime.combine(day, COMMERCIAL_MIDNIGHT_WARN))
     schedule = work_schedule_for_user(user, day)
     if not schedule.is_open:
         return None
@@ -425,12 +431,14 @@ def close_open_session_for_user(user, *, day=None, reason='auto_work_end'):
         return False
 
     closed_at = work_end_datetime_for_user(user, day)
+    if closed_at is None:
+        return False
     start, end = _day_bounds(day)
 
     # Ne ferme que si la fin de journée est déjà passée (ou journée antérieure).
     if day > local_now.date():
         return False
-    if day == local_now.date() and local_now.time() < schedule.end:
+    if day == local_now.date() and local_now < closed_at:
         return False
 
     # Uniquement les connexions de la plage 00:00 → fin de service (journée de travail).
@@ -505,12 +513,10 @@ def close_open_agent_sessions_for_day(day=None):
         return 0
     if not schedule.is_open:
         return 0
-    if day == local_now.date():
-        latest_end = schedule.end
-        if schedule.day.weekday() < 5:
-            latest_end = max(schedule.end, COMMERCIAL_WEEKDAY_END)
-        if local_now.time() < latest_end:
-            return 0
+    # Aujourd’hui : ne rien mass-fermer avant la fin de service standard.
+    # Les commerciaux (fin à minuit) sont gérés individuellement / au cron minuit.
+    if day == local_now.date() and local_now.time() < schedule.end:
+        return 0
 
     start, end = _day_bounds(day)
     agent_ids = (
@@ -729,12 +735,18 @@ def agent_still_in_workday_session(user, day=None):
     )
     if not last_login:
         return False
+    # Commerciaux : toute connexion du jour calendaire compte jusqu'à minuit.
+    if is_commercial_agent(user):
+        return True
     return timezone.localtime(last_login.created_at).time() < schedule.end
 
 
 def should_force_agent_logout_now(user):
     """Déconnecte seulement une session de travail encore active après la fin de service."""
     if not is_presence_auto_close_target(user):
+        return False
+    # Commerciaux : uniquement la déconnexion minuit (MidnightLogoutMiddleware).
+    if is_commercial_agent(user):
         return False
     schedule = work_schedule_for_user(user)
     if not schedule.is_open:

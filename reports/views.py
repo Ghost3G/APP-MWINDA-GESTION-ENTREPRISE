@@ -2141,10 +2141,10 @@ def crm_reports_list(request):
             today = timezone.localdate()
             if not activity_date:
                 activity_date = today
-            elif activity_date != today:
+            elif activity_date > today:
                 messages.error(
                     request,
-                    'Le rapport commercial ne peut être enregistré que pour la date du jour.',
+                    'La date d’activité ne peut pas être dans le futur.',
                 )
                 return redirect('crm_reports_list')
 
