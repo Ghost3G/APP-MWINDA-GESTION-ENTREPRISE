@@ -6,7 +6,8 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.db.models import Case, Count, IntegerField, Q, When
 from django.contrib import messages
 from django.utils import timezone
-from datetime import timedelta
+from calendar import monthrange
+from datetime import datetime, timedelta
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from .board_services import accessible_projects, can_access_project
@@ -839,6 +840,65 @@ def toggle_pause_timer(request):
     return JsonResponse({'ok': True, 'is_pause_running': True})
 
 
+_MONTH_REPORT_STATUSES = (
+    ('done', 'Terminés'),
+    ('progress', 'En cours'),
+    ('awaiting_delivery', 'En attente de livraison'),
+    ('pending', 'En attente'),
+    ('urgent', 'Urgence'),
+)
+
+_FRENCH_MONTHS = (
+    '',
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+)
+
+
+def _parse_report_month(raw):
+    today = timezone.localdate()
+    year, month = today.year, today.month
+    if raw:
+        try:
+            parsed = datetime.strptime(raw.strip(), '%Y-%m')
+            year, month = parsed.year, parsed.month
+        except ValueError:
+            pass
+    if (year, month) > (today.year, today.month):
+        year, month = today.year, today.month
+    return year, month
+
+
+def _monthly_project_report(user, month_key):
+    """Projets actifs sur le mois : période qui chevauche le mois, ou créés ce mois-là."""
+    year, month = _parse_report_month(month_key)
+    start = datetime(year, month, 1).date()
+    end = datetime(year, month, monthrange(year, month)[1]).date()
+    projects = accessible_projects(user).filter(
+        Q(created_at__date__gte=start, created_at__date__lte=end)
+        | Q(start_date__lte=end, end_date__gte=start)
+    ).select_related('commercial_agent')
+    grouped = {key: [] for key, _label in _MONTH_REPORT_STATUSES}
+    for project in projects.order_by('name', 'id'):
+        grouped.setdefault(project.status, []).append(project)
+    groups = []
+    for key, label in _MONTH_REPORT_STATUSES:
+        rows = grouped.get(key, [])
+        groups.append({
+            'key': key,
+            'label': label,
+            'count': len(rows),
+            'projects': rows,
+        })
+    return {
+        'month_key': f'{year:04d}-{month:02d}',
+        'month_label': f'{_FRENCH_MONTHS[month]} {year}',
+        'month_max': timezone.localdate().strftime('%Y-%m'),
+        'total': sum(group['count'] for group in groups),
+        'groups': groups,
+    }
+
+
 @login_required(login_url='login')
 def projects_list(request):
     projects = accessible_projects(request.user).select_related(
@@ -1153,6 +1213,7 @@ def projects_list(request):
         'home_featured_max': HOME_FEATURED_MAX,
         'home_featured_count': Project.objects.filter(show_on_home=True).count(),
         'home_next_order': _next_free_home_order(),
+        'month_report': _monthly_project_report(request.user, request.GET.get('month', '')),
         'mw_charts': pack_charts(
             build_projects_status_chart(projects),
             build_projects_branch_chart(projects),

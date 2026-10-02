@@ -646,6 +646,138 @@
             font-size: 48px;
             margin-bottom: 12px;
         }
+
+        .month-report {
+            margin: 0 0 22px;
+            padding: 16px 16px 8px;
+            border: 1px solid rgba(253, 224, 71, 0.28);
+            border-radius: 14px;
+            background: #141416;
+        }
+
+        .month-report h2 {
+            margin: 0 0 6px;
+            font-size: 16px;
+            color: #fde047;
+        }
+
+        .month-report .month-report-intro {
+            margin: 0 0 12px;
+            color: #a1a1aa;
+            font-size: 13px;
+        }
+
+        .month-report-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 14px;
+        }
+
+        .month-report-form input[type="month"],
+        .month-report-form button {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .month-report-form input[type="month"] {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: #101012;
+            color: #f4f4f5;
+        }
+
+        .month-report-form button {
+            border: 0;
+            background: #fde047;
+            color: #111827;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .month-report a {
+            color: #fde047;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .month-report-form label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #71717a;
+        }
+
+        .month-report-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .month-report-stat {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .month-report-stat small {
+            display: block;
+            color: #71717a;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .month-report-stat strong {
+            display: block;
+            margin-top: 4px;
+            color: #f8fafc;
+            font-size: 20px;
+        }
+
+        .month-report-stat.is-total strong { color: #fde047; }
+
+        .month-report details {
+            margin: 0 0 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .month-report summary {
+            cursor: pointer;
+            padding: 10px 2px;
+            color: #e4e4e7;
+            font-weight: 700;
+            list-style: none;
+        }
+
+        .month-report summary::-webkit-details-marker { display: none; }
+
+        .month-report summary::before {
+            content: '›';
+            display: inline-block;
+            width: 14px;
+            color: #fde047;
+        }
+
+        .month-report details[open] summary::before { transform: rotate(90deg); }
+
+        .month-report ul {
+            margin: 0 0 10px 18px;
+            padding: 0;
+            color: #d4d4d8;
+            font-size: 13px;
+        }
+
+        .month-report li { margin: 4px 0; }
+
+        .month-report .muted { color: #71717a; }
     </style>
 </head>
 <body>
@@ -690,9 +822,60 @@
                                 <option value="{{ value }}" {% if selected_branch == value %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
+                        {% if month_report %}<input type="hidden" name="month" value="{{ month_report.month_key }}">{% endif %}
                         <button type="submit">Appliquer</button>
                     </form>
                 </div>
+
+                {% if month_report %}
+                <section class="month-report" aria-label="Rapport mensuel des projets">
+                    <h2>Rapport projets — {{ month_report.month_label }}</h2>
+                    <p class="month-report-intro">
+                        En {{ month_report.month_label }}, il y a eu
+                        <strong>{{ month_report.total }}</strong> projet{{ month_report.total|pluralize }}.
+                        Un projet compte s’il a été créé ce mois-là, ou si sa période touche ce mois.
+                        Le statut affiché est le statut actuel.
+                    </p>
+                    <form method="get" class="month-report-form">
+                        {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
+                        {% if selected_branch %}<input type="hidden" name="branch" value="{{ selected_branch }}">{% endif %}
+                        <div>
+                            <label for="month-report-month">Mois</label>
+                            <input id="month-report-month" type="month" name="month" value="{{ month_report.month_key }}" max="{{ month_report.month_max }}">
+                        </div>
+                        <button type="submit">Voir ce mois</button>
+                    </form>
+                    <div class="month-report-stats">
+                        <div class="month-report-stat is-total">
+                            <small>Total</small>
+                            <strong>{{ month_report.total }}</strong>
+                        </div>
+                        {% for group in month_report.groups %}
+                        <div class="month-report-stat">
+                            <small>{{ group.label }}</small>
+                            <strong>{{ group.count }}</strong>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% for group in month_report.groups %}
+                    <details {% if group.count %}open{% endif %}>
+                        <summary>{{ group.label }} — {{ group.count }}</summary>
+                        {% if group.projects %}
+                        <ul>
+                            {% for project in group.projects %}
+                            <li>
+                                <a href="{% url 'project_detail' project.id %}">{{ project.name }}</a>
+                                <span class="muted">· {{ project.get_branch_display }} · {{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="muted" style="margin:0 0 10px 18px;">Aucun projet.</p>
+                        {% endif %}
+                    </details>
+                    {% endfor %}
+                </section>
+                {% endif %}
 
                 {% include "partials/mw_charts_section.html" %}
 
