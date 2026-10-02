@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.db.models import Case, Count, IntegerField, Q, When
 from django.contrib import messages
 from django.utils import timezone
@@ -897,6 +897,19 @@ def _monthly_project_report(user, month_key):
         'total': sum(group['count'] for group in groups),
         'groups': groups,
     }
+
+
+@login_required(login_url='login')
+def monthly_project_report_pdf(request):
+    report = _monthly_project_report(request.user, request.GET.get('month', ''))
+    from .pdf import build_monthly_project_report_pdf
+
+    pdf_bytes = build_monthly_project_report_pdf(report)
+    filename = f"rapport_projets_{report['month_key']}.pdf"
+    disposition = 'attachment' if request.GET.get('download') == '1' else 'inline'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+    return response
 
 
 @login_required(login_url='login')

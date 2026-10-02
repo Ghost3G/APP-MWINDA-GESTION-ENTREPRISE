@@ -649,51 +649,279 @@
 
         .month-report {
             margin: 0 0 22px;
-            padding: 16px 16px 8px;
-            border: 1px solid rgba(253, 224, 71, 0.28);
-            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
             background: #141416;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+            overflow: hidden;
         }
 
-        .month-report h2 {
-            margin: 0 0 6px;
-            font-size: 16px;
+        .month-report-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 18px;
+            border-left: 3px solid #fde047;
+        }
+
+        .month-report-lead {
+            min-width: 0;
+        }
+
+        .month-report-kicker {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
             color: #fde047;
         }
 
-        .month-report .month-report-intro {
-            margin: 0 0 12px;
+        .month-report h2 {
+            margin: 3px 0 0;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #f8fafc;
+        }
+
+        .month-report-total {
+            margin: 4px 0 0;
             color: #a1a1aa;
             font-size: 13px;
+            font-weight: 600;
+        }
+
+        .month-report-total strong {
+            color: #f4f4f5;
+            font-weight: 800;
+        }
+
+        .month-report-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 0 0 auto;
         }
 
         .month-report-form {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: end;
-            margin-bottom: 14px;
-        }
-
-        .month-report-form input[type="month"],
-        .month-report-form button {
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
+            align-items: center;
+            margin: 0;
         }
 
         .month-report-form input[type="month"] {
+            padding: 9px 12px;
+            border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.12);
-            background: #101012;
+            background: #0e0e10;
             color: #f4f4f5;
+            color-scheme: dark;
+            font-size: 14px;
+            font-family: inherit;
         }
 
-        .month-report-form button {
-            border: 0;
+        .month-report-form input[type="month"]:focus {
+            outline: none;
+            border-color: rgba(253, 224, 71, 0.7);
+            box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.12);
+        }
+
+        .month-report-pdf {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: #0e0e10;
+            color: #f4f4f5;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: inherit;
+            text-decoration: none;
+            border-radius: 10px;
+            padding: 10px 12px;
+            white-space: nowrap;
+        }
+
+        .month-report-pdf:hover {
+            border-color: rgba(253, 224, 71, 0.5);
+            color: #fde047;
+        }
+
+        .month-report-voir {
+            border: 1px solid rgba(253, 224, 71, 0.4);
+            background: rgba(253, 224, 71, 0.1);
+            color: #fde047;
+            font-weight: 800;
+            font-size: 13px;
+            font-family: inherit;
+            border-radius: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            min-width: 96px;
+        }
+
+        .month-report-voir:hover {
+            background: rgba(253, 224, 71, 0.18);
+            border-color: rgba(253, 224, 71, 0.65);
+        }
+
+        .month-report-voir[aria-expanded="true"] {
             background: #fde047;
             color: #111827;
+            border-color: #fde047;
+        }
+
+        .month-report-panel {
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 16px 18px 18px;
+            background: #101012;
+        }
+
+        .month-report-panel[hidden] { display: none !important; }
+
+        .month-report-intro {
+            margin: 0 0 14px;
+            color: #a1a1aa;
+            font-size: 13px;
+        }
+
+        .month-report-stats {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .month-report-stat {
+            padding: 12px 12px 11px;
+            border-radius: 12px;
+            background: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .month-report-stat small {
+            display: block;
+            color: #a1a1aa;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            line-height: 1.3;
+        }
+
+        .month-report-stat strong {
+            display: block;
+            margin-top: 8px;
+            color: #f8fafc;
+            font-size: 24px;
             font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .month-report-stat strong::before {
+            content: "";
+            display: block;
+            width: 18px;
+            height: 3px;
+            margin-bottom: 8px;
+            border-radius: 999px;
+            background: #71717a;
+        }
+
+        .month-report-stat.is-total strong::before { background: #fde047; }
+        .month-report-stat.is-total strong { color: #fde047; }
+        .month-report-stat.is-done strong::before { background: #4ade80; }
+        .month-report-stat.is-progress strong::before { background: #60a5fa; }
+        .month-report-stat.is-awaiting_delivery strong::before { background: #fb923c; }
+        .month-report-stat.is-pending strong::before { background: #fbbf24; }
+        .month-report-stat.is-urgent strong::before { background: #f87171; }
+
+        .month-report-groups {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #18181b;
+        }
+
+        .month-report-group + .month-report-group {
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .month-report-group summary,
+        .month-report-static {
+            list-style: none;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            color: #f4f4f5;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .month-report-group summary:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .month-report-group summary::-webkit-details-marker { display: none; }
+
+        .month-report-group .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #71717a;
+            flex: 0 0 auto;
+        }
+
+        .month-report-group.is-done .dot { background: #4ade80; }
+        .month-report-group.is-progress .dot { background: #60a5fa; }
+        .month-report-group.is-awaiting_delivery .dot { background: #fb923c; }
+        .month-report-group.is-pending .dot { background: #fbbf24; }
+        .month-report-group.is-urgent .dot { background: #f87171; }
+
+        .month-report-group .label { flex: 1; }
+
+        .month-report-group .count {
+            min-width: 28px;
+            text-align: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #e4e4e7;
+            font-size: 12px;
+        }
+
+        .month-report-group .action {
+            color: #fde047;
+            font-size: 12px;
+            font-weight: 800;
+            min-width: 64px;
+            text-align: right;
+        }
+
+        .month-report-group .action::after { content: 'Voir'; }
+        .month-report-group[open] .action::after { content: 'Masquer'; }
+        .month-report-group.is-empty .month-report-static { cursor: default; }
+        .month-report-group.is-empty .action::after { content: '—'; color: #71717a; }
+
+        .month-report-list {
+            list-style: none;
+            margin: 0;
+            padding: 0 14px 10px 32px;
+        }
+
+        .month-report-list li {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            margin: 0;
+            padding: 9px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: #d4d4d8;
+            font-size: 13px;
         }
 
         .month-report a {
@@ -702,82 +930,17 @@
             text-decoration: none;
         }
 
-        .month-report-form label {
-            display: block;
-            margin-bottom: 4px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: #71717a;
-        }
-
-        .month-report-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .month-report-stat {
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .month-report-stat small {
-            display: block;
-            color: #71717a;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .month-report-stat strong {
-            display: block;
-            margin-top: 4px;
-            color: #f8fafc;
-            font-size: 20px;
-        }
-
-        .month-report-stat.is-total strong { color: #fde047; }
-
-        .month-report details {
-            margin: 0 0 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .month-report summary {
-            cursor: pointer;
-            padding: 10px 2px;
-            color: #e4e4e7;
-            font-weight: 700;
-            list-style: none;
-        }
-
-        .month-report summary::-webkit-details-marker { display: none; }
-
-        .month-report summary::before {
-            content: '›';
-            display: inline-block;
-            width: 14px;
-            color: #fde047;
-        }
-
-        .month-report details[open] summary::before { transform: rotate(90deg); }
-
-        .month-report ul {
-            margin: 0 0 10px 18px;
-            padding: 0;
-            color: #d4d4d8;
-            font-size: 13px;
-        }
-
-        .month-report li { margin: 4px 0; }
+        .month-report a:hover { text-decoration: underline; }
 
         .month-report .muted { color: #71717a; }
+
+        @media (max-width: 900px) {
+            .month-report-bar { flex-wrap: wrap; }
+            .month-report-tools { width: 100%; justify-content: space-between; }
+            .month-report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .month-report-list { padding-left: 14px; }
+            .month-report-list li { grid-template-columns: 1fr; gap: 2px; }
+        }
     </style>
 </head>
 <body>
@@ -828,52 +991,71 @@
                 </div>
 
                 {% if month_report %}
-                <section class="month-report" aria-label="Rapport mensuel des projets">
-                    <h2>Rapport projets — {{ month_report.month_label }}</h2>
-                    <p class="month-report-intro">
-                        En {{ month_report.month_label }}, il y a eu
-                        <strong>{{ month_report.total }}</strong> projet{{ month_report.total|pluralize }}.
-                        Un projet compte s’il a été créé ce mois-là, ou si sa période touche ce mois.
-                        Le statut affiché est le statut actuel.
-                    </p>
-                    <form method="get" class="month-report-form">
-                        {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
-                        {% if selected_branch %}<input type="hidden" name="branch" value="{{ selected_branch }}">{% endif %}
-                        <div>
-                            <label for="month-report-month">Mois</label>
-                            <input id="month-report-month" type="month" name="month" value="{{ month_report.month_key }}" max="{{ month_report.month_max }}">
+                <section class="month-report" id="month-report" aria-label="Rapport mensuel des projets">
+                    <div class="month-report-bar">
+                        <div class="month-report-lead">
+                            <p class="month-report-kicker">Rapport mensuel</p>
+                            <h2>{{ month_report.month_label }}</h2>
+                            <p class="month-report-total"><strong>{{ month_report.total }}</strong> projet{{ month_report.total|pluralize }}</p>
                         </div>
-                        <button type="submit">Voir ce mois</button>
-                    </form>
-                    <div class="month-report-stats">
-                        <div class="month-report-stat is-total">
-                            <small>Total</small>
-                            <strong>{{ month_report.total }}</strong>
+                        <div class="month-report-tools">
+                            <form method="get" class="month-report-form">
+                                {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
+                                {% if selected_branch %}<input type="hidden" name="branch" value="{{ selected_branch }}">{% endif %}
+                                <input id="month-report-month" type="month" name="month" value="{{ month_report.month_key }}" max="{{ month_report.month_max }}" aria-label="Choisir un mois" onchange="this.form.submit()">
+                            </form>
+                            <a class="month-report-pdf" href="{% url 'monthly_project_report_pdf' %}?month={{ month_report.month_key }}" target="_blank" rel="noopener">Voir PDF</a>
+                            <a class="month-report-pdf" href="{% url 'monthly_project_report_pdf' %}?month={{ month_report.month_key }}&amp;download=1">Télécharger</a>
+                            <button type="button" class="month-report-voir" aria-expanded="false" aria-controls="month-report-panel">Voir</button>
                         </div>
-                        {% for group in month_report.groups %}
-                        <div class="month-report-stat">
-                            <small>{{ group.label }}</small>
-                            <strong>{{ group.count }}</strong>
-                        </div>
-                        {% endfor %}
                     </div>
-                    {% for group in month_report.groups %}
-                    <details {% if group.count %}open{% endif %}>
-                        <summary>{{ group.label }} — {{ group.count }}</summary>
-                        {% if group.projects %}
-                        <ul>
-                            {% for project in group.projects %}
-                            <li>
-                                <a href="{% url 'project_detail' project.id %}">{{ project.name }}</a>
-                                <span class="muted">· {{ project.get_branch_display }} · {{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</span>
-                            </li>
+                    <div id="month-report-panel" class="month-report-panel" hidden>
+                        <p class="month-report-intro">Statut actuel pour {{ month_report.month_label }}.</p>
+                        <div class="month-report-stats">
+                            <div class="month-report-stat is-total">
+                                <small>Total</small>
+                                <strong>{{ month_report.total }}</strong>
+                            </div>
+                            {% for group in month_report.groups %}
+                            <div class="month-report-stat is-{{ group.key }}">
+                                <small>{{ group.label }}</small>
+                                <strong>{{ group.count }}</strong>
+                            </div>
                             {% endfor %}
-                        </ul>
+                        </div>
+                        <div class="month-report-groups">
+                        {% for group in month_report.groups %}
+                        {% if group.count %}
+                        <details class="month-report-group is-{{ group.key }}">
+                            <summary>
+                                <span class="dot" aria-hidden="true"></span>
+                                <span class="label">{{ group.label }}</span>
+                                <span class="count">{{ group.count }}</span>
+                                <span class="action"></span>
+                            </summary>
+                            <ul class="month-report-list">
+                                {% for project in group.projects %}
+                                <li>
+                                    <a href="{% url 'project_detail' project.id %}">{{ project.name }}</a>
+                                    <span class="muted">{{ project.get_branch_display }}</span>
+                                    <span class="muted">{{ project.start_date|date:"d/m/Y" }} → {{ project.end_date|date:"d/m/Y" }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
                         {% else %}
-                        <p class="muted" style="margin:0 0 10px 18px;">Aucun projet.</p>
+                        <div class="month-report-group is-{{ group.key }} is-empty">
+                            <div class="month-report-static">
+                                <span class="dot" aria-hidden="true"></span>
+                                <span class="label">{{ group.label }}</span>
+                                <span class="count">0</span>
+                                <span class="action"></span>
+                            </div>
+                        </div>
                         {% endif %}
-                    </details>
-                    {% endfor %}
+                        {% endfor %}
+                        </div>
+                    </div>
                 </section>
                 {% endif %}
 
@@ -1349,6 +1531,27 @@
 
     function collapseAllProjectItems() {
         document.querySelectorAll('.project-item:not(.is-collapsed)').forEach(collapseProjectItem);
+    }
+
+    const monthReport = document.getElementById('month-report');
+    if (monthReport) {
+        const voirBtn = monthReport.querySelector('.month-report-voir');
+        const panel = monthReport.querySelector('.month-report-panel');
+        if (voirBtn && panel) {
+            voirBtn.addEventListener('click', () => {
+                const willOpen = panel.hasAttribute('hidden');
+                if (willOpen) {
+                    panel.removeAttribute('hidden');
+                } else {
+                    panel.setAttribute('hidden', '');
+                    monthReport.querySelectorAll('.month-report-group[open]').forEach((group) => {
+                        group.removeAttribute('open');
+                    });
+                }
+                voirBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                voirBtn.textContent = willOpen ? 'Masquer' : 'Voir';
+            });
+        }
     }
 
     document.querySelectorAll('.btn-voir-plus').forEach((btn) => {
