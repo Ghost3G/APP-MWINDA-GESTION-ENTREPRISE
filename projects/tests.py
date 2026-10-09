@@ -91,6 +91,57 @@ class ProjectsFeatureTests(TestCase):
             ProjectAssignmentNotification.objects.filter(user=commercial, is_read=False).exists()
         )
 
+    def test_new_project_sends_private_message_to_assigned_agents(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        from django.test import RequestFactory
+
+        from messaging.models import Message
+        from projects.views import projects_list
+
+        commercial = User.objects.create_user(
+            username='commercial-msg',
+            password='testpass123',
+            email='commercial-msg@example.com',
+            role='agent',
+            direction='branding',
+            org_group='commercial',
+            grade='Agent Commercial',
+        )
+        request = RequestFactory().post(reverse('projects_list'), {
+            'action': 'create',
+            'name': 'Projet Message Assigné',
+            'description': 'Description test',
+            'start_date': '2026-04-01',
+            'end_date': '2026-04-30',
+            'status': 'pending',
+            'branch': 'metal_design',
+            'members': [self.agent.id],
+            'commercial_agent': commercial.id,
+        })
+        request.user = self.directeur
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.save()
+        request._messages = FallbackStorage(request)
+        response = projects_list(request)
+        self.assertEqual(response.status_code, 302)
+        project = Project.objects.get(name='Projet Message Assigné')
+        self.assertTrue(project.members.filter(id=self.agent.id).exists())
+        self.assertTrue(project.members.filter(id=commercial.id).exists())
+        for receiver in (self.agent, commercial):
+            self.assertTrue(
+                Message.objects.filter(
+                    sender=self.directeur,
+                    receiver=receiver,
+                    message_type='project_assign',
+                    is_read=False,
+                    content__contains=project.name,
+                ).exists()
+            )
+        self.assertFalse(
+            Message.objects.filter(receiver=self.directeur, message_type='project_assign').exists()
+        )
+
     def test_michelle_notified_when_commercial_assigned(self):
         michelle = User.objects.create_user(
             username='michelle.bukebo',

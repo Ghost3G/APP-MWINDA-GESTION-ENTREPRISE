@@ -26,7 +26,11 @@ from .task_services import (
     notify_task_assignment,
 )
 from .assignment import ai_available, apply_member_competency_tasks, apply_smart_project_plan
-from .project_notifications import notify_commercial_on_project, notify_logistics_awaiting_delivery
+from .project_notifications import (
+    notify_assigned_members_by_message,
+    notify_commercial_on_project,
+    notify_logistics_awaiting_delivery,
+)
 from reports.models import DailyReport
 from messaging.models import Message
 from django.contrib.auth import get_user_model
@@ -914,15 +918,14 @@ def monthly_project_report_pdf(request):
 
 @login_required(login_url='login')
 def project_recap(request):
-    """Projets en souffrance, choisis à la main par Maki et le DT. Le statut vient de Projets."""
-    if not (is_management_user(request.user) or can_manage_projects(request.user)):
-        return HttpResponseForbidden("Le récapitulatif projet est réservé à la direction et au service technique.")
-
+    """Projets en souffrance. Visible par tous. Seuls le DT et son assistant modifient."""
     can_edit = can_manage_projects(request.user)
 
     if request.method == 'POST':
         if not can_edit:
-            return HttpResponseForbidden("Seuls Maki et le directeur technique peuvent modifier la souffrance.")
+            return HttpResponseForbidden(
+                "Seuls le Directeur technique et son Assistant peuvent modifier la souffrance."
+            )
         action = request.POST.get('action', '').strip()
         project = get_object_or_404(Project, id=request.POST.get('project_id', '').strip() or 0)
         if project.status == 'done':
@@ -1212,6 +1215,7 @@ def projects_list(request):
             result = apply_member_competency_tasks(project, member, actor=request.user, use_ai=True)
             competency_created += int((result or {}).get('created') or 0)
         notify_commercial_on_project(project, actor=request.user, members=members)
+        notify_assigned_members_by_message(project, actor=request.user, members=members)
 
         created_n = (plan_result or {}).get('created') or 0
         source = (plan_result or {}).get('source') or 'rules'

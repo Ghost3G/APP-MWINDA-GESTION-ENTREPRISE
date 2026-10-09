@@ -111,7 +111,17 @@ def notifications_feed(request):
         + ProjectAssignmentNotification.objects.filter(user=request.user, is_read=False).count()
         + TaskAssignmentNotification.objects.filter(user=request.user, is_read=False).count()
     )
-    return JsonResponse({'ok': True, 'items': payload, 'unread': unread})
+    assignment_unread = Message.objects.filter(
+        receiver=request.user,
+        is_read=False,
+        message_type='project_assign',
+    ).count()
+    return JsonResponse({
+        'ok': True,
+        'items': payload,
+        'unread': unread,
+        'assignment_unread': assignment_unread,
+    })
 
 
 @login_required(login_url='login')

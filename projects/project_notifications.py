@@ -58,6 +58,39 @@ def notify_commercial_on_project(project, *, actor=None, members=None):
         notify_project_assignment(user, project)
 
 
+def notify_assigned_members_by_message(project, *, actor, members):
+    """Message privé à chaque agent assigné. Le son continue tant qu'il n'est pas lu."""
+    from messaging.models import Message
+
+    if not project or not actor:
+        return 0
+
+    text = (
+        f"Vous êtes assigné au nouveau projet « {project.name} ». "
+        "Ouvrez-le dans l’onglet Projets."
+    )
+    count = 0
+    seen = set()
+    actor_id = getattr(actor, 'id', None)
+    for user in members or []:
+        if not user or user.id in seen:
+            continue
+        if actor_id and user.id == actor_id:
+            continue
+        if not getattr(user, 'is_active', True):
+            continue
+        seen.add(user.id)
+        Message.objects.create(
+            sender=actor,
+            receiver=user,
+            content=text,
+            message_type='project_assign',
+            is_read=False,
+        )
+        count += 1
+    return count
+
+
 def notify_logistics_awaiting_delivery(project, *, actor=None):
     """Notifie Joseph Mbuyu / département Logistique qu’un projet attend la livraison."""
     if not project:

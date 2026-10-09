@@ -160,7 +160,7 @@ def app_notifications(request):
         'is_crm': is_crm,
         'can_reassign_crm': can_reassign_crm_client(user) if is_crm else False,
         'is_stock': is_stock,
-        'can_view_project_recap': is_management or can_manage_projects(user),
+        'can_view_project_recap': True,
         'can_edit_project_distress': can_manage_projects(user),
         'project_deadline_alerts': project_deadline_alerts,
         'agent_logout_warning': agent_logout_warning,
