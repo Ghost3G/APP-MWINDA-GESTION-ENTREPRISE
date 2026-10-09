@@ -62,22 +62,58 @@
             color: #f4f4f5;
             border: 1px solid rgba(255, 255, 255, 0.16);
         }
-        .recap-list { display: flex; flex-direction: column; gap: 12px; }
-        .recap-item {
-            border-left: 3px solid #f87171;
-            padding: 14px 16px;
-        }
-        .recap-item-head {
+        .recap-list {
             display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: flex-start;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 8px;
         }
-        .recap-item h3 { margin: 0 0 4px; font-size: 16px; }
-        .recap-item h3 a { color: #fde047; text-decoration: none; }
-        .recap-item h3 a:hover { text-decoration: underline; }
-        .recap-meta { margin: 0; color: #a1a1aa; font-size: 13px; }
+        .recap-row {
+            background: #141416;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .recap-row summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 52px;
+            padding: 0 14px;
+        }
+        .recap-row summary::-webkit-details-marker { display: none; }
+        .recap-row summary:hover { background: rgba(255, 255, 255, 0.03); }
+        .recap-name {
+            flex: 1;
+            min-width: 0;
+            color: #f8fafc;
+            font-weight: 800;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .recap-voir {
+            color: #fde047;
+            font-size: 12px;
+            font-weight: 800;
+            flex: 0 0 auto;
+        }
+        .recap-row .recap-voir::after { content: 'Voir'; }
+        .recap-row[open] .recap-voir::after { content: 'Masquer'; }
+        .recap-detail {
+            padding: 0 14px 14px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .recap-item h3 { margin: 0; font-size: 16px; }
+        .recap-item h3 a, .recap-open {
+            color: #fde047;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .recap-open:hover { text-decoration: underline; }
+        .recap-meta { margin: 12px 0 0; color: #a1a1aa; font-size: 13px; }
         .recap-reason {
             margin: 12px 0 0;
             color: #f4f4f5;
@@ -155,42 +191,45 @@
 
                 <section class="recap-list" aria-label="Projets en souffrance">
                     {% for project in distressed %}
-                    <article class="recap-card recap-item">
-                        <div class="recap-item-head">
-                            <div>
-                                <h3><a href="{% url 'project_detail' project.id %}">{{ project.name }}</a></h3>
-                                <p class="recap-meta">
-                                    {{ project.get_branch_display }}
-                                    {% if project.distress_updated_by %}
-                                        · noté par {{ project.distress_updated_by.get_labeled_name }}
-                                    {% endif %}
-                                    {% if project.distress_updated_at %}
-                                        · {{ project.distress_updated_at|date:"d/m/Y H:i" }}
-                                    {% endif %}
-                                </p>
-                            </div>
+                    <details class="recap-row">
+                        <summary>
+                            <span class="recap-name">{{ project.name }}</span>
                             <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
+                            <span class="recap-voir"></span>
+                        </summary>
+                        <div class="recap-detail">
+                            <p class="recap-meta">
+                                {{ project.get_branch_display }}
+                                {% if project.distress_updated_by %}
+                                    · noté par {{ project.distress_updated_by.get_labeled_name }}
+                                {% endif %}
+                                {% if project.distress_updated_at %}
+                                    · {{ project.distress_updated_at|date:"d/m/Y H:i" }}
+                                {% endif %}
+                            </p>
+                            {% if can_edit_distress %}
+                            <form method="post" class="recap-edit" style="margin-top:12px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_reason">
+                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                <textarea name="reason" required aria-label="Pourquoi {{ project.name }} est en souffrance">{{ project.distress_reason }}</textarea>
+                                <div class="recap-actions">
+                                    <button type="submit" class="recap-btn">Mettre à jour</button>
+                                    <a class="recap-open" href="{% url 'project_detail' project.id %}">Ouvrir le projet</a>
+                                </div>
+                            </form>
+                            <form method="post" class="recap-actions" style="margin-top:8px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="clear">
+                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                <button type="submit" class="recap-btn ghost">Retirer</button>
+                            </form>
+                            {% else %}
+                            <p class="recap-reason">{{ project.distress_reason }}</p>
+                            <p class="recap-meta"><a class="recap-open" href="{% url 'project_detail' project.id %}">Ouvrir le projet</a></p>
+                            {% endif %}
                         </div>
-                        {% if can_edit_distress %}
-                        <form method="post" class="recap-edit">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="update_reason">
-                            <input type="hidden" name="project_id" value="{{ project.id }}">
-                            <textarea name="reason" required aria-label="Pourquoi {{ project.name }} est en souffrance">{{ project.distress_reason }}</textarea>
-                            <div class="recap-actions">
-                                <button type="submit" class="recap-btn">Mettre à jour</button>
-                            </div>
-                        </form>
-                        <form method="post" class="recap-actions" style="margin-top:8px;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="clear">
-                            <input type="hidden" name="project_id" value="{{ project.id }}">
-                            <button type="submit" class="recap-btn ghost">Retirer</button>
-                        </form>
-                        {% else %}
-                        <p class="recap-reason">{{ project.distress_reason }}</p>
-                        {% endif %}
-                    </article>
+                    </details>
                     {% empty %}
                     <section class="recap-card">
                         <p class="recap-empty">Aucun projet en souffrance.</p>
