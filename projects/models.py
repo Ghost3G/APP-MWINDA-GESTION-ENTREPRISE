@@ -92,11 +92,39 @@ class Project(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    in_distress = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='En souffrance',
+    )
+    distress_reason = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Pourquoi en souffrance',
+    )
+    distress_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='distress_marks',
+        blank=True,
+        null=True,
+    )
+    distress_updated_at = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         ordering = ('created_at', 'id')
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.status == 'done' and (self.in_distress or self.distress_reason):
+            self.in_distress = False
+            self.distress_reason = ''
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                kwargs['update_fields'] = list(set(update_fields) | {'in_distress', 'distress_reason'})
+        super().save(*args, **kwargs)
 
     @property
     def cover_url(self):

@@ -913,6 +913,62 @@ def monthly_project_report_pdf(request):
 
 
 @login_required(login_url='login')
+def project_recap(request):
+    """Projets en souffrance, choisis à la main par Maki et le DT. Le statut vient de Projets."""
+    if not (is_management_user(request.user) or can_manage_projects(request.user)):
+        return HttpResponseForbidden("Le récapitulatif projet est réservé à la direction et au service technique.")
+
+    can_edit = can_manage_projects(request.user)
+
+    if request.method == 'POST':
+        if not can_edit:
+            return HttpResponseForbidden("Seuls Maki et le directeur technique peuvent modifier la souffrance.")
+        action = request.POST.get('action', '').strip()
+        project = get_object_or_404(Project, id=request.POST.get('project_id', '').strip() or 0)
+        if project.status == 'done':
+            messages.error(request, "Un projet terminé ne peut pas être mis en souffrance.")
+            return redirect('project_recap')
+        reason = (request.POST.get('reason') or '').strip()
+        if action == 'clear':
+            project.in_distress = False
+            project.distress_reason = ''
+            project.distress_updated_by = request.user
+            project.distress_updated_at = timezone.now()
+            project.save(update_fields=['in_distress', 'distress_reason', 'distress_updated_by', 'distress_updated_at'])
+            messages.success(request, f'« {project.name} » n’est plus en souffrance.')
+        elif action in {'mark', 'update_reason'}:
+            if not reason:
+                messages.error(request, "Indiquez pourquoi le projet est en souffrance.")
+                return redirect('project_recap')
+            project.in_distress = True
+            project.distress_reason = reason
+            project.distress_updated_by = request.user
+            project.distress_updated_at = timezone.now()
+            project.save(update_fields=['in_distress', 'distress_reason', 'distress_updated_by', 'distress_updated_at'])
+            messages.success(request, f'Souffrance enregistrée pour « {project.name} ».')
+        return redirect('project_recap')
+
+    distressed = (
+        Project.objects.filter(in_distress=True)
+        .exclude(status='done')
+        .select_related('distress_updated_by', 'manager')
+        .order_by('-distress_updated_at', 'name')
+    )
+    available = []
+    if can_edit:
+        available = (
+            Project.objects.exclude(status='done')
+            .exclude(in_distress=True)
+            .order_by('name')
+        )
+    return render(request, 'project_recap.html', {
+        'distressed': distressed,
+        'available_projects': available,
+        'can_edit_distress': can_edit,
+    })
+
+
+@login_required(login_url='login')
 def projects_list(request):
     projects = accessible_projects(request.user).select_related(
         'manager', 'technical_director', 'commercial_agent', 'client'

@@ -30,6 +30,12 @@
             Projets
             <span class="notification-badge {% if unread_project_assignments %}visible{% endif %}">{{ unread_project_assignments }}</span>
         </a>
+        {% if can_view_project_recap %}
+        <a href="{% url 'project_recap' %}" class="nav-item {% if request.resolver_match.url_name == 'project_recap' %}active{% endif %}">
+            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_projet.png' %}" alt=""></span>
+            Récapitulatif projet
+        </a>
+        {% endif %}
         <a href="{% url 'reports_list' %}" class="nav-item {% if request.resolver_match.url_name == 'reports_list' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_rapport.png' %}" alt=""></span>
             Rapports

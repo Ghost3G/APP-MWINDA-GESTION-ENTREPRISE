@@ -1,0 +1,204 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Récapitulatif projet - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <style>
+        .recap-page { padding: 24px 28px 40px; }
+        .recap-page .page-header p {
+            margin: 0 0 10px;
+            color: #d4d4d8;
+            font-size: 15px;
+            line-height: 1.55;
+            max-width: 760px;
+        }
+        .recap-page .page-header p:last-child { margin-bottom: 0; }
+        .recap-card {
+            background: #141416;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .recap-card h2 {
+            margin: 0 0 12px;
+            font-size: 16px;
+            color: #f8fafc;
+        }
+        .recap-form, .recap-edit {
+            display: grid;
+            gap: 10px;
+        }
+        .recap-form select,
+        .recap-form textarea,
+        .recap-edit textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: #0e0e10;
+            color: #f4f4f5;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .recap-form textarea, .recap-edit textarea { min-height: 72px; resize: vertical; }
+        .recap-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .recap-btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 800;
+            font-family: inherit;
+            cursor: pointer;
+            background: #fde047;
+            color: #111827;
+        }
+        .recap-btn.ghost {
+            background: transparent;
+            color: #f4f4f5;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .recap-list { display: flex; flex-direction: column; gap: 12px; }
+        .recap-item {
+            border-left: 3px solid #f87171;
+            padding: 14px 16px;
+        }
+        .recap-item-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .recap-item h3 { margin: 0 0 4px; font-size: 16px; }
+        .recap-item h3 a { color: #fde047; text-decoration: none; }
+        .recap-item h3 a:hover { text-decoration: underline; }
+        .recap-meta { margin: 0; color: #a1a1aa; font-size: 13px; }
+        .recap-reason {
+            margin: 12px 0 0;
+            color: #f4f4f5;
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+        .recap-empty { margin: 0; color: #a1a1aa; }
+        .recap-message {
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(253, 224, 71, 0.12);
+            color: #fde047;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 11px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .status-pending { background: rgba(253, 224, 71, 0.92); color: #111827; }
+        .status-progress { background: rgba(59, 130, 246, 0.95); color: #fff; }
+        .status-urgent { background: #dc2626; color: #fff; }
+        .status-awaiting_delivery { background: #fb923c; color: #111827; }
+        .status-done { background: rgba(34, 197, 94, 0.92); color: #052e16; }
+    </style>
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="recap-page projects-page">
+                <div class="page-header">
+                    <h1>Récapitulatif projet</h1>
+                    <p>
+                        Cette page rassemble les projets que le directeur technique et Emmanuel Maki ont signalés en souffrance.
+                        Pour chacun, ils écrivent la raison à la main : retard de matière, blocage sur le chantier, attente d’une décision, ou toute autre difficulté qui empêche d’avancer.
+                    </p>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <p class="recap-message">{{ message }}</p>
+                    {% endfor %}
+                {% endif %}
+
+                {% if can_edit_distress %}
+                <section class="recap-card">
+                    <h2>Ajouter un projet en souffrance</h2>
+                    {% if available_projects %}
+                    <form method="post" class="recap-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="mark">
+                        <select name="project_id" required aria-label="Projet">
+                            <option value="">Choisir un projet</option>
+                            {% for project in available_projects %}
+                                <option value="{{ project.id }}">{{ project.name }} — {{ project.get_status_display }}</option>
+                            {% endfor %}
+                        </select>
+                        <textarea name="reason" required placeholder="Pourquoi ce projet est en souffrance"></textarea>
+                        <div class="recap-actions">
+                            <button type="submit" class="recap-btn">Enregistrer</button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <p class="recap-empty">Aucun autre projet ouvert à ajouter.</p>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <section class="recap-list" aria-label="Projets en souffrance">
+                    {% for project in distressed %}
+                    <article class="recap-card recap-item">
+                        <div class="recap-item-head">
+                            <div>
+                                <h3><a href="{% url 'project_detail' project.id %}">{{ project.name }}</a></h3>
+                                <p class="recap-meta">
+                                    {{ project.get_branch_display }}
+                                    {% if project.distress_updated_by %}
+                                        · noté par {{ project.distress_updated_by.get_labeled_name }}
+                                    {% endif %}
+                                    {% if project.distress_updated_at %}
+                                        · {{ project.distress_updated_at|date:"d/m/Y H:i" }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
+                        </div>
+                        {% if can_edit_distress %}
+                        <form method="post" class="recap-edit">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_reason">
+                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                            <textarea name="reason" required aria-label="Pourquoi {{ project.name }} est en souffrance">{{ project.distress_reason }}</textarea>
+                            <div class="recap-actions">
+                                <button type="submit" class="recap-btn">Mettre à jour</button>
+                            </div>
+                        </form>
+                        <form method="post" class="recap-actions" style="margin-top:8px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="clear">
+                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                            <button type="submit" class="recap-btn ghost">Retirer</button>
+                        </form>
+                        {% else %}
+                        <p class="recap-reason">{{ project.distress_reason }}</p>
+                        {% endif %}
+                    </article>
+                    {% empty %}
+                    <section class="recap-card">
+                        <p class="recap-empty">Aucun projet en souffrance.</p>
+                    </section>
+                    {% endfor %}
+                </section>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

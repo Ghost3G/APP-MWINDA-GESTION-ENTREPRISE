@@ -11,6 +11,8 @@ def app_notifications(request):
             'is_crm': False,
             'can_reassign_crm': False,
             'is_stock': False,
+            'can_view_project_recap': False,
+            'can_edit_project_distress': False,
             'alerts_actionable_count': 0,
             'current_user_profile': None,
             'project_deadline_alerts': [],
@@ -52,6 +54,7 @@ def app_notifications(request):
         can_access_finance,
         can_access_crm,
         can_access_stock,
+        can_manage_projects,
         can_reassign_crm_client,
     )
     from users.presence import agent_logout_warning_payload, service_hours_banner_payload
@@ -157,6 +160,8 @@ def app_notifications(request):
         'is_crm': is_crm,
         'can_reassign_crm': can_reassign_crm_client(user) if is_crm else False,
         'is_stock': is_stock,
+        'can_view_project_recap': is_management or can_manage_projects(user),
+        'can_edit_project_distress': can_manage_projects(user),
         'project_deadline_alerts': project_deadline_alerts,
         'agent_logout_warning': agent_logout_warning,
         'service_hours': service_hours,
