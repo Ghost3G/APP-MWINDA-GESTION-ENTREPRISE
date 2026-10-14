@@ -271,6 +271,16 @@ PERSONNEL = [
         'password': 'Makiese2026',
     },
     {
+        'username': 'abbed.tshuli',
+        'first_name': 'Abbed',
+        'last_name': 'Tshuli',
+        'function': 'Ajusteur',
+        'department': 'Direction Techniques',
+        'grade': 'TECHNICIEN',
+        'direction': 'metal_design',
+        'password': 'Tshuli2026',
+    },
+    {
         'username': 'michelle.bukebo',
         'first_name': 'Michelle',
         'last_name': 'Bukebo',

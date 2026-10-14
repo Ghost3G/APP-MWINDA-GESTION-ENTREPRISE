@@ -14,6 +14,7 @@ python manage.py create_admin
 echo "[release] Synchronisation profils direction / noms agents (sans toucher aux mots de passe)..."
 python manage.py ensure_archirey_muwonga || true
 python manage.py ensure_hans_mangi || true
+python manage.py ensure_abbed_tshuli || true
 python manage.py ensure_agent_display_names || true
 
 # Optionnel : une seule fois, mettre ALLOW_DEMO_SEED=1 dans Render Environment puis redeploy,
