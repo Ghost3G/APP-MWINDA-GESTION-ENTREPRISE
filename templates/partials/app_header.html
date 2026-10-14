@@ -51,12 +51,16 @@
     const STORAGE_KEY = 'mwinda_notif_unread';
     const NAG_MS = 60 * 1000;
     const ALARM_MS = 7 * 1000;
+    const POLL_MS = 2 * 1000;
     let lastUnread = Number(sessionStorage.getItem(STORAGE_KEY) || '{{ unread_notifications_total|default:0 }}');
     let assignmentRing = 0;
     let audioCtx = null;
     let audioUnlocked = false;
     let nagTimer = null;
     let alarmTimer = null;
+    let alarmBusy = false;
+    let feedBusy = false;
+    let feedQueued = false;
 
     function kindLabel(kind) {
         if (kind === 'task') return 'Tâche';
@@ -77,13 +81,18 @@
         }
     }
 
-    /** Sirène d’assignation : plus forte, répétée tant que le message privé n’est pas lu. */
-    function playAlarmSound() {
+    /** Sirène d’assignation : démarre dès le message, répétée tant qu’il n’est pas lu. */
+    async function playAlarmSound() {
+        if (!audioUnlocked || alarmBusy) return;
+        alarmBusy = true;
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
             if (!audioCtx) audioCtx = new AudioContext();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx.state === 'suspended') {
+                try { await audioCtx.resume(); } catch (e) { return; }
+            }
+            if (audioCtx.state !== 'running') return;
 
             const now = audioCtx.currentTime;
             const master = audioCtx.createGain();
@@ -115,22 +124,30 @@
             }
         } catch (e) {
             // Navigateur sans WebAudio : silencieux
+        } finally {
+            window.setTimeout(() => { alarmBusy = false; }, 1700);
         }
     }
 
     function setAssignmentAlarm(count) {
-        assignmentRing = Number(count) || 0;
+        const next = Number(count) || 0;
+        const justArrived = next > assignmentRing;
+        assignmentRing = next;
         bell.classList.toggle('is-alarming', assignmentRing > 0);
         if (assignmentRing > 0) {
+            setNagging(false);
             if (!alarmTimer) {
-                if (audioUnlocked) playAlarmSound();
+                playAlarmSound();
                 alarmTimer = setInterval(() => {
-                    if (assignmentRing > 0 && audioUnlocked) playAlarmSound();
+                    if (assignmentRing > 0) playAlarmSound();
                 }, ALARM_MS);
+            } else if (justArrived) {
+                playAlarmSound();
             }
         } else if (alarmTimer) {
             clearInterval(alarmTimer);
             alarmTimer = null;
+            if (lastUnread > 0) setNagging(true);
         }
     }
 
@@ -179,7 +196,7 @@
         if (active) {
             if (!nagTimer) {
                 nagTimer = setInterval(() => {
-                    if (lastUnread > 0) playNotificationSound();
+                    if (lastUnread > 0 && assignmentRing === 0) playNotificationSound();
                 }, NAG_MS);
             }
         } else if (nagTimer) {
@@ -188,29 +205,35 @@
         }
     }
 
-    function updateUnread(count) {
+    function updateUnread(count, { silentSound } = { silentSound: false }) {
         const next = Number(count) || 0;
         if (badge) {
             badge.textContent = next;
             badge.classList.toggle('visible', next > 0);
         }
-        if (next > lastUnread) {
-            playNotificationSound();
-        } else if (next > 0 && lastUnread === 0) {
+        const arrived = next > lastUnread || (next > 0 && lastUnread === 0);
+        if (arrived && !silentSound && assignmentRing === 0) {
             playNotificationSound();
         }
         lastUnread = next;
         sessionStorage.setItem(STORAGE_KEY, String(next));
-        setNagging(next > 0);
+        setNagging(next > 0 && assignmentRing === 0);
     }
 
     async function loadFeed({ silent } = { silent: false }) {
+        if (feedBusy) {
+            feedQueued = true;
+            return;
+        }
+        feedBusy = true;
         try {
             const res = await fetch('{% url "notifications_feed" %}');
             const data = await res.json();
             if (!data.ok) return;
-            updateUnread(data.unread || 0);
-            setAssignmentAlarm(data.assignment_unread || 0);
+            const assignment = data.assignment_unread || 0;
+            const alarmNow = assignment > assignmentRing || (assignment > 0 && !alarmTimer);
+            updateUnread(data.unread || 0, { silentSound: alarmNow });
+            setAssignmentAlarm(assignment);
             if (silent && panel.hidden) return;
             if (!data.items.length) {
                 list.innerHTML = '<p class="notif-empty">Aucune notification.</p>';
@@ -226,6 +249,12 @@
             `).join('');
         } catch (e) {
             if (!silent) list.innerHTML = '<p class="notif-empty">Impossible de charger.</p>';
+        } finally {
+            feedBusy = false;
+            if (feedQueued) {
+                feedQueued = false;
+                loadFeed({ silent: true });
+            }
         }
     }
 
@@ -233,7 +262,7 @@
     ['click', 'keydown', 'touchstart'].forEach((evt) => {
         document.addEventListener(evt, () => {
             unlockAudio();
-            if (lastUnread > 0) setNagging(true);
+            if (lastUnread > 0 && assignmentRing === 0) setNagging(true);
             if (assignmentRing > 0) {
                 if (!alarmTimer) setAssignmentAlarm(assignmentRing);
                 else playAlarmSound();
@@ -279,9 +308,13 @@
         });
     }
 
-    // Polling : nouvelles notifs + rappel sonore si non lues
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') loadFeed({ silent: true });
+    });
+
+    // Vérifie souvent : la sirène part dès qu’un message d’assignation est là.
     loadFeed({ silent: true });
-    setInterval(() => loadFeed({ silent: true }), 12000);
+    setInterval(() => loadFeed({ silent: true }), POLL_MS);
     if (lastUnread > 0) setNagging(true);
 })();
 </script>
