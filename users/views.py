@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from projects.models import AgentTimeEntry, ProjectTask
 from .security import (
+    authenticate_login,
     clear_failed_attempts,
     get_client_ip,
     is_login_locked,
@@ -52,7 +53,7 @@ def login_view(request):
                 {'error': "Compte temporairement bloqué. Réessayez dans 15 minutes."}
             )
 
-        user = authenticate(request, username=username, password=password)
+        user = authenticate_login(request, username, password)
 
         if user is not None:
             # Après la fin de service : les agents peuvent se reconnecter (consultation / urgente).

@@ -1,6 +1,8 @@
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+
+from users.security import authenticate_login
 
 User = get_user_model()
 
@@ -45,3 +47,32 @@ class UsersDirectoryTests(TestCase):
         self.assertEqual(created_user.direction, 'metal_design')
         self.assertEqual(created_user.org_group, 'technique')
         self.assertTrue(created_user.check_password('SecretPass123!'))
+
+
+class LoginNameTests(TestCase):
+    def setUp(self):
+        self.agent = User.objects.create_user(
+            username='abbed.tshuli',
+            password='Tshuli2026',
+            first_name='Abbed',
+            last_name='Tshuli',
+            email='abbed.tshuli@agencemwinda.com',
+            role='agent',
+            direction='metal_design',
+        )
+
+    def test_login_accepts_display_name(self):
+        response = self.client.post(reverse('login'), {
+            'username': 'Abbed Tshuli',
+            'password': 'Tshuli2026',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            int(self.client.session['_auth_user_id']),
+            self.agent.id,
+        )
+
+    def test_login_rejects_wrong_password(self):
+        request = RequestFactory().post('/login/')
+        user = authenticate_login(request, 'Abbed.Tshuli', 'tshuli2026')
+        self.assertIsNone(user)

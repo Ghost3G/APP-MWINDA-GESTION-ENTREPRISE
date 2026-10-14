@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
 
 from .models import AuditLog, LoginAttempt
@@ -20,6 +21,45 @@ def get_client_ip(request):
         if parts:
             return parts[-1]
     return request.META.get('REMOTE_ADDR') or ''
+
+
+def authenticate_login(request, raw_username, password):
+    """Accepte l'identifiant, ou le nom, sans tenir compte des majuscules ni des espaces."""
+    raw = " ".join((raw_username or "").split())
+    if not raw or not password:
+        return None
+
+    User = get_user_model()
+    candidates = []
+
+    def add(value):
+        value = (value or "").strip()
+        if value and value not in candidates:
+            candidates.append(value)
+
+    folded = raw.casefold()
+    add(raw)
+    add(folded)
+    add(folded.replace(" ", "."))
+
+    lookup = folded.replace(" ", ".")
+    match = User.objects.filter(username__iexact=lookup).only("id", "username").first()
+    if match is None and " " in raw:
+        first, _, last = raw.partition(" ")
+        match = (
+            User.objects.filter(first_name__iexact=first, last_name__iexact=last)
+            .only("id", "username")
+            .order_by("id")
+            .first()
+        )
+    if match is not None:
+        add(match.username)
+
+    for candidate in candidates:
+        user = authenticate(request, username=candidate, password=password)
+        if user is not None:
+            return user
+    return None
 
 
 def record_login_attempt(username, ip_address, success):
