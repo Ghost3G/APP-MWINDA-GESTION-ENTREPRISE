@@ -26,6 +26,13 @@ from .task_services import (
     notify_task_assignment,
 )
 from .assignment import ai_available, apply_member_competency_tasks, apply_smart_project_plan
+from .photos import (
+    MAX_PROJECT_PHOTOS,
+    attach_project_photos,
+    incoming_photo_files,
+    prepare_photo_payloads,
+    remove_project_photos,
+)
 from .project_notifications import (
     notify_assigned_members_by_message,
     notify_commercial_on_project,
@@ -975,7 +982,7 @@ def project_recap(request):
 def projects_list(request):
     projects = accessible_projects(request.user).select_related(
         'manager', 'technical_director', 'commercial_agent', 'client'
-    ).prefetch_related('members')
+    ).prefetch_related('members', 'photos')
 
     status = request.GET.get('status', '').strip()
     branch = request.GET.get('branch', '').strip()
@@ -1097,6 +1104,17 @@ def projects_list(request):
                 project.show_on_home = False
                 project.home_order = 0
 
+            new_photos = incoming_photo_files(request)
+            photo_error, prepared_photos = prepare_photo_payloads(new_photos)
+            if photo_error:
+                messages.error(request, photo_error)
+                return redirect('projects_list')
+            remove_ids = request.POST.getlist('remove_photo')
+            remaining = project.photos.exclude(id__in=[pk for pk in remove_ids if str(pk).isdigit()]).count()
+            if remaining + len(prepared_photos) > MAX_PROJECT_PHOTOS:
+                messages.error(request, f'Maximum {MAX_PROJECT_PHOTOS} photos par projet.')
+                return redirect('projects_list')
+
             cover = request.FILES.get('cover_image')
             if cover:
                 cover_error = validate_image_upload(cover)
@@ -1112,6 +1130,11 @@ def projects_list(request):
                 project.cover_image = None
 
             project.save()
+            remove_project_photos(project, remove_ids)
+            photo_error = attach_project_photos(project, prepared_photos, request.user)
+            if photo_error:
+                messages.error(request, photo_error)
+                return redirect('projects_list')
 
             if project_status not in {'done', 'awaiting_delivery'}:
                 show_on_home, home_order = _parse_home_feature(request.POST)
@@ -1163,11 +1186,12 @@ def projects_list(request):
             messages.error(request, "Veuillez choisir un client CRM ou un agent commercial.")
             return redirect('projects_list')
 
-        cover = request.FILES.get('cover_image')
-        if cover:
-            cover_error = validate_image_upload(cover)
-            if cover_error:
-                messages.error(request, cover_error)
+        prepared_photos = []
+        photo_files = incoming_photo_files(request, include_cover=True)
+        if photo_files:
+            photo_error, prepared_photos = prepare_photo_payloads(photo_files)
+            if photo_error:
+                messages.error(request, photo_error)
                 return redirect('projects_list')
 
         # À la création, on n’accepte pas "terminé" sans confirmation claire
@@ -1196,8 +1220,10 @@ def projects_list(request):
             commercial_agent=commercial_agent,
             client=client,
             contract_amount=contract_amount,
-            cover_image=cover if cover else None,
         )
+        photo_error = attach_project_photos(project, prepared_photos, request.user)
+        if photo_error:
+            messages.error(request, photo_error)
 
         show_on_home, home_order = _parse_home_feature(request.POST)
         _ok, feature_note = _apply_home_feature(project, show_on_home, home_order)
@@ -1298,7 +1324,7 @@ def projects_list(request):
 @login_required(login_url='login')
 def project_detail(request, project_id):
     project = get_object_or_404(
-        Project.objects.select_related('manager', 'technical_director', 'commercial_agent', 'client').prefetch_related('members'),
+        Project.objects.select_related('manager', 'technical_director', 'commercial_agent', 'client').prefetch_related('members', 'photos'),
         id=project_id,
     )
 

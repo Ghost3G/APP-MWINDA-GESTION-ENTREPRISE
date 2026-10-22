@@ -3,6 +3,32 @@ from django.conf import settings
 
 from .branches import TECH_BRANCH_CHOICES, get_branch_label, normalize_branch
 
+
+def stored_image_url(image_field):
+    """URL publique d’une image (Cloudinary ou fichier local)."""
+    try:
+        if not image_field:
+            return ''
+        name = (getattr(image_field, 'name', None) or '').strip()
+        if not name:
+            return ''
+        if name.startswith('http://') or name.startswith('https://'):
+            return name
+        try:
+            import os
+            import cloudinary
+            from django.conf import settings as django_settings
+            if getattr(django_settings, 'CLOUDINARY_STORAGE', None) or os.environ.get('CLOUDINARY_URL'):
+                return cloudinary.CloudinaryResource(
+                    name,
+                    resource_type='image',
+                ).build_url(secure=True)
+        except Exception:
+            pass
+        return image_field.url
+    except Exception:
+        return ''
+
 # Create your models here.
 
 class Project(models.Model):
@@ -128,28 +154,7 @@ class Project(models.Model):
 
     @property
     def cover_url(self):
-        try:
-            if not self.cover_image:
-                return ''
-            name = (getattr(self.cover_image, 'name', None) or '').strip()
-            if not name:
-                return ''
-            if name.startswith('http://') or name.startswith('https://'):
-                return name
-            try:
-                import cloudinary
-                import os
-                from django.conf import settings
-                if getattr(settings, 'CLOUDINARY_STORAGE', None) or os.environ.get('CLOUDINARY_URL'):
-                    return cloudinary.CloudinaryResource(
-                        name,
-                        resource_type='image',
-                    ).build_url(secure=True)
-            except Exception:
-                pass
-            return self.cover_image.url
-        except Exception:
-            return ''
+        return stored_image_url(self.cover_image)
 
     def get_branch_display_label(self):
         return get_branch_label(self.branch)
@@ -160,6 +165,33 @@ class Project(models.Model):
             if user and user not in users:
                 users.insert(0, user)
         return users
+
+
+class ProjectPhoto(models.Model):
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='photos',
+    )
+    image = models.ImageField(upload_to='project_photos/%Y/%m/', verbose_name='Photo')
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='project_photos',
+        blank=True,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('created_at', 'id')
+
+    def __str__(self):
+        return f'Photo {self.pk} — {self.project_id}'
+
+    @property
+    def image_url(self):
+        return stored_image_url(self.image)
 
 
 class AgentTimeEntry(models.Model):

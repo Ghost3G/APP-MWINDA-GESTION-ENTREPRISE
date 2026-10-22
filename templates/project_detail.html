@@ -196,7 +196,10 @@
                             title="Agrandir la photo"
                         >
                     </div>
-                    <p class="project-detail-cover-hint">Ouvrez la photo pour l’afficher en grand et zoomer.</p>
+                    {% endif %}
+                    {% include "partials/project_photos.html" %}
+                    {% if project.cover_url or project.photos.all %}
+                    <p class="project-detail-cover-hint">Ouvrez une photo pour l’afficher en grand et zoomer.</p>
                     {% endif %}
 
                     <div class="project-meta-grid">

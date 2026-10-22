@@ -1090,9 +1090,9 @@
                             </div>
                             <textarea name="description" rows="3" placeholder="Description du projet" required style="width: 100%; margin-bottom: 12px;"></textarea>
                             <div style="margin-bottom:12px;">
-                                <label style="display:block; margin-bottom:6px; font-weight:600;">Photo d’illustration</label>
-                                <input type="file" name="cover_image" accept="image/*" style="width:100%;">
-                                <small class="field-hint">JPG/PNG, max 5 Mo — visible sur la carte projet</small>
+                                <label style="display:block; margin-bottom:6px; font-weight:600;">Photos du projet</label>
+                                <input type="file" name="photos" accept="image/*" multiple style="width:100%;">
+                                <small class="field-hint">Plusieurs photos possibles. JPG/PNG, 5 Mo chacune. La première sert d’illustration sur la carte.</small>
                             </div>
                             <div class="home-feature-panel">
                                 <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
@@ -1194,6 +1194,7 @@
                                     {% if project.description %}
                                         <p class="project-desc">{{ project.description|truncatewords:22 }}</p>
                                     {% endif %}
+                                    {% include "partials/project_photos.html" %}
                                     <div class="project-info">
                                         <div class="project-info-row">
                                             <span class="project-info-label">Branche</span>
@@ -1322,14 +1323,26 @@
                                                     {% endfor %}
                                                 </select>
                                                 <div>
-                                                    <label style="display:block; margin-bottom:6px; font-weight:600; font-size:13px;">Photo d’illustration</label>
-                                                    {% if project.cover_url %}
+                                                    <label style="display:block; margin-bottom:6px; font-weight:600; font-size:13px;">Photos du projet</label>
+                                                    {% if project.photos.all %}
+                                                    <div class="project-photo-edit">
+                                                        {% for photo in project.photos.all %}
+                                                        <label class="project-photo-edit__item">
+                                                            {% if photo.image_url %}
+                                                            <img src="{{ photo.image_url }}" alt="">
+                                                            {% endif %}
+                                                            <span><input type="checkbox" name="remove_photo" value="{{ photo.id }}"> Retirer</span>
+                                                        </label>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% elif project.cover_url %}
                                                     <img src="{{ project.cover_url }}" alt="" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">
                                                     <label style="display:flex; gap:6px; align-items:center; font-size:12px; color:#6b7280; margin-bottom:6px;">
                                                         <input type="checkbox" name="remove_cover" value="1"> Supprimer la photo actuelle
                                                     </label>
                                                     {% endif %}
-                                                    <input type="file" name="cover_image" accept="image/*" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    <input type="file" name="photos" accept="image/*" multiple style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+                                                    <small class="field-hint">Ajoutez plusieurs photos d’un coup. Cochez Retirer pour en enlever.</small>
                                                 </div>
                                                 <div class="home-feature-panel home-feature-panel--compact">
                                                     <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px;">
@@ -1401,6 +1414,7 @@
                                             <div class="project-details">
                                             {% if project.description %}
                                                 <p class="project-desc">{{ project.description|truncatewords:18 }}</p>
+                                                {% include "partials/project_photos.html" %}
                                             {% endif %}
                                             <div class="project-info">
                                                 <div class="project-info-row">

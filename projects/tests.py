@@ -142,6 +142,59 @@ class ProjectsFeatureTests(TestCase):
             Message.objects.filter(receiver=self.directeur, message_type='project_assign').exists()
         )
 
+    def test_create_project_stores_several_photos(self):
+        from io import BytesIO
+
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import RequestFactory
+        from PIL import Image
+
+        from projects.views import projects_list
+
+        def jpeg(name, color):
+            buffer = BytesIO()
+            Image.new('RGB', (16, 12), color).save(buffer, format='JPEG')
+            return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
+
+        commercial = User.objects.create_user(
+            username='commercial-photos',
+            password='testpass123',
+            email='commercial-photos@example.com',
+            role='agent',
+            direction='branding',
+            org_group='commercial',
+            grade='Agent Commercial',
+        )
+        request = RequestFactory().post(reverse('projects_list'), {
+            'action': 'create',
+            'name': 'Projet Plusieurs Photos',
+            'description': 'Description test',
+            'start_date': '2026-04-01',
+            'end_date': '2026-04-30',
+            'status': 'pending',
+            'branch': 'metal_design',
+            'members': [self.agent.id],
+            'commercial_agent': commercial.id,
+            'photos': [
+                jpeg('un.jpg', (10, 20, 30)),
+                jpeg('deux.jpg', (40, 50, 60)),
+                jpeg('trois.jpg', (70, 80, 90)),
+            ],
+        })
+        request.user = self.directeur
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.save()
+        request._messages = FallbackStorage(request)
+        response = projects_list(request)
+        self.assertEqual(response.status_code, 302)
+        project = Project.objects.get(name='Projet Plusieurs Photos')
+        self.assertEqual(project.photos.count(), 3)
+        self.assertTrue(project.cover_image)
+        self.assertTrue(project.cover_url)
+        self.assertEqual(len([photo.image_url for photo in project.photos.all() if photo.image_url]), 3)
+
     def test_michelle_notified_when_commercial_assigned(self):
         michelle = User.objects.create_user(
             username='michelle.bukebo',

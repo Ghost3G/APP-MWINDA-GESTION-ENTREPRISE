@@ -1,0 +1,18 @@
+{% if project.photos.all %}
+<div class="project-photo-strip" aria-label="Photos du projet">
+    {% for photo in project.photos.all %}
+        {% if photo.image_url %}
+        <img
+            src="{{ photo.image_url }}"
+            alt="Photo {{ forloop.counter }} — {{ project.name }}"
+            class="lb-trigger"
+            data-lightbox
+            data-lightbox-src="{{ photo.image_url }}"
+            loading="lazy"
+            decoding="async"
+            title="Agrandir la photo"
+        >
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}

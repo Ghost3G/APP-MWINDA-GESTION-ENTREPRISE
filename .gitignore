@@ -33,6 +33,8 @@ media/avatars/*
 !media/avatars/.gitkeep
 media/project_covers/*
 !media/project_covers/.gitkeep
+media/project_photos/*
+!media/project_photos/.gitkeep
 backups/
 *.sqlite3.gz
 Liste_comptes_MWINDA.pdf
