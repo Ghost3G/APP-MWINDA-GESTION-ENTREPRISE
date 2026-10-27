@@ -159,6 +159,24 @@ class Project(models.Model):
     def get_branch_display_label(self):
         return get_branch_label(self.branch)
 
+    def get_deadline_week_warning(self):
+        """Étiquette jaune : échéance dans 1 à 7 jours (hors retard / terminé)."""
+        if self.status == 'done' or not self.end_date:
+            return None
+        from django.utils import timezone
+        days_left = (self.end_date - timezone.localdate()).days
+        if days_left < 1 or days_left > 7:
+            return None
+        if days_left == 1:
+            label = 'Échéance demain'
+        else:
+            label = f'Échéance dans {days_left} j'
+        return {
+            'days_left': days_left,
+            'label': label,
+            'end_date': self.end_date,
+        }
+
     def get_stakeholders(self):
         users = list(self.members.all())
         for user in (self.manager, self.technical_director, self.commercial_agent):

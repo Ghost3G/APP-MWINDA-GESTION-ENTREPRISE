@@ -193,4 +193,33 @@
   });
 
   window.MwindaLightbox = { open: open, close: close };
+
+  document.querySelectorAll('.js-photo-stage').forEach(function (stage) {
+    var main = stage.querySelector('.js-photo-main');
+    if (!main) return;
+    var fallback = main.getAttribute('data-default-src') || main.getAttribute('data-lightbox-src') || main.src;
+
+    function show(src, thumb) {
+      if (!src) return;
+      main.src = src;
+      main.setAttribute('data-lightbox-src', src);
+      stage.querySelectorAll('.js-photo-thumb').forEach(function (el) {
+        el.classList.toggle('is-active', el === thumb);
+      });
+    }
+
+    stage.querySelectorAll('.js-photo-thumb').forEach(function (thumb) {
+      var src = thumb.getAttribute('data-src');
+      thumb.addEventListener('mouseenter', function () { show(src, thumb); });
+      thumb.addEventListener('focus', function () { show(src, thumb); });
+    });
+
+    stage.addEventListener('mouseleave', function () {
+      main.src = fallback;
+      main.setAttribute('data-lightbox-src', fallback);
+      stage.querySelectorAll('.js-photo-thumb').forEach(function (el) {
+        el.classList.remove('is-active');
+      });
+    });
+  });
 })();

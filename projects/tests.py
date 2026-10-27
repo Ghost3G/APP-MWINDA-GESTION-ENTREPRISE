@@ -355,6 +355,35 @@ class ProjectsFeatureTests(TestCase):
             ).exists()
         )
 
+    def test_deadline_week_warning_label(self):
+        today = timezone.localdate()
+        project = Project.objects.create(
+            name='Projet Échéance Semaine',
+            description='Test',
+            start_date=today,
+            end_date=today + timedelta(days=5),
+            status='progress',
+            branch='metal_design',
+            manager=self.directeur,
+        )
+        warning = project.get_deadline_week_warning()
+        self.assertIsNotNone(warning)
+        self.assertEqual(warning['days_left'], 5)
+        self.assertEqual(warning['label'], 'Échéance dans 5 j')
+
+        project.end_date = today + timedelta(days=1)
+        project.save(update_fields=['end_date'])
+        self.assertEqual(project.get_deadline_week_warning()['label'], 'Échéance demain')
+
+        project.end_date = today + timedelta(days=8)
+        project.save(update_fields=['end_date'])
+        self.assertIsNone(project.get_deadline_week_warning())
+
+        project.end_date = today + timedelta(days=3)
+        project.status = 'done'
+        project.save(update_fields=['end_date', 'status'])
+        self.assertIsNone(project.get_deadline_week_warning())
+
     def test_pause_timer_toggle(self):
         self.client.login(username='agent1', password='testpass123')
 

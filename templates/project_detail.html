@@ -182,15 +182,18 @@
                     <h1 style="margin:0 0 8px 0;">{{ project.name }}</h1>
                     <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
                     <span class="status-badge" style="background:#fde047;color:#111827;margin-left:8px;">{{ project.get_branch_display }}</span>
+                    {% include "partials/project_deadline_tag.html" with tag_style="inline" %}
 
+                    <div class="js-photo-stage">
                     {% if project.cover_url %}
                     <div class="project-detail-cover">
                         <img
                             src="{{ project.cover_url }}"
                             alt="{{ project.name }}"
-                            class="lb-trigger"
+                            class="lb-trigger js-photo-main"
                             data-lightbox
                             data-lightbox-src="{{ project.cover_url }}"
+                            data-default-src="{{ project.cover_url }}"
                             loading="lazy"
                             decoding="async"
                             title="Agrandir la photo"
@@ -198,6 +201,7 @@
                     </div>
                     {% endif %}
                     {% include "partials/project_photos.html" %}
+                    </div>
                     {% if project.cover_url or project.photos.all %}
                     <p class="project-detail-cover-hint">Ouvrez une photo pour l’afficher en grand et zoomer.</p>
                     {% endif %}

@@ -1,17 +1,18 @@
-{% if project.photos.all %}
-<div class="project-photo-strip" aria-label="Photos du projet">
+{% if project.photos.all|length > 1 %}
+<div class="{% if photo_layout == 'overlay' %}project-cover-thumbs{% else %}project-photo-strip{% endif %}" aria-label="Photos du projet">
     {% for photo in project.photos.all %}
         {% if photo.image_url %}
-        <img
-            src="{{ photo.image_url }}"
-            alt="Photo {{ forloop.counter }} — {{ project.name }}"
-            class="lb-trigger"
+        <button
+            type="button"
+            class="js-photo-thumb {% if photo_layout == 'overlay' %}project-cover-thumb{% else %}project-photo-tile{% endif %}"
+            data-src="{{ photo.image_url }}"
             data-lightbox
             data-lightbox-src="{{ photo.image_url }}"
-            loading="lazy"
-            decoding="async"
-            title="Agrandir la photo"
+            title="Photo {{ forloop.counter }}"
+            aria-label="Photo {{ forloop.counter }} de {{ project.name }}"
         >
+            <img src="{{ photo.image_url }}" alt="" loading="lazy" decoding="async">
+        </button>
         {% endif %}
     {% endfor %}
 </div>
