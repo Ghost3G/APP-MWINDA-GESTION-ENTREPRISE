@@ -1,4 +1,4 @@
-<nav class="stock-section-nav" aria-label="Sections Stock & achats">
+<nav class="stock-section-nav" aria-label="Sections Logistique">
     <a href="{% url 'stock_dashboard' %}" class="stock-section-nav__link {% if stock_section == 'dashboard' %}is-active{% endif %}">Stock</a>
     <a href="{% url 'stock_suppliers' %}" class="stock-section-nav__link {% if stock_section == 'suppliers' %}is-active{% endif %}">Fournisseurs</a>
     <a href="{% url 'stock_logistics' %}" class="stock-section-nav__link {% if stock_section == 'logistics' %}is-active{% endif %}">Logistique</a>

@@ -62,7 +62,7 @@
         <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'stock_dashboard' or rn == 'stock_suppliers' or rn == 'stock_logistics' %} is-open{% endif %}">
             <a href="{% url 'stock_dashboard' %}" class="nav-item {% if rn == 'stock_dashboard' or rn == 'stock_suppliers' or rn == 'stock_logistics' %}active{% endif %}">
                 <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_checklist.svg' %}" alt=""></span>
-                Stock & achats
+                Logistique
             </a>
             {% include "partials/stock_sidebar_submenu.html" %}
         </div>

@@ -210,7 +210,7 @@ def is_stock_manager(user):
 
 
 def can_access_stock(user):
-    """Menu Stock & Achats / Logistique : direction, Joseph Mbuyu, département logistique."""
+    """Menu Logistique : direction, Joseph Mbuyu, département logistique."""
     if not user or not user.is_authenticated:
         return False
     if is_management_user(user) or is_stock_manager(user):
