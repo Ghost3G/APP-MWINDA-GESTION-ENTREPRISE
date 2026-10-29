@@ -210,10 +210,12 @@ def is_stock_manager(user):
 
 
 def can_access_stock(user):
-    """Menu Stock & Achats : direction + Joseph Mbuyu uniquement."""
+    """Menu Stock & Achats / Logistique : direction, Joseph Mbuyu, département logistique."""
     if not user or not user.is_authenticated:
         return False
-    return is_management_user(user) or is_stock_manager(user)
+    if is_management_user(user) or is_stock_manager(user):
+        return True
+    return (getattr(user, 'org_group', '') or '').strip().lower() == 'logistique'
 
 
 def can_edit_stock(user):

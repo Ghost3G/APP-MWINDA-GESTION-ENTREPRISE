@@ -58,10 +58,15 @@
         {% endwith %}
         {% endif %}
         {% if is_stock %}
-        <a href="{% url 'stock_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'stock_dashboard' %}active{% endif %}">
-            <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_checklist.svg' %}" alt=""></span>
-            Stock & achats
-        </a>
+        {% with rn=request.resolver_match.url_name %}
+        <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'stock_dashboard' or rn == 'stock_suppliers' or rn == 'stock_logistics' %} is-open{% endif %}">
+            <a href="{% url 'stock_dashboard' %}" class="nav-item {% if rn == 'stock_dashboard' or rn == 'stock_suppliers' or rn == 'stock_logistics' %}active{% endif %}">
+                <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_checklist.svg' %}" alt=""></span>
+                Stock & achats
+            </a>
+            {% include "partials/stock_sidebar_submenu.html" %}
+        </div>
+        {% endwith %}
         {% endif %}
         <a href="{% url 'machines_list' %}" class="nav-item {% if request.resolver_match.url_name == 'machines_list' or request.resolver_match.url_name == 'machine_detail' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_tableau.svg' %}" alt=""></span>

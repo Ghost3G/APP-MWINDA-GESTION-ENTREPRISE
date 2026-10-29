@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock & Achats - AppMwinda</title>
     {% include "partials/head_styles.html" %}
-    <link rel="stylesheet" href="{% static 'css/stock.css' %}">
+    <link rel="stylesheet" href="{% static 'css/stock.css' %}?v=20261029a">
     <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
 </head>
 <body>
@@ -39,6 +39,8 @@
                         {% endfor %}
                     </div>
                 {% endif %}
+
+                {% include "partials/stock_section_nav.html" %}
 
                 <div class="stock-summary">
                     <div class="stock-summary__item">
@@ -220,28 +222,10 @@
                     </div>
 
                     <div class="panel">
-                        <h3>Nouveau fournisseur</h3>
-                        <form method="POST" class="stock-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="create_supplier">
-                            <div class="stock-form__row">
-                                <div class="stock-form__full">
-                                    <label>Nom *</label>
-                                    <input type="text" name="name" required>
-                                </div>
-                            </div>
-                            <div class="stock-form__row">
-                                <div>
-                                    <label>Téléphone</label>
-                                    <input type="text" name="phone">
-                                </div>
-                                <div>
-                                    <label>Email</label>
-                                    <input type="email" name="email">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn-stock btn-stock--ghost">Ajouter le fournisseur</button>
-                        </form>
+                        <h3>Fournisseurs</h3>
+                        <p class="muted">Enregistrez et gérez les fournisseurs dans la section dédiée.</p>
+                        <p class="muted">{{ suppliers|length }} fournisseur(s) actif(s).</p>
+                        <a href="{% url 'stock_suppliers' %}" class="btn-stock btn-stock--ghost">Ouvrir Fournisseurs</a>
                     </div>
                 </div>
                 {% endif %}

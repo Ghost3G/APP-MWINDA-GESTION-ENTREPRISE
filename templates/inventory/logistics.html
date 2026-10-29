@@ -1,0 +1,297 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistique - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/stock.css' %}?v=20261029a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="stock-page">
+                <div class="page-header stock-header">
+                    <div>
+                        <h1>Logistique</h1>
+                        <p>
+                            Livraisons projets, planning du jour et réceptions fournisseurs.
+                            Les projets « En attente de livraison » apparaissent ici pour organisation.
+                        </p>
+                    </div>
+                    {% if is_stock_manager_user %}
+                        <span class="stock-role-pill">Accès responsable Stock</span>
+                    {% endif %}
+                </div>
+
+                {% if messages %}
+                    <div class="stock-flash-stack">
+                        {% for message in messages %}
+                            <div class="stock-flash {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% include "partials/stock_section_nav.html" %}
+
+                <div class="stock-summary">
+                    <div class="stock-summary__item">
+                        <small>Projets à livrer</small>
+                        <strong>{{ awaiting_projects|length }}</strong>
+                    </div>
+                    <div class="stock-summary__item">
+                        <small>Livraisons aujourd’hui</small>
+                        <strong>{{ today_deliveries|length }}</strong>
+                    </div>
+                    <div class="stock-summary__item">
+                        <small>Cette semaine</small>
+                        <strong>{{ week_deliveries|length }}</strong>
+                    </div>
+                    <div class="stock-summary__item">
+                        <small>Réceptions en attente</small>
+                        <strong>{{ incoming_purchases|length }}</strong>
+                    </div>
+                </div>
+
+                {% if can_edit_stock %}
+                <div class="panel">
+                    <h3>Planifier une livraison</h3>
+                    <form method="POST" class="stock-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_delivery">
+                        <div class="stock-form__row">
+                            <div class="stock-form__full">
+                                <label>Projet *</label>
+                                <select name="project_id" required>
+                                    <option value="">— Choisir —</option>
+                                    {% for project in project_choices %}
+                                        <option value="{{ project.id }}">
+                                            {{ project.name }} — {{ project.get_status_display }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in delivery_status_choices %}
+                                        {% if value != 'cancelled' %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Date prévue</label>
+                                <input type="date" name="scheduled_date" value="{{ today|date:'Y-m-d' }}">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Chauffeur / agent</label>
+                                <input type="text" name="driver_name" placeholder="Nom">
+                            </div>
+                            <div>
+                                <label>Destinataire</label>
+                                <input type="text" name="recipient_name" placeholder="Client / contact">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div class="stock-form__full">
+                                <label>Destination</label>
+                                <input type="text" name="destination" placeholder="Adresse de livraison">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div class="stock-form__full">
+                                <label>Notes</label>
+                                <textarea name="notes" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-stock btn-stock--primary">Créer la livraison</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Projets en attente de livraison</h3>
+                    {% if awaiting_projects %}
+                    <div class="stock-table-wrap">
+                        <table class="stock-table">
+                            <thead>
+                                <tr>
+                                    <th>Projet</th>
+                                    <th>Échéance</th>
+                                    <th>Client</th>
+                                    <th>Suivi</th>
+                                    <th>Dernière livraison</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in awaiting_projects %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'project_detail' project.id %}" style="color:#fde047;font-weight:700;text-decoration:none;">
+                                            {{ project.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ project.end_date|date:"d/m/Y" }}</td>
+                                    <td>{% if project.client %}{{ project.client.name }}{% else %}—{% endif %}</td>
+                                    <td>{{ project.manager.get_display_name }}</td>
+                                    <td>
+                                        {% with last=project.delivery_shipments.first %}
+                                            {% if last %}
+                                                <span class="stock-badge stock-badge--{{ last.status }}">{{ last.get_status_display }}</span>
+                                                {% if last.scheduled_date %}<div class="muted">{{ last.scheduled_date|date:"d/m/Y" }}</div>{% endif %}
+                                            {% else %}
+                                                <span class="muted">Pas encore planifiée</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p class="muted">Aucun projet en attente de livraison.</p>
+                    {% endif %}
+                </div>
+
+                <div class="stock-bottom-grid">
+                    <div class="panel">
+                        <h3>Livraisons ouvertes</h3>
+                        {% if open_deliveries %}
+                        <div class="stock-table-wrap">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Projet</th>
+                                        <th>Date</th>
+                                        <th>Statut</th>
+                                        <th>Chauffeur</th>
+                                        {% if can_edit_stock %}<th></th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for d in open_deliveries %}
+                                    <tr>
+                                        <td>{{ d.project.name }}</td>
+                                        <td>{% if d.scheduled_date %}{{ d.scheduled_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                                        <td><span class="stock-badge stock-badge--{{ d.status }}">{{ d.get_status_display }}</span></td>
+                                        <td>{{ d.driver_name|default:"—" }}</td>
+                                        {% if can_edit_stock %}
+                                        <td>
+                                            <form method="POST" class="stock-inline-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update_delivery">
+                                                <input type="hidden" name="delivery_id" value="{{ d.id }}">
+                                                <input type="hidden" name="driver_name" value="{{ d.driver_name }}">
+                                                <input type="hidden" name="recipient_name" value="{{ d.recipient_name }}">
+                                                <input type="hidden" name="destination" value="{{ d.destination }}">
+                                                <input type="hidden" name="notes" value="{{ d.notes }}">
+                                                {% if d.scheduled_date %}
+                                                <input type="hidden" name="scheduled_date" value="{{ d.scheduled_date|date:'Y-m-d' }}">
+                                                {% endif %}
+                                                <select name="status">
+                                                    {% for value, label in delivery_status_choices %}
+                                                        <option value="{{ value }}" {% if d.status == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit" class="btn-stock btn-stock--tiny">OK</button>
+                                            </form>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <p class="muted">Aucune livraison ouverte.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="panel">
+                        <h3>Réceptions fournisseurs</h3>
+                        {% if incoming_purchases %}
+                        <div class="stock-table-wrap">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Article</th>
+                                        <th>Qté</th>
+                                        <th>Fournisseur</th>
+                                        <th>Statut</th>
+                                        {% if can_edit_stock %}<th></th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in incoming_purchases %}
+                                    <tr>
+                                        <td>{{ p.item.name }}</td>
+                                        <td>{{ p.quantity }} {{ p.item.get_unit_display }}</td>
+                                        <td>{% if p.supplier %}{{ p.supplier.name }}{% else %}—{% endif %}</td>
+                                        <td>{{ p.get_status_display }}</td>
+                                        {% if can_edit_stock %}
+                                        <td>
+                                            <form method="POST">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="receive_purchase">
+                                                <input type="hidden" name="purchase_id" value="{{ p.id }}">
+                                                <button type="submit" class="btn-stock btn-stock--tiny">Réceptionner</button>
+                                            </form>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                            <p class="muted">Aucune commande à réceptionner.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if recent_delivered %}
+                <div class="panel">
+                    <h3>Dernières livraisons terminées</h3>
+                    <div class="stock-table-wrap">
+                        <table class="stock-table">
+                            <thead>
+                                <tr>
+                                    <th>Projet</th>
+                                    <th>Livrée le</th>
+                                    <th>Chauffeur</th>
+                                    <th>Destination</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for d in recent_delivered %}
+                                <tr>
+                                    <td>{{ d.project.name }}</td>
+                                    <td>{% if d.delivered_at %}{{ d.delivered_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+                                    <td>{{ d.driver_name|default:"—" }}</td>
+                                    <td>{{ d.destination|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

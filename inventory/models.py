@@ -39,11 +39,36 @@ UNIT_CHOICES = (
 )
 
 
+SUPPLIER_SPECIALTY_CHOICES = (
+    ('metal', 'Métal / soudure'),
+    ('wood', 'Bois / menuiserie'),
+    ('paint', 'Peinture / finition'),
+    ('plastic', 'Plexi / plastique'),
+    ('print', 'Impression / branding'),
+    ('transport', 'Transport / livraison'),
+    ('hardware', 'Quincaillerie'),
+    ('other', 'Autre'),
+)
+
+
 class Supplier(models.Model):
     name = models.CharField(max_length=180)
+    contact_name = models.CharField(max_length=120, blank=True, verbose_name='Personne de contact')
     phone = models.CharField(max_length=40, blank=True)
     email = models.EmailField(blank=True)
+    city = models.CharField(max_length=80, blank=True)
     address = models.CharField(max_length=255, blank=True)
+    specialty = models.CharField(
+        max_length=20,
+        choices=SUPPLIER_SPECIALTY_CHOICES,
+        default='other',
+        blank=True,
+    )
+    lead_time_days = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Délai moyen de livraison en jours.',
+    )
+    payment_terms = models.CharField(max_length=120, blank=True, verbose_name='Conditions de paiement')
     notes = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -54,6 +79,47 @@ class Supplier(models.Model):
 
     def __str__(self):
         return self.name
+
+
+DELIVERY_STATUS_CHOICES = (
+    ('pending', 'À planifier'),
+    ('scheduled', 'Planifiée'),
+    ('in_transit', 'En route'),
+    ('delivered', 'Livrée'),
+    ('cancelled', 'Annulée'),
+)
+
+
+class DeliveryShipment(models.Model):
+    """Livraison logistique liée à un projet (souvent en attente de livraison)."""
+
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='delivery_shipments',
+    )
+    status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='pending')
+    scheduled_date = models.DateField(blank=True, null=True)
+    delivered_at = models.DateTimeField(blank=True, null=True)
+    driver_name = models.CharField(max_length=120, blank=True)
+    recipient_name = models.CharField(max_length=120, blank=True)
+    destination = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_deliveries',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-scheduled_date', '-created_at', '-id']
+
+    def __str__(self):
+        return f'Livraison {self.project_id} — {self.status}'
 
 
 class StockItem(models.Model):

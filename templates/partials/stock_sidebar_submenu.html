@@ -1,0 +1,9 @@
+{% with rn=request.resolver_match.url_name %}
+{% if rn == 'stock_dashboard' or rn == 'stock_suppliers' or rn == 'stock_logistics' %}
+<div class="crm-sidebar-sub">
+    <a href="{% url 'stock_dashboard' %}" class="nav-subitem {% if rn == 'stock_dashboard' %}active{% endif %}">Stock</a>
+    <a href="{% url 'stock_suppliers' %}" class="nav-subitem {% if rn == 'stock_suppliers' %}active{% endif %}">Fournisseurs</a>
+    <a href="{% url 'stock_logistics' %}" class="nav-subitem {% if rn == 'stock_logistics' %}active{% endif %}">Logistique</a>
+</div>
+{% endif %}
+{% endwith %}

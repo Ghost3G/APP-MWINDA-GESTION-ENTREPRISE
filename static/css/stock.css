@@ -5,6 +5,46 @@
     box-sizing: border-box;
 }
 
+.stock-section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.stock-section-nav__link {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d4d4d8;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.stock-section-nav__link:hover {
+    border-color: rgba(253, 224, 71, 0.45);
+    color: #fde047;
+}
+
+.stock-section-nav__link.is-active {
+    background: rgba(253, 224, 71, 0.16);
+    border-color: rgba(253, 224, 71, 0.55);
+    color: #fde047;
+}
+
+.stock-badge--pending { background: rgba(161, 161, 170, 0.2); color: #d4d4d8; }
+.stock-badge--scheduled { background: rgba(253, 224, 71, 0.18); color: #fde047; }
+.stock-badge--in_transit { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+.stock-badge--delivered { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+.stock-badge--cancelled { background: rgba(248, 113, 113, 0.18); color: #fecaca; }
+
+.stock-supplier-inactive {
+    opacity: 0.55;
+}
+
 .dashboard-content:has(.stock-page) {
     padding: 28px 32px 36px !important;
 }

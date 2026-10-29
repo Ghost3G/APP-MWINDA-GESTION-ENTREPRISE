@@ -1,17 +1,23 @@
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
+from projects.models import Project
 from users.permissions import can_access_stock, can_edit_stock, is_stock_manager
 
 from .models import (
+    DELIVERY_STATUS_CHOICES,
     ITEM_CATEGORY_CHOICES,
     MOVEMENT_TYPE_CHOICES,
     PURCHASE_STATUS_CHOICES,
+    SUPPLIER_SPECIALTY_CHOICES,
     UNIT_CHOICES,
+    DeliveryShipment,
     PurchaseRequest,
     StockItem,
     StockMovement,
@@ -90,21 +96,6 @@ def stock_dashboard(request):
                     f'Stock critique : demande d’achat automatique proposée '
                     f'({purchase.quantity} {item.get_unit_display()}).',
                 )
-            return redirect('stock_dashboard')
-
-        if action == 'create_supplier':
-            name = request.POST.get('name', '').strip()
-            if not name:
-                messages.error(request, "Le nom du fournisseur est obligatoire.")
-                return redirect('stock_dashboard')
-            Supplier.objects.create(
-                name=name,
-                phone=request.POST.get('phone', '').strip()[:40],
-                email=request.POST.get('email', '').strip(),
-                address=request.POST.get('address', '').strip()[:255],
-                notes=request.POST.get('notes', '').strip(),
-            )
-            messages.success(request, f'Fournisseur « {name} » ajouté.')
             return redirect('stock_dashboard')
 
         if action == 'movement':
@@ -249,4 +240,241 @@ def stock_dashboard(request):
         'is_stock_manager_user': is_stock_manager(request.user),
         'stock_section': 'dashboard',
         'mw_charts': build_stock_charts(all_items, purchase_status_rows=purchase_status_rows),
+    })
+
+
+def _parse_date(raw):
+    text = (raw or '').strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+@login_required(login_url='login')
+def stock_suppliers(request):
+    if not can_access_stock(request.user):
+        return _deny(request)
+
+    can_write = can_edit_stock(request.user)
+    q = request.GET.get('q', '').strip()
+    specialty = request.GET.get('specialty', '').strip()
+    show_inactive = request.GET.get('inactive', '').strip() == '1'
+
+    if request.method == 'POST':
+        if not can_write:
+            messages.error(request, "Vous n’avez pas le droit de modifier les fournisseurs.")
+            return redirect('stock_suppliers')
+
+        action = request.POST.get('action', '').strip()
+        specialty_value = request.POST.get('specialty', 'other').strip() or 'other'
+        if specialty_value not in {c[0] for c in SUPPLIER_SPECIALTY_CHOICES}:
+            specialty_value = 'other'
+        lead_raw = request.POST.get('lead_time_days', '0').strip() or '0'
+        try:
+            lead_time = max(0, int(lead_raw))
+        except ValueError:
+            lead_time = 0
+
+        payload = {
+            'name': request.POST.get('name', '').strip(),
+            'contact_name': request.POST.get('contact_name', '').strip()[:120],
+            'phone': request.POST.get('phone', '').strip()[:40],
+            'email': request.POST.get('email', '').strip(),
+            'city': request.POST.get('city', '').strip()[:80],
+            'address': request.POST.get('address', '').strip()[:255],
+            'specialty': specialty_value,
+            'lead_time_days': lead_time,
+            'payment_terms': request.POST.get('payment_terms', '').strip()[:120],
+            'notes': request.POST.get('notes', '').strip(),
+        }
+
+        if action == 'create_supplier':
+            if not payload['name']:
+                messages.error(request, "Le nom du fournisseur est obligatoire.")
+                return redirect('stock_suppliers')
+            Supplier.objects.create(**payload)
+            messages.success(request, f'Fournisseur « {payload["name"]} » enregistré.')
+            return redirect('stock_suppliers')
+
+        if action == 'update_supplier':
+            supplier = get_object_or_404(Supplier, id=request.POST.get('supplier_id'))
+            if not payload['name']:
+                messages.error(request, "Le nom du fournisseur est obligatoire.")
+                return redirect('stock_suppliers')
+            for field, value in payload.items():
+                setattr(supplier, field, value)
+            supplier.is_active = request.POST.get('is_active') == '1'
+            supplier.save()
+            messages.success(request, f'Fournisseur « {supplier.name} » mis à jour.')
+            return redirect('stock_suppliers')
+
+        if action == 'toggle_supplier':
+            supplier = get_object_or_404(Supplier, id=request.POST.get('supplier_id'))
+            supplier.is_active = not supplier.is_active
+            supplier.save(update_fields=['is_active', 'updated_at'])
+            state = 'réactivé' if supplier.is_active else 'désactivé'
+            messages.success(request, f'Fournisseur « {supplier.name} » {state}.')
+            return redirect('stock_suppliers')
+
+        messages.error(request, "Action non reconnue.")
+        return redirect('stock_suppliers')
+
+    suppliers = Supplier.objects.annotate(
+        items_count=Count('items', filter=Q(items__is_active=True)),
+        purchases_count=Count('purchase_requests'),
+    )
+    if not show_inactive:
+        suppliers = suppliers.filter(is_active=True)
+    if specialty in {c[0] for c in SUPPLIER_SPECIALTY_CHOICES}:
+        suppliers = suppliers.filter(specialty=specialty)
+    if q:
+        suppliers = suppliers.filter(
+            Q(name__icontains=q)
+            | Q(contact_name__icontains=q)
+            | Q(city__icontains=q)
+            | Q(phone__icontains=q)
+            | Q(email__icontains=q)
+        )
+
+    return render(request, 'inventory/suppliers.html', {
+        'suppliers': suppliers,
+        'specialty_choices': SUPPLIER_SPECIALTY_CHOICES,
+        'search_q': q,
+        'selected_specialty': specialty,
+        'show_inactive': show_inactive,
+        'can_edit_stock': can_write,
+        'is_stock_manager_user': is_stock_manager(request.user),
+        'stock_section': 'suppliers',
+    })
+
+
+@login_required(login_url='login')
+def stock_logistics(request):
+    if not can_access_stock(request.user):
+        return _deny(request)
+
+    can_write = can_edit_stock(request.user)
+    today = timezone.localdate()
+
+    if request.method == 'POST':
+        if not can_write:
+            messages.error(request, "Vous n’avez pas le droit de modifier la logistique.")
+            return redirect('stock_logistics')
+
+        action = request.POST.get('action', '').strip()
+
+        if action == 'create_delivery':
+            project = get_object_or_404(Project, id=request.POST.get('project_id'))
+            status = request.POST.get('status', 'pending').strip() or 'pending'
+            if status not in {c[0] for c in DELIVERY_STATUS_CHOICES}:
+                status = 'pending'
+            scheduled = _parse_date(request.POST.get('scheduled_date'))
+            shipment = DeliveryShipment.objects.create(
+                project=project,
+                status=status,
+                scheduled_date=scheduled,
+                driver_name=request.POST.get('driver_name', '').strip()[:120],
+                recipient_name=request.POST.get('recipient_name', '').strip()[:120],
+                destination=request.POST.get('destination', '').strip()[:255],
+                notes=request.POST.get('notes', '').strip(),
+                created_by=request.user,
+            )
+            if status == 'delivered':
+                shipment.delivered_at = timezone.now()
+                shipment.save(update_fields=['delivered_at', 'updated_at'])
+            messages.success(request, f'Livraison créée pour « {project.name} ».')
+            return redirect('stock_logistics')
+
+        if action == 'update_delivery':
+            shipment = get_object_or_404(DeliveryShipment, id=request.POST.get('delivery_id'))
+            status = request.POST.get('status', shipment.status).strip()
+            if status not in {c[0] for c in DELIVERY_STATUS_CHOICES}:
+                messages.error(request, "Statut de livraison invalide.")
+                return redirect('stock_logistics')
+            shipment.status = status
+            shipment.scheduled_date = _parse_date(request.POST.get('scheduled_date')) or shipment.scheduled_date
+            shipment.driver_name = request.POST.get('driver_name', shipment.driver_name).strip()[:120]
+            shipment.recipient_name = request.POST.get('recipient_name', shipment.recipient_name).strip()[:120]
+            shipment.destination = request.POST.get('destination', shipment.destination).strip()[:255]
+            shipment.notes = request.POST.get('notes', shipment.notes).strip()
+            if status == 'delivered' and not shipment.delivered_at:
+                shipment.delivered_at = timezone.now()
+            if status != 'delivered':
+                shipment.delivered_at = None
+            shipment.save()
+            messages.success(
+                request,
+                f'Livraison « {shipment.project.name} » → {shipment.get_status_display()}.',
+            )
+            return redirect('stock_logistics')
+
+        if action == 'receive_purchase':
+            purchase = get_object_or_404(PurchaseRequest, id=request.POST.get('purchase_id'))
+            if purchase.status == 'received':
+                messages.info(request, "Cette commande est déjà reçue.")
+                return redirect('stock_logistics')
+            purchase.status = 'received'
+            purchase.save(update_fields=['status', 'updated_at'])
+            apply_stock_movement(
+                purchase.item,
+                movement_type='in',
+                quantity=purchase.quantity,
+                user=request.user,
+                reference=f'DA#{purchase.id}',
+                notes='Réception fournisseur (logistique)',
+            )
+            messages.success(
+                request,
+                f'Réception enregistrée — « {purchase.item.name} » '
+                f'+{purchase.quantity} {purchase.item.get_unit_display()}.',
+            )
+            return redirect('stock_logistics')
+
+        messages.error(request, "Action non reconnue.")
+        return redirect('stock_logistics')
+
+    awaiting_projects = list(
+        Project.objects.filter(status='awaiting_delivery')
+        .select_related('manager', 'commercial_agent', 'client')
+        .prefetch_related(
+            Prefetch(
+                'delivery_shipments',
+                queryset=DeliveryShipment.objects.exclude(status='cancelled').order_by('-created_at'),
+            )
+        )
+        .order_by('end_date', 'name')
+    )
+    open_deliveries = DeliveryShipment.objects.exclude(
+        status__in=['delivered', 'cancelled']
+    ).select_related('project', 'created_by')
+    today_deliveries = open_deliveries.filter(scheduled_date=today)
+    week_end = today + timedelta(days=7)
+    week_deliveries = open_deliveries.filter(
+        scheduled_date__gte=today,
+        scheduled_date__lte=week_end,
+    ).order_by('scheduled_date')
+    recent_delivered = DeliveryShipment.objects.filter(
+        status='delivered'
+    ).select_related('project')[:15]
+    incoming_purchases = PurchaseRequest.objects.filter(
+        status__in=['approved', 'ordered']
+    ).select_related('item', 'supplier')[:30]
+    project_choices = Project.objects.exclude(status='done').order_by('name')
+
+    return render(request, 'inventory/logistics.html', {
+        'awaiting_projects': awaiting_projects,
+        'today_deliveries': today_deliveries,
+        'week_deliveries': week_deliveries,
+        'open_deliveries': open_deliveries.order_by('scheduled_date', '-created_at')[:40],
+        'recent_delivered': recent_delivered,
+        'incoming_purchases': incoming_purchases,
+        'project_choices': project_choices,
+        'delivery_status_choices': DELIVERY_STATUS_CHOICES,
+        'today': today,
+        'can_edit_stock': can_write,
+        'is_stock_manager_user': is_stock_manager(request.user),
+        'stock_section': 'logistics',
     })

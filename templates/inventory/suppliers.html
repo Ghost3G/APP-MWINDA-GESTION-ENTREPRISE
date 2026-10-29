@@ -1,0 +1,226 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fournisseurs - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/stock.css' %}?v=20261029a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+
+        <main class="dashboard-content">
+            <div class="stock-page">
+                <div class="page-header stock-header">
+                    <div>
+                        <h1>Fournisseurs</h1>
+                        <p>
+                            Enregistrement et suivi des fournisseurs Mwinda :
+                            contacts, spécialité, délais et conditions.
+                        </p>
+                    </div>
+                    {% if is_stock_manager_user %}
+                        <span class="stock-role-pill">Accès responsable Stock</span>
+                    {% endif %}
+                </div>
+
+                {% if messages %}
+                    <div class="stock-flash-stack">
+                        {% for message in messages %}
+                            <div class="stock-flash {{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% include "partials/stock_section_nav.html" %}
+
+                <form method="GET" class="panel stock-filters">
+                    <div class="stock-filters__grid">
+                        <div>
+                            <label for="sup-q">Recherche</label>
+                            <input id="sup-q" type="search" name="q" value="{{ search_q }}" placeholder="Nom, ville, téléphone…">
+                        </div>
+                        <div>
+                            <label for="sup-spec">Spécialité</label>
+                            <select id="sup-spec" name="specialty">
+                                <option value="">Toutes</option>
+                                {% for value, label in specialty_choices %}
+                                    <option value="{{ value }}" {% if selected_specialty == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <label class="stock-check">
+                            <input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}>
+                            Inclure les inactifs
+                        </label>
+                        <button type="submit" class="btn-stock btn-stock--primary">Filtrer</button>
+                    </div>
+                </form>
+
+                {% if can_edit_stock %}
+                <div class="panel">
+                    <h3>Enregistrer un fournisseur</h3>
+                    <form method="POST" class="stock-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_supplier">
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Nom *</label>
+                                <input type="text" name="name" required placeholder="Ex: Maison du Métal">
+                            </div>
+                            <div>
+                                <label>Personne de contact</label>
+                                <input type="text" name="contact_name" placeholder="Nom du contact">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Téléphone</label>
+                                <input type="text" name="phone">
+                            </div>
+                            <div>
+                                <label>Email</label>
+                                <input type="email" name="email">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Ville</label>
+                                <input type="text" name="city" placeholder="Kinshasa">
+                            </div>
+                            <div>
+                                <label>Spécialité</label>
+                                <select name="specialty">
+                                    {% for value, label in specialty_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div>
+                                <label>Délai moyen (jours)</label>
+                                <input type="number" min="0" name="lead_time_days" value="0">
+                            </div>
+                            <div>
+                                <label>Conditions de paiement</label>
+                                <input type="text" name="payment_terms" placeholder="Ex: 50% avance, solde à livraison">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div class="stock-form__full">
+                                <label>Adresse</label>
+                                <input type="text" name="address">
+                            </div>
+                        </div>
+                        <div class="stock-form__row">
+                            <div class="stock-form__full">
+                                <label>Notes</label>
+                                <textarea name="notes" rows="2" placeholder="Qualité, horaires, remarques…"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-stock btn-stock--primary">Enregistrer le fournisseur</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="panel">
+                    <h3>Liste des fournisseurs</h3>
+                    {% if suppliers %}
+                    <div class="stock-table-wrap">
+                        <table class="stock-table">
+                            <thead>
+                                <tr>
+                                    <th>Fournisseur</th>
+                                    <th>Spécialité</th>
+                                    <th>Contact</th>
+                                    <th>Ville</th>
+                                    <th>Délai</th>
+                                    <th>Articles</th>
+                                    <th>Statut</th>
+                                    {% if can_edit_stock %}<th>Actions</th>{% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in suppliers %}
+                                <tr class="{% if not s.is_active %}stock-supplier-inactive{% endif %}">
+                                    <td>
+                                        <strong>{{ s.name }}</strong>
+                                        {% if s.payment_terms %}<div class="muted">{{ s.payment_terms }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ s.get_specialty_display|default:"—" }}</td>
+                                    <td>
+                                        {% if s.contact_name %}{{ s.contact_name }}<br>{% endif %}
+                                        {% if s.phone %}<span class="muted">{{ s.phone }}</span>{% endif %}
+                                        {% if s.email %}<div class="muted">{{ s.email }}</div>{% endif %}
+                                    </td>
+                                    <td>{{ s.city|default:"—" }}</td>
+                                    <td>{% if s.lead_time_days %}{{ s.lead_time_days }} j{% else %}—{% endif %}</td>
+                                    <td>{{ s.items_count }}</td>
+                                    <td>
+                                        {% if s.is_active %}
+                                            <span class="stock-badge stock-badge--ok">Actif</span>
+                                        {% else %}
+                                            <span class="stock-badge stock-badge--cancelled">Inactif</span>
+                                        {% endif %}
+                                    </td>
+                                    {% if can_edit_stock %}
+                                    <td>
+                                        <details>
+                                            <summary class="btn-stock btn-stock--tiny">Modifier</summary>
+                                            <form method="POST" class="stock-form" style="margin-top:10px; min-width:260px;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update_supplier">
+                                                <input type="hidden" name="supplier_id" value="{{ s.id }}">
+                                                <input type="text" name="name" value="{{ s.name }}" required>
+                                                <input type="text" name="contact_name" value="{{ s.contact_name }}" placeholder="Contact">
+                                                <input type="text" name="phone" value="{{ s.phone }}" placeholder="Téléphone">
+                                                <input type="email" name="email" value="{{ s.email }}" placeholder="Email">
+                                                <input type="text" name="city" value="{{ s.city }}" placeholder="Ville">
+                                                <input type="text" name="address" value="{{ s.address }}" placeholder="Adresse">
+                                                <select name="specialty">
+                                                    {% for value, label in specialty_choices %}
+                                                        <option value="{{ value }}" {% if s.specialty == value %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <input type="number" min="0" name="lead_time_days" value="{{ s.lead_time_days }}">
+                                                <input type="text" name="payment_terms" value="{{ s.payment_terms }}" placeholder="Paiement">
+                                                <textarea name="notes" rows="2">{{ s.notes }}</textarea>
+                                                <label class="stock-check">
+                                                    <input type="checkbox" name="is_active" value="1" {% if s.is_active %}checked{% endif %}>
+                                                    Actif
+                                                </label>
+                                                <button type="submit" class="btn-stock btn-stock--primary">Enregistrer</button>
+                                            </form>
+                                        </details>
+                                        <form method="POST" style="margin-top:6px;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="toggle_supplier">
+                                            <input type="hidden" name="supplier_id" value="{{ s.id }}">
+                                            <button type="submit" class="btn-stock btn-stock--tiny">
+                                                {% if s.is_active %}Désactiver{% else %}Réactiver{% endif %}
+                                            </button>
+                                        </form>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p class="muted">Aucun fournisseur pour ces filtres.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>
