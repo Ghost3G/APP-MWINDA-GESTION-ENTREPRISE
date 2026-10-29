@@ -154,11 +154,14 @@
                 <div class="right-column">
                     <div class="timer-card">
                         {% for stat in time_stats %}
-                        <div class="timer-row {% if stat.highlight %}green{% endif %}" {% if forloop.counter == 1 %}id="task-timer-row"{% elif forloop.counter == 2 %}id="work-timer-row"{% elif forloop.counter == 3 %}id="pause-timer-row"{% endif %}>
+                        <div class="timer-row {% if stat.highlight %}green{% endif %}" id="{{ stat.row_id }}">
                             <span>{{ stat.label }}</span>
-                            <span class="timer-value">{{ stat.value }}</span>
+                            <span class="timer-value" data-format="{{ stat.format|default:'clock' }}">{{ stat.value }}</span>
                         </div>
                         {% endfor %}
+                        <p class="timer-active-task" id="active-task-label" {% if not timer_state.active_task_label %}hidden{% endif %}>
+                            {% if timer_state.active_task_label %}En cours : {{ timer_state.active_task_label }}{% endif %}
+                        </p>
                     </div>
 
                     <div class="tasks-card-wrap">
@@ -398,6 +401,7 @@
     <script>
         window.dashboardTimerConfig = {
             startTaskUrl: "{% url 'start_task_timer' %}",
+            stopTaskUrl: "{% url 'stop_task_timer' %}",
             completeTaskUrl: "{% url 'complete_task_timer' %}",
             togglePauseUrl: "{% url 'toggle_pause_timer' %}",
             csrfToken: "{{ csrf_token }}",
@@ -406,10 +410,13 @@
             activePauseStartedAt: "{{ timer_state.active_pause_started_at }}",
             activeWorkStartedAt: "{{ timer_state.active_work_started_at }}",
             isPauseRunning: "{{ timer_state.is_pause_running|yesno:'true,false' }}",
-            isWorkRunning: "{{ timer_state.is_work_running|yesno:'true,false' }}"
+            isWorkRunning: "{{ timer_state.is_work_running|yesno:'true,false' }}",
+            taskSeconds: {{ timer_state.task_seconds|default:0 }},
+            workSeconds: {{ timer_state.work_seconds|default:0 }},
+            pauseSeconds: {{ timer_state.pause_seconds|default:0 }}
         };
     </script>
-    <script src="{% static 'js/dashboard.js' %}?v=20260818b"></script>
+    <script src="{% static 'js/dashboard.js' %}?v=20261029d"></script>
     {% include "partials/mw_charts_scripts.html" %}
 </body>
 </html>

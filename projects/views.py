@@ -278,6 +278,19 @@ def _format_seconds(total_seconds):
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
+def _format_human_duration(total_seconds):
+    """Affichage lisible : 3 h 42, 12 min, 45 s."""
+    total_seconds = max(int(total_seconds or 0), 0)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    if hours:
+        return f"{hours} h {minutes:02d}"
+    if minutes:
+        return f"{minutes} min"
+    return f"{seconds} s"
+
+
 def _entry_elapsed_seconds(entry, now):
     elapsed = int((now - entry.started_at).total_seconds())
     return entry.duration_seconds + max(elapsed, 0)
@@ -298,13 +311,19 @@ def _open_entry_for_user(user, entry_type):
 
 
 def _ensure_work_session(user):
+    """Ouvre la session travail du jour. Ferme les chrono ouverts d’un autre jour."""
     try:
+        now = timezone.now()
+        today = timezone.localdate()
+        for entry in AgentTimeEntry.objects.filter(user=user, ended_at__isnull=True):
+            if timezone.localtime(entry.started_at).date() < today:
+                _close_entry(entry, now)
         if _open_entry_for_user(user, 'work'):
             return
         AgentTimeEntry.objects.create(
             user=user,
             entry_type='work',
-            started_at=timezone.now(),
+            started_at=now,
         )
     except Exception:
         # Silently continue if AgentTimeEntry creation fails (e.g., migrations not run)
@@ -627,9 +646,25 @@ def dashboard(request):
             'task_project_choices': Project.objects.order_by('created_at', 'id')[:50],
             'selected_task_project': selected_task_project,
             'time_stats': [
-                {'label': 'T. sur une tâche', 'value': _format_seconds(task_elapsed_seconds), 'highlight': True},
-                {'label': 'Temps de travail', 'value': _format_seconds(total_work_seconds)},
-                {'label': 'Temps de pause', 'value': _format_seconds(total_pause_seconds)},
+                {
+                    'label': 'Tâche en cours',
+                    'value': _format_seconds(task_elapsed_seconds),
+                    'highlight': True,
+                    'format': 'clock',
+                    'row_id': 'task-timer-row',
+                },
+                {
+                    'label': 'Travail du jour',
+                    'value': _format_human_duration(total_work_seconds),
+                    'format': 'human',
+                    'row_id': 'work-timer-row',
+                },
+                {
+                    'label': 'Pause du jour',
+                    'value': _format_human_duration(total_pause_seconds),
+                    'format': 'human',
+                    'row_id': 'pause-timer-row',
+                },
             ],
             'timer_state': {
                 'active_task_label': active_task_entry.task_label if active_task_entry else '',
@@ -638,6 +673,9 @@ def dashboard(request):
                 'active_work_started_at': open_work_entry.started_at.isoformat() if open_work_entry else '',
                 'is_pause_running': open_pause_entry is not None,
                 'is_work_running': open_work_entry is not None,
+                'task_seconds': task_elapsed_seconds,
+                'work_seconds': total_work_seconds,
+                'pause_seconds': total_pause_seconds,
             },
         }
         from reports.chart_data import build_management_dashboard_charts
@@ -691,9 +729,25 @@ def dashboard(request):
     task_elapsed_seconds = _entry_elapsed_seconds(active_task_entry, now) if active_task_entry else 0
 
     time_stats = [
-        {'label': 'T. sur une tâche', 'value': _format_seconds(task_elapsed_seconds), 'highlight': True},
-        {'label': 'Temps de travail', 'value': _format_seconds(total_work_seconds)},
-        {'label': 'Temps de pause', 'value': _format_seconds(total_pause_seconds)},
+        {
+            'label': 'Tâche en cours',
+            'value': _format_seconds(task_elapsed_seconds),
+            'highlight': True,
+            'format': 'clock',
+            'row_id': 'task-timer-row',
+        },
+        {
+            'label': 'Travail du jour',
+            'value': _format_human_duration(total_work_seconds),
+            'format': 'human',
+            'row_id': 'work-timer-row',
+        },
+        {
+            'label': 'Pause du jour',
+            'value': _format_human_duration(total_pause_seconds),
+            'format': 'human',
+            'row_id': 'pause-timer-row',
+        },
     ]
 
     is_admin = request.user.is_superuser or request.user.role == 'admin'
@@ -729,6 +783,9 @@ def dashboard(request):
             "active_work_started_at": open_work_entry.started_at.isoformat() if open_work_entry else "",
             "is_pause_running": open_pause_entry is not None,
             "is_work_running": open_work_entry is not None,
+            "task_seconds": task_elapsed_seconds,
+            "work_seconds": total_work_seconds,
+            "pause_seconds": total_pause_seconds,
         },
         "task_labels": [task['label'] for task in open_tasks],
     }
@@ -790,6 +847,39 @@ def start_task_timer(request):
 
 @login_required(login_url='login')
 @require_POST
+def stop_task_timer(request):
+    """Arrête le chrono tâche sans la marquer terminée."""
+    task_label = request.POST.get('task_label', '').strip()
+    task_id = request.POST.get('task_id', '').strip()
+    now = timezone.now()
+
+    open_task = _open_entry_for_user(request.user, 'task')
+    if not open_task:
+        return JsonResponse({'ok': True, 'stopped': False, 'status': 'idle'})
+
+    if task_id or task_label:
+        project_task = get_task_for_user(
+            request.user,
+            task_id=task_id or None,
+            task_label=task_label or None,
+        )
+        if project_task and open_task.task_label != project_task.title:
+            return JsonResponse({'error': 'Cette tâche n’a pas de chrono actif'}, status=400)
+        if project_task and project_task.status == 'in_progress':
+            set_task_status(project_task, 'pending')
+
+    _close_entry(open_task, now)
+    return JsonResponse({
+        'ok': True,
+        'stopped': True,
+        'duration_seconds': open_task.duration_seconds or 0,
+        'task_label': open_task.task_label,
+        'status': 'pending',
+    })
+
+
+@login_required(login_url='login')
+@require_POST
 def complete_task_timer(request):
     task_label = request.POST.get('task_label', '').strip()
     task_id = request.POST.get('task_id', '').strip()
@@ -842,6 +932,11 @@ def toggle_pause_timer(request):
     if open_pause:
         _close_entry(open_pause, now)
         return JsonResponse({'ok': True, 'is_pause_running': False, 'duration_seconds': open_pause.duration_seconds})
+
+    # Une pause coupe le chrono tâche en cours (reprise = recliquer la tâche).
+    open_task = _open_entry_for_user(request.user, 'task')
+    if open_task:
+        _close_entry(open_task, now)
 
     AgentTimeEntry.objects.create(
         user=request.user,

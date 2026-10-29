@@ -6,6 +6,7 @@ from .views import (
     monthly_project_report_pdf,
     project_recap,
     start_task_timer,
+    stop_task_timer,
     complete_task_timer,
     toggle_pause_timer,
 )
@@ -29,6 +30,7 @@ urlpatterns = [
     path('board/', task_board, name='task_board'),
     path('<int:project_id>/', project_detail, name='project_detail'),
     path('api/timer/start-task/', start_task_timer, name='start_task_timer'),
+    path('api/timer/stop-task/', stop_task_timer, name='stop_task_timer'),
     path('api/timer/complete-task/', complete_task_timer, name='complete_task_timer'),
     path('api/timer/toggle-pause/', toggle_pause_timer, name='toggle_pause_timer'),
     path('api/board/tasks/create/', board_create_task, name='board_create_task'),

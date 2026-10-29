@@ -76,15 +76,19 @@
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_agents.svg' %}" alt=""></span>
             Départements
         </a>
-        <div class="sidebar-nav-group is-open">
-            <a href="{% url 'presence_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'presence_dashboard' %}active{% elif request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' %}active{% endif %}">
+        {% with rn=request.resolver_match.url_name %}
+        <div class="sidebar-nav-group{% if rn == 'presence_dashboard' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %} is-open{% endif %}">
+            <a href="{% url 'presence_dashboard' %}" class="nav-item {% if rn == 'presence_dashboard' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}active{% endif %}">
                 <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
                 Présence
             </a>
-            <a href="{% url 'overtime_dashboard' %}" class="nav-subitem {% if request.resolver_match.url_name == 'overtime_dashboard' or request.resolver_match.url_name == 'overtime_export_pdf' or request.resolver_match.url_name == 'overtime_export_csv' %}active{% endif %}">
+            {% if rn == 'presence_dashboard' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}
+            <a href="{% url 'overtime_dashboard' %}" class="nav-subitem {% if rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}active{% endif %}">
                 Heures supplémentaires
             </a>
+            {% endif %}
         </div>
+        {% endwith %}
         {% if is_management or is_admin %}
         <a href="{% url 'manage_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_tasks' %}active{% endif %}">
             <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_taches.svg' %}" alt=""></span>

@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from .branches import TECH_BRANCH_CHOICES, normalize_branch, get_branch_label
 from .models import Project, ProjectTask, TaskAssignmentNotification
@@ -255,9 +258,19 @@ def build_dashboard_tasks(user, project=None, project_id=None):
         queryset = queryset.filter(project=project)
     queryset = queryset.order_by('-updated_at', 'order')
 
+    today = timezone.localdate()
     open_tasks = []
     done_tasks = []
     for task in queryset:
+        due_urgency = ''
+        due_label = ''
+        if task.due_date and task.status != 'done':
+            if task.due_date < today:
+                due_urgency = 'overdue'
+                due_label = 'En retard'
+            elif task.due_date <= today + timedelta(days=3):
+                due_urgency = 'soon'
+                due_label = 'Bientôt' if task.due_date > today else 'Aujourd’hui'
         item = {
             'id': task.id,
             'label': task.title,
@@ -267,6 +280,8 @@ def build_dashboard_tasks(user, project=None, project_id=None):
             'project_name': task.project.name,
             'project_id': task.project_id,
             'is_new': False,
+            'due_urgency': due_urgency,
+            'due_label': due_label,
         }
         if task.status == 'done':
             done_tasks.append(item)
@@ -284,8 +299,16 @@ def build_dashboard_tasks(user, project=None, project_id=None):
     for item in open_tasks:
         item['is_new'] = item['id'] in unread_ids
 
-    # Prioriser les nouvelles + en cours
-    open_tasks.sort(key=lambda t: (0 if t['is_new'] else 1, 0 if t['active'] else 1, t['label']))
+    urgency_rank = {'overdue': 0, 'soon': 1, '': 2}
+    # Actives → urgentes → nouvelles → reste
+    open_tasks.sort(
+        key=lambda t: (
+            0 if t['active'] else 1,
+            urgency_rank.get(t.get('due_urgency') or '', 2),
+            0 if t['is_new'] else 1,
+            t['label'],
+        )
+    )
 
     total = len(open_tasks) + len(done_tasks)
     done_count = len(done_tasks)

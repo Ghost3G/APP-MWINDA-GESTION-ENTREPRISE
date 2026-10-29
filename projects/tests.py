@@ -315,6 +315,32 @@ class ProjectsFeatureTests(TestCase):
         self.assertEqual(tasks[0].status, 'done')
 
     @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_task_timer_stop_keeps_task_open(self):
+        tasks = self._create_agent_tasks(count=1)
+        self.client.force_login(self.agent)
+
+        start_response = self.client.post(
+            reverse('start_task_timer'),
+            {'task_label': tasks[0].title, 'task_id': tasks[0].id},
+        )
+        self.assertEqual(start_response.status_code, 200)
+
+        stop_response = self.client.post(
+            reverse('stop_task_timer'),
+            {'task_label': tasks[0].title, 'task_id': tasks[0].id},
+        )
+        self.assertEqual(stop_response.status_code, 200)
+        tasks[0].refresh_from_db()
+        self.assertEqual(tasks[0].status, 'pending')
+        self.assertFalse(
+            AgentTimeEntry.objects.filter(
+                user=self.agent,
+                entry_type='task',
+                ended_at__isnull=True,
+            ).exists()
+        )
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
     def test_complete_task_without_active_timer(self):
         tasks = self._create_agent_tasks(count=1)
         self.client.force_login(self.agent)
