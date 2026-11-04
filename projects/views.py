@@ -1218,7 +1218,8 @@ def projects_list(request):
                     return redirect('projects_list')
                 if project.cover_image:
                     project.cover_image.delete(save=False)
-                project.cover_image = cover
+                from users.image_optimize import DEFAULT_MAX_SIDE, optimize_to_uploaded_file
+                project.cover_image = optimize_to_uploaded_file(cover, max_side=DEFAULT_MAX_SIDE)
 
             if request.POST.get('remove_cover') == '1' and project.cover_image:
                 project.cover_image.delete(save=False)

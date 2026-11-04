@@ -255,7 +255,10 @@ def store_user_avatar(user, upload) -> str | None:
             return f'Échec upload Cloudinary : {detail}'
 
     try:
-        user.avatar = upload
+        from .image_optimize import AVATAR_MAX_SIDE, optimize_to_uploaded_file
+
+        compressed = optimize_to_uploaded_file(upload, max_side=AVATAR_MAX_SIDE, quality=85)
+        user.avatar = compressed
         user.save()
         return None
     except Exception as exc:

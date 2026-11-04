@@ -70,7 +70,9 @@ def _apply_machine_photo(machine, request):
             machine.photo.delete(save=False)
         except Exception:
             pass
-    machine.photo = photo
+    from users.image_optimize import MACHINE_MAX_SIDE, optimize_to_uploaded_file
+
+    machine.photo = optimize_to_uploaded_file(photo, max_side=MACHINE_MAX_SIDE)
     return None
 
 

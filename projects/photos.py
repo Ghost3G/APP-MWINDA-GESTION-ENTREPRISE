@@ -1,6 +1,7 @@
 """Photos multiples d’un projet. La première sert aussi d’illustration."""
 from django.core.files.base import ContentFile
 
+from users.image_optimize import DEFAULT_MAX_SIDE, optimize_image_bytes
 from users.uploads import safe_filename, validate_image_upload
 
 from .models import ProjectPhoto
@@ -31,7 +32,12 @@ def prepare_photo_payloads(files):
         if not data:
             return 'Fichier vide', []
         name = safe_filename(getattr(upload, 'name', '') or 'photo.jpg')
-        prepared.append((name, data))
+        optimized, out_name = optimize_image_bytes(
+            data,
+            filename=name,
+            max_side=DEFAULT_MAX_SIDE,
+        )
+        prepared.append((safe_filename(out_name), optimized))
     if len(prepared) > MAX_PROJECT_PHOTOS:
         return f'Maximum {MAX_PROJECT_PHOTOS} photos par projet.', []
     return None, prepared

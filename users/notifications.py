@@ -97,14 +97,6 @@ def get_overdue_tasks(user):
 
 @login_required(login_url='login')
 def notifications_feed(request):
-    feed = build_notification_feed(request.user)
-    payload = []
-    for item in feed:
-        payload.append({
-            **item,
-            'created_at': item['created_at'].strftime('%d/%m %H:%M'),
-            'created_iso': item['created_at'].isoformat(),
-        })
     # Badge = total réel en base (pas la somme des 30 derniers items du fil).
     unread = (
         Message.objects.filter(receiver=request.user, is_read=False).count()
@@ -116,6 +108,25 @@ def notifications_feed(request):
         is_read=False,
         message_type='project_assign',
     ).count()
+
+    # Poll silencieux : compteurs seulement (beaucoup plus léger).
+    if request.GET.get('counts_only') in {'1', 'true', 'yes'}:
+        return JsonResponse({
+            'ok': True,
+            'items': [],
+            'unread': unread,
+            'assignment_unread': assignment_unread,
+            'counts_only': True,
+        })
+
+    feed = build_notification_feed(request.user)
+    payload = []
+    for item in feed:
+        payload.append({
+            **item,
+            'created_at': item['created_at'].strftime('%d/%m %H:%M'),
+            'created_iso': item['created_at'].isoformat(),
+        })
     return JsonResponse({
         'ok': True,
         'items': payload,

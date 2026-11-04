@@ -1388,7 +1388,7 @@
                                                         {% for photo in project.photos.all %}
                                                         <label class="project-photo-edit__item">
                                                             {% if photo.image_url %}
-                                                            <img src="{{ photo.image_url }}" alt="">
+                                                            <img src="{{ photo.image_url }}" alt="" loading="lazy" decoding="async">
                                                             {% endif %}
                                                             <span><input type="checkbox" name="remove_photo" value="{{ photo.id }}"> Retirer</span>
                                                         </label>

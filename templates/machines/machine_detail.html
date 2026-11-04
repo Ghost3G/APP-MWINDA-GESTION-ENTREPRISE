@@ -20,7 +20,7 @@
                     <div class="machines-detail-identity">
                         {% if machine.photo_url %}
                             <a href="{{ machine.photo_url }}" target="_blank" rel="noopener" class="machines-hero-photo-link">
-                                <img class="machines-hero-photo" src="{{ machine.photo_url }}" alt="{{ machine.name }}">
+                                <img class="machines-hero-photo" src="{{ machine.photo_url }}" alt="{{ machine.name }}" loading="eager" decoding="async">
                             </a>
                         {% else %}
                             <div class="machines-hero-photo machines-hero-photo--empty">Sans photo</div>

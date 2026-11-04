@@ -217,7 +217,7 @@
                                     <td>
                                         <a href="{% url 'machine_detail' m.id %}" class="machines-thumb-link" title="Voir la fiche">
                                             {% if m.photo_url %}
-                                                <img class="machines-thumb" src="{{ m.photo_url }}" alt="{{ m.name }}">
+                                                <img class="machines-thumb" src="{{ m.photo_url }}" alt="{{ m.name }}" loading="lazy" decoding="async">
                                             {% else %}
                                                 <span class="machines-thumb machines-thumb--empty" aria-hidden="true">—</span>
                                             {% endif %}
