@@ -160,20 +160,34 @@ class Project(models.Model):
         return get_branch_label(self.branch)
 
     def get_deadline_week_warning(self):
-        """Étiquette jaune : échéance dans 1 à 7 jours (hors retard / terminé)."""
+        """Étiquette d’échéance : dans ≤ 7 j, aujourd’hui, ou en retard (jours dépassés)."""
         if self.status == 'done' or not self.end_date:
             return None
         from django.utils import timezone
         days_left = (self.end_date - timezone.localdate()).days
-        if days_left < 1 or days_left > 7:
+        if days_left > 7:
             return None
-        if days_left == 1:
+        if days_left < 0:
+            overdue = abs(days_left)
+            label = (
+                f'Échéance dépassée de {overdue} j'
+                if overdue > 1
+                else 'Échéance dépassée d’1 j'
+            )
+            level = 'overdue'
+        elif days_left == 0:
+            label = 'Échéance aujourd’hui'
+            level = 'overdue'
+        elif days_left == 1:
             label = 'Échéance demain'
+            level = 'soon'
         else:
             label = f'Échéance dans {days_left} j'
+            level = 'soon'
         return {
             'days_left': days_left,
             'label': label,
+            'level': level,
             'end_date': self.end_date,
         }
 

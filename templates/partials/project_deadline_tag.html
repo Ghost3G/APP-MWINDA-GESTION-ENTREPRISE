@@ -1,6 +1,9 @@
 {% with warning=project.get_deadline_week_warning %}
 {% if warning %}
-<span class="project-deadline-tag{% if tag_style %} project-deadline-tag--{{ tag_style }}{% endif %}" title="Échéance {{ warning.end_date|date:'d/m/Y' }}">
+<span
+    class="project-deadline-tag{% if warning.level == 'overdue' %} project-deadline-tag--overdue{% endif %}{% if tag_style %} project-deadline-tag--{{ tag_style }}{% endif %}"
+    title="Échéance {{ warning.end_date|date:'d/m/Y' }}"
+>
     {{ warning.label }}
 </span>
 {% endif %}

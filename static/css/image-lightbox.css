@@ -178,6 +178,12 @@
     vertical-align: middle;
 }
 
+.project-deadline-tag--overdue {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 45%, #7f1d1d 100%);
+    border-color: rgba(254, 202, 202, 0.75);
+    animation: project-deadline-pulse-overdue 1.2s ease-in-out infinite;
+}
+
 @keyframes project-deadline-pulse {
     0%, 100% {
         transform: scale(1);
@@ -189,8 +195,20 @@
     }
 }
 
+@keyframes project-deadline-pulse-overdue {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    50% {
+        transform: scale(1.07);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .project-deadline-tag {
+    .project-deadline-tag,
+    .project-deadline-tag--overdue {
         animation: none;
     }
 }
