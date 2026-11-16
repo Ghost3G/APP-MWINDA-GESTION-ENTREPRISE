@@ -698,47 +698,6 @@ def dashboard(request):
             department_stats,
             worker_stats,
         )
-        # Maquette vagues : hero (projets+tâches) + rubans branches + pile agents
-        hero_palette = ['#fde047', '#fb923c', '#2dd4bf', '#38bdf8', '#f87171', '#4ade80']
-        hero = []
-        status_pairs = [
-            ('En cours', project_status_counts.get('progress', 0), '#fde047'),
-            ('Urgent', project_status_counts.get('urgent', 0), '#f87171'),
-            ('En attente', project_status_counts.get('pending', 0), '#fb923c'),
-            ('Terminés', project_status_counts.get('done', 0), '#4ade80'),
-            ('Tâches à faire', task_status_counts.get('pending', 0), '#38bdf8'),
-            ('Tâches en cours', task_status_counts.get('in_progress', 0), '#2dd4bf'),
-            ('Tâches terminées', task_status_counts.get('done', 0), '#a78bfa'),
-        ]
-        for label, value, color in status_pairs:
-            if value:
-                hero.append({'label': label, 'value': value, 'color': color})
-        ribbons = []
-        rib_colors = [
-            ['#f87171', '#38bdf8', '#fb923c', '#fde047'],
-            ['#fde047', '#4ade80', '#2dd4bf', '#38bdf8'],
-            ['#a78bfa', '#f472b6', '#fb923c', '#fde047'],
-            ['#2dd4bf', '#38bdf8', '#4ade80', '#fde047'],
-        ]
-        for idx, dept in enumerate([d for d in department_stats if d.get('total', 0) > 0][:6]):
-            ribbons.append({
-                'label': dept['label'],
-                'value': dept['total'],
-                'colors': rib_colors[idx % len(rib_colors)],
-            })
-        stack = []
-        for idx, row in enumerate(sorted(worker_stats, key=lambda r: -r.get('total', 0))[:6]):
-            stack.append({
-                'label': row['user'].get_display_name()[:18],
-                'value': row['total'],
-                'color': hero_palette[idx % len(hero_palette)],
-            })
-        context['wave_board'] = {
-            'hero': hero,
-            'ribbons': ribbons,
-            'stack': stack,
-            'xLabels': [],
-        }
         return render(request, "management_dashboard.html", context)
 
     projects = Project.objects.all()
