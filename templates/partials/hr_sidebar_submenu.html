@@ -1,6 +1,9 @@
 <a href="{% url 'hr_dashboard' %}" class="nav-subitem {% if rn == 'hr_dashboard' %}active{% endif %}">
     Tableau de bord RH
 </a>
+<a href="{% url 'users_list' %}" class="nav-subitem {% if rn == 'users_list' %}active{% endif %}">
+    Départements
+</a>
 <a href="{% url 'presence_dashboard' %}" class="nav-subitem {% if rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' %}active{% endif %}">
     Présence
 </a>
