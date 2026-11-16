@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from .models import LeaveRequest
+from .models import DisciplinaryAction, JobApplication, LeaveRequest, PerformanceReview, TrainingRecord
 
 User = get_user_model()
 
@@ -50,6 +50,19 @@ def build_hr_dashboard_stats():
         ).select_related('user').order_by('user__first_name', 'user__username')[:12]
     )
 
+    open_applications = JobApplication.objects.exclude(
+        status__in=[JobApplication.STATUS_HIRED, JobApplication.STATUS_REJECTED]
+    ).count()
+    trainings_active = TrainingRecord.objects.filter(
+        status__in=[TrainingRecord.STATUS_PLANNED, TrainingRecord.STATUS_ONGOING]
+    ).count()
+    reviews_recent = PerformanceReview.objects.filter(
+        review_date__gte=today - timedelta(days=90)
+    ).count()
+    sanctions_recent = DisciplinaryAction.objects.filter(
+        action_date__gte=today - timedelta(days=90)
+    ).count()
+
     return {
         'today': today,
         'total_staff': total_staff,
@@ -59,6 +72,10 @@ def build_hr_dashboard_stats():
         'by_department': by_department,
         'recent_pending': recent_pending,
         'leaves_today': leaves_today,
+        'open_applications': open_applications,
+        'trainings_active': trainings_active,
+        'reviews_recent': reviews_recent,
+        'sanctions_recent': sanctions_recent,
     }
 
 

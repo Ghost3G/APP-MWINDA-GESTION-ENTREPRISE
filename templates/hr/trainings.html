@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formations - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116b">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Formations</h1>
+                    <p>{% if can_manage %}Planifiez et suivez les formations du personnel.{% else %}Consultez vos formations.{% endif %}</p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">{% for message in messages %}<p class="hr-empty">{{ message }}</p>{% endfor %}</div>
+                {% endif %}
+
+                {% if can_manage %}
+                <section class="hr-panel">
+                    <h3>Nouvelle formation</h3>
+                    <form method="POST" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Collaborateur *</label>
+                                <select name="user_id" required>
+                                    <option value="">Choisir…</option>
+                                    {% for user in staff_choices %}
+                                    <option value="{{ user.id }}">{{ user.get_display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div><label>Intitulé *</label><input type="text" name="title" required></div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Organisme</label><input type="text" name="provider"></div>
+                            <div>
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Début</label><input type="date" name="start_date"></div>
+                            <div><label>Fin</label><input type="date" name="end_date"></div>
+                        </div>
+                        <div><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Enregistrer</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <section class="hr-panel">
+                    <h3>{% if can_manage %}Toutes les formations{% else %}Mes formations{% endif %}</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                {% if can_manage %}<th>Agent</th>{% endif %}
+                                <th>Formation</th><th>Période</th><th>Statut</th>{% if can_manage %}<th></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in trainings %}
+                            <tr>
+                                {% if can_manage %}<td>{{ item.user.get_display_name }}</td>{% endif %}
+                                <td>
+                                    <strong>{{ item.title }}</strong>
+                                    {% if item.provider %}<div class="hr-empty">{{ item.provider }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}—{% endif %}
+                                    {% if item.end_date %} → {{ item.end_date|date:"d/m/Y" }}{% endif %}
+                                </td>
+                                <td>
+                                    {% if can_manage %}
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="update_status">
+                                        <input type="hidden" name="training_id" value="{{ item.id }}">
+                                        <select name="status" onchange="this.form.submit()">
+                                            {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                    {% else %}
+                                    <span class="hr-badge hr-badge--pending">{{ item.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                {% if can_manage %}
+                                <td>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="training_id" value="{{ item.id }}">
+                                        <button class="btn-hr btn-hr--danger" type="submit">Supprimer</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="hr-empty">Aucune formation.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

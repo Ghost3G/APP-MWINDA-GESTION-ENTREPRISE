@@ -5,8 +5,9 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from hr.models import LeaveRequest
+from hr.models import JobApplication, LeaveRequest
 from hr.permissions import is_hr_manager
+from hr.phase2_views import hr_recruitment
 from hr.views import hr_dashboard, hr_documents, hr_leaves
 
 User = get_user_model()
@@ -104,3 +105,20 @@ class HRModuleTests(TestCase):
         response = hr_documents(request)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.agent.hr_documents.count(), 0)
+
+    def test_drh_can_create_job_application(self):
+        request = self.factory.post(reverse('hr_recruitment'), {
+            'action': 'create',
+            'full_name': 'Candidat Test',
+            'position': 'Technicien',
+            'status': 'received',
+        })
+        request.user = self.drh
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.save()
+        request._messages = FallbackStorage(request)
+        response = hr_recruitment(request)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(JobApplication.objects.filter(full_name='Candidat Test').exists())

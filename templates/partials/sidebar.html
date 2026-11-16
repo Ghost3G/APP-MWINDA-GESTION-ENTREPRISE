@@ -77,12 +77,12 @@
             Départements
         </a>
         {% with rn=request.resolver_match.url_name %}
-        <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %} is-open{% endif %}">
-            <a href="{% url 'hr_dashboard' %}" class="nav-item {% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}active{% endif %}">
+        <div class="sidebar-nav-group sidebar-nav-group--crm{% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'hr_recruitment' or rn == 'hr_reviews' or rn == 'hr_trainings' or rn == 'hr_sanctions' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %} is-open{% endif %}">
+            <a href="{% url 'hr_dashboard' %}" class="nav-item {% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'hr_recruitment' or rn == 'hr_reviews' or rn == 'hr_trainings' or rn == 'hr_sanctions' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}active{% endif %}">
                 <span class="nav-icon nav-icon-box"><img src="{% static 'images/icone_calendrier.svg' %}" alt=""></span>
                 Ressources humaines
             </a>
-            {% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}
+            {% if rn == 'hr_dashboard' or rn == 'hr_staff' or rn == 'hr_leaves' or rn == 'hr_documents' or rn == 'hr_recruitment' or rn == 'hr_reviews' or rn == 'hr_trainings' or rn == 'hr_sanctions' or rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' or rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}
             {% include "partials/hr_sidebar_submenu.html" %}
             {% endif %}
         </div>

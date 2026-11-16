@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanctions & avertissements - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116b">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Sanctions & avertissements</h1>
+                    <p>
+                        {% if can_manage %}
+                        Registre disciplinaire confidentiel (accès DRH / admin).
+                        {% else %}
+                        Consultez les éventuels avertissements enregistrés à votre dossier.
+                        {% endif %}
+                    </p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">{% for message in messages %}<p class="hr-empty">{{ message }}</p>{% endfor %}</div>
+                {% endif %}
+
+                {% if can_manage %}
+                <section class="hr-panel">
+                    <h3>Nouvel enregistrement</h3>
+                    <form method="POST" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Collaborateur *</label>
+                                <select name="user_id" required>
+                                    <option value="">Choisir…</option>
+                                    {% for user in staff_choices %}
+                                    <option value="{{ user.id }}">{{ user.get_display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Type</label>
+                                <select name="kind">
+                                    {% for value, label in kind_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Date *</label><input type="date" name="action_date" required></div>
+                            <div><label>Décision</label><input type="text" name="decision" placeholder="Ex: Avertissement avec suivi"></div>
+                        </div>
+                        <div><label>Motif *</label><textarea name="reason" rows="3" required></textarea></div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Enregistrer</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <section class="hr-panel">
+                    <h3>{% if can_manage %}Registre{% else %}Mon dossier{% endif %}</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                {% if can_manage %}<th>Agent</th>{% endif %}
+                                <th>Type</th><th>Date</th><th>Motif</th>{% if can_manage %}<th></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sanctions %}
+                            <tr>
+                                {% if can_manage %}<td>{{ item.user.get_display_name }}</td>{% endif %}
+                                <td>{{ item.get_kind_display }}</td>
+                                <td>{{ item.action_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    {{ item.reason|truncatechars:160 }}
+                                    {% if item.decision %}<div class="hr-empty">{{ item.decision }}</div>{% endif %}
+                                </td>
+                                {% if can_manage %}
+                                <td>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="sanction_id" value="{{ item.id }}">
+                                        <button class="btn-hr btn-hr--danger" type="submit">Supprimer</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="hr-empty">Aucun enregistrement.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

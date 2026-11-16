@@ -1,0 +1,137 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recrutement - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116b">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Recrutement</h1>
+                    <p>Suivi des candidatures et du pipeline d’embauche.</p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">{% for message in messages %}<p class="hr-empty">{{ message }}</p>{% endfor %}</div>
+                {% endif %}
+
+                {% if can_manage %}
+                <section class="hr-panel">
+                    <h3>Nouvelle candidature</h3>
+                    <form method="POST" enctype="multipart/form-data" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="hr-form__row">
+                            <div><label>Nom complet *</label><input type="text" name="full_name" required></div>
+                            <div><label>Poste visé *</label><input type="text" name="position" required placeholder="Ex: Technicien métal"></div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Email</label><input type="email" name="email"></div>
+                            <div><label>Téléphone</label><input type="text" name="phone"></div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Département</label>
+                                <select name="department">
+                                    <option value="">—</option>
+                                    {% for value, label in department_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Statut</label>
+                                <select name="status">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Source</label><input type="text" name="source" placeholder="LinkedIn, recommandation…"></div>
+                            <div><label>CV</label><input type="file" name="cv_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"></div>
+                        </div>
+                        <div><label>Notes</label><textarea name="notes" rows="2"></textarea></div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Enregistrer</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <form method="GET" class="hr-panel hr-form">
+                    <div class="hr-form__row">
+                        <div>
+                            <label>Filtrer par statut</label>
+                            <select name="status" onchange="this.form.submit()">
+                                <option value="">Tous</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+
+                <section class="hr-panel">
+                    <h3>Candidatures</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr><th>Candidat</th><th>Poste</th><th>Statut</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for app in applications %}
+                            <tr>
+                                <td>
+                                    <strong>{{ app.full_name }}</strong>
+                                    <div class="hr-empty">{{ app.email }} {% if app.phone %}· {{ app.phone }}{% endif %}</div>
+                                </td>
+                                <td>{{ app.position }}{% if app.source %}<div class="hr-empty">{{ app.source }}</div>{% endif %}</td>
+                                <td>
+                                    {% if can_manage %}
+                                    <form method="POST" class="hr-actions">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="update_status">
+                                        <input type="hidden" name="application_id" value="{{ app.id }}">
+                                        <select name="status" onchange="this.form.submit()">
+                                            {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if app.status == value %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                    {% else %}
+                                    {{ app.get_status_display }}
+                                    {% endif %}
+                                </td>
+                                <td class="hr-actions">
+                                    {% if app.cv_file %}<a class="btn-hr btn-hr--ghost" href="{{ app.cv_file.url }}" target="_blank" rel="noopener">CV</a>{% endif %}
+                                    {% if can_manage %}
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="application_id" value="{{ app.id }}">
+                                        <button class="btn-hr btn-hr--danger" type="submit">Supprimer</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="hr-empty">Aucune candidature.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

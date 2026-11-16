@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Évaluations - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116b">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Évaluations & entretiens</h1>
+                    <p>{% if can_manage %}Enregistrez les entretiens d’évaluation du personnel.{% else %}Consultez vos évaluations.{% endif %}</p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">{% for message in messages %}<p class="hr-empty">{{ message }}</p>{% endfor %}</div>
+                {% endif %}
+
+                {% if can_manage %}
+                <section class="hr-panel">
+                    <h3>Nouvel entretien</h3>
+                    <form method="POST" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Collaborateur *</label>
+                                <select name="user_id" required>
+                                    <option value="">Choisir…</option>
+                                    {% for user in staff_choices %}
+                                    <option value="{{ user.id }}">{{ user.get_display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div><label>Date *</label><input type="date" name="review_date" required></div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div><label>Période</label><input type="text" name="period_label" placeholder="Ex: S1 2026"></div>
+                            <div>
+                                <label>Note</label>
+                                <select name="rating">
+                                    {% for value, label in rating_choices %}
+                                    <option value="{{ value }}" {% if value == 3 %}selected{% endif %}>{{ value }} — {{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div><label>Points forts</label><textarea name="strengths" rows="2"></textarea></div>
+                        <div><label>Axes d’amélioration</label><textarea name="improvements" rows="2"></textarea></div>
+                        <div><label>Objectifs</label><textarea name="goals" rows="2"></textarea></div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Enregistrer</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <section class="hr-panel">
+                    <h3>{% if can_manage %}Toutes les évaluations{% else %}Mes évaluations{% endif %}</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                {% if can_manage %}<th>Agent</th>{% endif %}
+                                <th>Date</th><th>Note</th><th>Synthèse</th>{% if can_manage %}<th></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for review in reviews %}
+                            <tr>
+                                {% if can_manage %}<td>{{ review.user.get_display_name }}</td>{% endif %}
+                                <td>{{ review.review_date|date:"d/m/Y" }}{% if review.period_label %}<div class="hr-empty">{{ review.period_label }}</div>{% endif %}</td>
+                                <td>{{ review.get_rating_display }}</td>
+                                <td>
+                                    {% if review.strengths %}<div class="hr-empty"><strong>Forces :</strong> {{ review.strengths|truncatechars:120 }}</div>{% endif %}
+                                    {% if review.improvements %}<div class="hr-empty"><strong>Améliorer :</strong> {{ review.improvements|truncatechars:120 }}</div>{% endif %}
+                                    {% if review.goals %}<div class="hr-empty"><strong>Objectifs :</strong> {{ review.goals|truncatechars:120 }}</div>{% endif %}
+                                </td>
+                                {% if can_manage %}
+                                <td>
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="review_id" value="{{ review.id }}">
+                                        <button class="btn-hr btn-hr--danger" type="submit">Supprimer</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="hr-empty">Aucune évaluation.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>
