@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/presence.css' %}?v=20260814a">
     <link rel="stylesheet" href="{% static 'css/overtime.css' %}?v=20260814c">
     <link rel="stylesheet" href="{% static 'css/mw-charts.css' %}?v=20260817a">
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -34,6 +35,7 @@
                         Horaires de référence : lundi–vendredi 08h30–17h30 · samedi 09h00–13h00.
                     </p>
                 </div>
+                {% include "partials/hr_section_nav.html" %}
 
                 {% if messages %}
                     {% for message in messages %}

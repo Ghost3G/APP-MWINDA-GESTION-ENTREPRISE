@@ -1,0 +1,153 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congés & absences - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Congés & absences</h1>
+                    <p>
+                        {% if can_review_leaves %}
+                        Déposez une demande ou validez celles de l’équipe.
+                        {% else %}
+                        Déposez une demande de congé. Le DRH la traitera.
+                        {% endif %}
+                    </p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">
+                    {% for message in messages %}
+                    <p class="hr-empty">{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <section class="hr-panel">
+                    <h3>Nouvelle demande</h3>
+                    <form method="POST" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Type</label>
+                                <select name="leave_type">
+                                    {% for value, label in leave_type_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Motif (optionnel)</label>
+                                <input type="text" name="reason" placeholder="Ex: Congé familial">
+                            </div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Du</label>
+                                <input type="date" name="start_date" required>
+                            </div>
+                            <div>
+                                <label>Au</label>
+                                <input type="date" name="end_date" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Envoyer la demande</button>
+                    </form>
+                </section>
+
+                <form method="GET" class="hr-panel hr-form">
+                    <div class="hr-form__row">
+                        <div>
+                            <label>Statut</label>
+                            <select name="status" onchange="this.form.submit()">
+                                <option value="">Tous</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+
+                <section class="hr-panel">
+                    <h3>{% if can_review_leaves %}Toutes les demandes{% else %}Mes demandes{% endif %}</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                {% if can_review_leaves %}<th>Agent</th>{% endif %}
+                                <th>Type</th>
+                                <th>Période</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave in leaves %}
+                            <tr>
+                                {% if can_review_leaves %}
+                                <td>{{ leave.user.get_display_name }}</td>
+                                {% endif %}
+                                <td>{{ leave.get_leave_type_display }}</td>
+                                <td>
+                                    {{ leave.start_date|date:"d/m/Y" }} → {{ leave.end_date|date:"d/m/Y" }}
+                                    <div class="hr-empty">{{ leave.days_count }} jour{{ leave.days_count|pluralize }}</div>
+                                    {% if leave.reason %}<div class="hr-empty">{{ leave.reason }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    <span class="hr-badge hr-badge--{{ leave.status }}">{{ leave.get_status_display }}</span>
+                                    {% if leave.review_note %}<div class="hr-empty">{{ leave.review_note }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    <div class="hr-actions">
+                                        {% if can_review_leaves and leave.status == 'pending' %}
+                                        <form method="POST">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="approve">
+                                            <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                            <button class="btn-hr btn-hr--ok" type="submit">Approuver</button>
+                                        </form>
+                                        <form method="POST">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="reject">
+                                            <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                            <input type="hidden" name="review_note" value="Refusé">
+                                            <button class="btn-hr btn-hr--danger" type="submit">Refuser</button>
+                                        </form>
+                                        {% endif %}
+                                        {% if leave.status == 'pending' and leave.user_id == request.user.id or can_review_leaves and leave.status == 'pending' %}
+                                        {% if leave.user_id == request.user.id %}
+                                        <form method="POST">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="cancel">
+                                            <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                            <button class="btn-hr btn-hr--ghost" type="submit">Annuler</button>
+                                        </form>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="hr-empty">Aucune demande.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

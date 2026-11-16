@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents RH - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Documents RH</h1>
+                    <p>
+                        {% if can_manage_hr_documents %}
+                        Contrats, pièces et attestations du personnel (gestion DRH / admin).
+                        {% else %}
+                        Consultez vos documents RH enregistrés par la direction.
+                        {% endif %}
+                    </p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                {% if messages %}
+                <div class="hr-panel">
+                    {% for message in messages %}
+                    <p class="hr-empty">{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if can_manage_hr_documents %}
+                <section class="hr-panel">
+                    <h3>Ajouter un document</h3>
+                    <form method="POST" enctype="multipart/form-data" class="hr-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="upload">
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Collaborateur</label>
+                                <select name="user_id" required>
+                                    <option value="">Choisir…</option>
+                                    {% for user in staff_choices %}
+                                    <option value="{{ user.id }}">{{ user.get_display_name }} — {{ user.get_title_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label>Type</label>
+                                <select name="kind">
+                                    {% for value, label in kind_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="hr-form__row">
+                            <div>
+                                <label>Titre</label>
+                                <input type="text" name="title" required placeholder="Ex: Contrat CDI 2026">
+                            </div>
+                            <div>
+                                <label>Fichier</label>
+                                <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx">
+                            </div>
+                        </div>
+                        <div>
+                            <label>Note</label>
+                            <input type="text" name="notes" placeholder="Optionnel">
+                        </div>
+                        <button type="submit" class="btn-hr btn-hr--primary">Enregistrer</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                <section class="hr-panel">
+                    <h3>{% if can_manage_hr_documents %}Tous les documents{% else %}Mes documents{% endif %}</h3>
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                {% if can_manage_hr_documents %}<th>Agent</th>{% endif %}
+                                <th>Document</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                {% if can_manage_hr_documents %}
+                                <td>{{ doc.user.get_display_name }}</td>
+                                {% endif %}
+                                <td>
+                                    <strong>{{ doc.title }}</strong>
+                                    {% if doc.notes %}<div class="hr-empty">{{ doc.notes }}</div>{% endif %}
+                                </td>
+                                <td>{{ doc.get_kind_display }}</td>
+                                <td>{{ doc.created_at|date:"d/m/Y" }}</td>
+                                <td class="hr-actions">
+                                    {% if doc.file %}
+                                    <a class="btn-hr btn-hr--ghost" href="{{ doc.file.url }}" target="_blank" rel="noopener">Ouvrir</a>
+                                    {% endif %}
+                                    {% if can_manage_hr_documents %}
+                                    <form method="POST">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="document_id" value="{{ doc.id }}">
+                                        <button class="btn-hr btn-hr--danger" type="submit">Supprimer</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="hr-empty">Aucun document.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

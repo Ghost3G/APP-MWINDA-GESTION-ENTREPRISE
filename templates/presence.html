@@ -7,6 +7,7 @@
     <title>Présence - AppMwinda</title>
     {% include "partials/head_styles.html" %}
     <link rel="stylesheet" href="{% static 'css/presence.css' %}?v=20260814a">
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
 </head>
 <body>
     {% include "partials/app_header.html" %}
@@ -28,6 +29,7 @@
                         {% endif %}
                     </p>
                 </div>
+                {% include "partials/hr_section_nav.html" %}
 
                 {% if can_view_all_presence %}
                 <div class="summary-card four">

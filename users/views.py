@@ -549,7 +549,11 @@ def presence_dashboard(request):
         work_schedule_for_day,
     )
 
-    can_view_all = is_management_user(request.user)
+    try:
+        from hr.permissions import can_view_all_hr_presence
+        can_view_all = can_view_all_hr_presence(request.user)
+    except Exception:
+        can_view_all = is_management_user(request.user)
     selected_date = parse_presence_date(request.GET.get('date', '').strip())
     selected_month = selected_date.strftime('%Y-%m')
 
@@ -633,9 +637,14 @@ def presence_dashboard(request):
 
 
 def _presence_can_access_agent(request, agent_id):
-    """Direction : tout le monde. Agent : uniquement son propre dossier."""
-    if is_management_user(request.user):
-        return True
+    """Direction / DRH : tout le monde. Agent : uniquement son propre dossier."""
+    try:
+        from hr.permissions import can_view_all_hr_presence
+        if can_view_all_hr_presence(request.user):
+            return True
+    except Exception:
+        if is_management_user(request.user):
+            return True
     return int(agent_id) == request.user.id
 
 

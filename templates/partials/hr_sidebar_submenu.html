@@ -1,0 +1,18 @@
+<a href="{% url 'hr_dashboard' %}" class="nav-subitem {% if rn == 'hr_dashboard' %}active{% endif %}">
+    Tableau de bord RH
+</a>
+<a href="{% url 'presence_dashboard' %}" class="nav-subitem {% if rn == 'presence_dashboard' or rn == 'presence_pdf' or rn == 'presence_a4' %}active{% endif %}">
+    Présence
+</a>
+<a href="{% url 'overtime_dashboard' %}" class="nav-subitem {% if rn == 'overtime_dashboard' or rn == 'overtime_export_pdf' or rn == 'overtime_export_csv' %}active{% endif %}">
+    Heures supplémentaires
+</a>
+<a href="{% url 'hr_leaves' %}" class="nav-subitem {% if rn == 'hr_leaves' %}active{% endif %}">
+    Congés & absences
+</a>
+<a href="{% url 'hr_staff' %}" class="nav-subitem {% if rn == 'hr_staff' %}active{% endif %}">
+    Effectif
+</a>
+<a href="{% url 'hr_documents' %}" class="nav-subitem {% if rn == 'hr_documents' %}active{% endif %}">
+    Documents RH
+</a>

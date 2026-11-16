@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effectif RH - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Effectif</h1>
+                    <p>{{ total_staff }} collaborateur{{ total_staff|pluralize }} actif{{ total_staff|pluralize }}.</p>
+                </div>
+                {% include "partials/hr_section_nav.html" %}
+
+                <form method="GET" class="hr-panel hr-form">
+                    <div class="hr-form__row">
+                        <div>
+                            <label for="hr-q">Recherche</label>
+                            <input id="hr-q" type="search" name="q" value="{{ search_q }}" placeholder="Nom, titre, grade…">
+                        </div>
+                        <div>
+                            <label for="hr-org">Département</label>
+                            <select id="hr-org" name="org_group">
+                                <option value="">Tous</option>
+                                {% for value, label in org_group_choices %}
+                                <option value="{{ value }}" {% if selected_org_group == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-hr btn-hr--primary">Filtrer</button>
+                </form>
+
+                <section class="hr-panel">
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Titre</th>
+                                <th>Département</th>
+                                <th>Rôle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in staff_users %}
+                            <tr>
+                                <td><strong>{{ user.get_display_name }}</strong><div class="hr-empty">@{{ user.username }}</div></td>
+                                <td>{{ user.get_title_label }}</td>
+                                <td>{{ user.get_org_group_display }}</td>
+                                <td>{{ user.get_role_display }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="hr-empty">Aucun résultat.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

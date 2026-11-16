@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
 
     'users',
+    'hr',
     'messaging',
     'projects',
     'reports',

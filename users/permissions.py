@@ -54,13 +54,25 @@ def can_manage_projects(user):
 
 
 def can_manage_overtime(user):
-    """Saisie manuelle des jours supplémentaires : DT + adjoint DT."""
-    return can_manage_projects(user)
+    """Saisie manuelle des jours supplémentaires : DT + adjoint DT + DRH/admin."""
+    if can_manage_projects(user):
+        return True
+    try:
+        from hr.permissions import is_hr_manager
+        return is_hr_manager(user)
+    except Exception:
+        return False
 
 
 def can_view_all_overtime(user):
     """Voir les heures sup de toute l'équipe."""
-    return is_management_user(user)
+    if is_management_user(user):
+        return True
+    try:
+        from hr.permissions import is_hr_manager
+        return is_hr_manager(user)
+    except Exception:
+        return False
 
 
 def can_view_overtime_for(user, agent):

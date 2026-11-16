@@ -48,6 +48,7 @@ urlpatterns = [
     path('projects/', include('projects.urls')),
     path('reports/', include('reports.urls')),
     path('users/', include('users.urls')),
+    path('rh/', include('hr.urls')),
     path('stock/', include('inventory.urls')),
     path('machines/', include('machines.urls')),
     path('alerts/', include('alerts.urls')),

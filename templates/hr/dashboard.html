@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ressources humaines - AppMwinda</title>
+    {% include "partials/head_styles.html" %}
+    <link rel="stylesheet" href="{% static 'css/hr.css' %}?v=20261116a">
+</head>
+<body>
+    {% include "partials/app_header.html" %}
+    <div class="app-shell">
+        {% include "partials/sidebar.html" %}
+        <main class="dashboard-content">
+            <div class="hr-page">
+                <div class="page-header">
+                    <h1>Ressources humaines</h1>
+                    <p>Vue d’ensemble du personnel Mwinda : présence, congés, effectif et documents.</p>
+                </div>
+
+                {% include "partials/hr_section_nav.html" %}
+
+                <div class="hr-stats">
+                    <div class="hr-stat">
+                        <small>Effectif actif</small>
+                        <strong>{{ total_staff }}</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>En congé aujourd’hui</small>
+                        <strong>{{ on_leave_today }}</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>Demandes en attente</small>
+                        <strong>{{ pending_leaves }}</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>Congés à venir (14 j)</small>
+                        <strong>{{ upcoming_leaves }}</strong>
+                    </div>
+                </div>
+
+                <div class="hr-grid-2">
+                    <section class="hr-panel">
+                        <h3>Congés du jour</h3>
+                        {% if leaves_today %}
+                        <ul class="hr-list">
+                            {% for leave in leaves_today %}
+                            <li>
+                                <div>
+                                    <strong>{{ leave.user.get_display_name }}</strong>
+                                    <div class="hr-empty">{{ leave.get_leave_type_display }} · jusqu’au {{ leave.end_date|date:"d/m/Y" }}</div>
+                                </div>
+                                <span class="hr-badge hr-badge--approved">Approuvé</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="hr-empty">Personne en congé aujourd’hui.</p>
+                        {% endif %}
+                    </section>
+
+                    <section class="hr-panel">
+                        <h3>Demandes à traiter</h3>
+                        {% if recent_pending %}
+                        <ul class="hr-list">
+                            {% for leave in recent_pending %}
+                            <li>
+                                <div>
+                                    <strong>{{ leave.user.get_display_name }}</strong>
+                                    <div class="hr-empty">
+                                        {{ leave.get_leave_type_display }} ·
+                                        {{ leave.start_date|date:"d/m/Y" }} → {{ leave.end_date|date:"d/m/Y" }}
+                                        ({{ leave.days_count }} j)
+                                    </div>
+                                </div>
+                                <span class="hr-badge hr-badge--pending">En attente</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if can_review_leaves %}
+                        <p style="margin:12px 0 0;"><a class="btn-hr btn-hr--primary" href="{% url 'hr_leaves' %}">Traiter les demandes</a></p>
+                        {% endif %}
+                        {% else %}
+                        <p class="hr-empty">Aucune demande en attente.</p>
+                        {% endif %}
+                    </section>
+                </div>
+
+                <section class="hr-panel">
+                    <h3>Effectif par département</h3>
+                    {% if by_department %}
+                    <table class="hr-table">
+                        <thead>
+                            <tr>
+                                <th>Département</th>
+                                <th>Agents</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in by_department %}
+                            <tr>
+                                <td>{{ row.label }}</td>
+                                <td>{{ row.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="hr-empty">Aucun collaborateur actif.</p>
+                    {% endif %}
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>

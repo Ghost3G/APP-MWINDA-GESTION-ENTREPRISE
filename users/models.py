@@ -18,6 +18,7 @@ class User(AbstractUser):
         ('finance', 'Finance'),
         ('commercial', 'Commercial'),
         ('logistique', 'Logistique'),
+        ('rh', 'Ressources Humaines'),
         ('design_communication', 'Design et Communication'),
         ('rd', 'Recherche et Développement'),
     )

@@ -1,0 +1,8 @@
+<nav class="hr-section-nav" aria-label="Rubriques RH">
+    <a href="{% url 'hr_dashboard' %}" class="{% if request.resolver_match.url_name == 'hr_dashboard' %}is-active{% endif %}">Tableau de bord</a>
+    <a href="{% url 'presence_dashboard' %}" class="{% if request.resolver_match.url_name == 'presence_dashboard' %}is-active{% endif %}">Présence</a>
+    <a href="{% url 'overtime_dashboard' %}" class="{% if request.resolver_match.url_name == 'overtime_dashboard' %}is-active{% endif %}">Heures sup.</a>
+    <a href="{% url 'hr_leaves' %}" class="{% if request.resolver_match.url_name == 'hr_leaves' %}is-active{% endif %}">Congés</a>
+    <a href="{% url 'hr_staff' %}" class="{% if request.resolver_match.url_name == 'hr_staff' %}is-active{% endif %}">Effectif</a>
+    <a href="{% url 'hr_documents' %}" class="{% if request.resolver_match.url_name == 'hr_documents' %}is-active{% endif %}">Documents</a>
+</nav>
