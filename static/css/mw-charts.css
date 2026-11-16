@@ -1,4 +1,4 @@
-/* MWINDA — panneaux graphiques unifiés (Chart.js) */
+/* MWINDA — panneaux graphiques unifiés (Chart.js) — style B/C */
 .mw-charts-section {
     margin: 20px 0 24px;
 }
@@ -6,15 +6,17 @@
 .mw-charts-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 18px;
 }
 
 .mw-chart-card {
-    background: linear-gradient(145deg, rgba(24, 24, 27, 0.92), rgba(15, 15, 18, 0.98));
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 16px;
-    padding: 18px 20px 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    background:
+        radial-gradient(120% 80% at 100% 0%, rgba(253, 224, 71, 0.06), transparent 55%),
+        linear-gradient(155deg, rgba(28, 28, 32, 0.96), rgba(12, 12, 14, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 18px 20px 14px;
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.32);
     position: relative;
     overflow: hidden;
 }
@@ -24,7 +26,7 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.35), transparent);
+    background: linear-gradient(90deg, transparent, rgba(253, 224, 71, 0.42), transparent);
     pointer-events: none;
 }
 

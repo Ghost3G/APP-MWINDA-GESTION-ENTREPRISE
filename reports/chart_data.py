@@ -49,12 +49,16 @@ def _chart(chart_id, chart_type, title, *, labels, values, colors=None, subtitle
     }
 
 
-def _doughnut(chart_id, title, labels, values, colors=None, **kwargs):
-    return _chart(chart_id, 'doughnut', title, labels=labels, values=values, colors=colors, **kwargs)
+def _doughnut(chart_id, title, labels, values, colors=None, center_label='Total', **kwargs):
+    chart = _chart(chart_id, 'doughnut', title, labels=labels, values=values, colors=colors, **kwargs)
+    if chart:
+        chart['center_label'] = center_label
+    return chart
 
 
 def _bar(chart_id, title, labels, values, colors=None, **kwargs):
-    return _chart(chart_id, 'bar', title, labels=labels, values=values, colors=colors, **kwargs)
+    """Classement / catégories → barres horizontales (option C)."""
+    return _chart(chart_id, 'bar_horizontal', title, labels=labels, values=values, colors=colors, **kwargs)
 
 
 def _bar_horizontal(chart_id, title, labels, values, colors=None, **kwargs):
@@ -262,12 +266,13 @@ def build_crm_new_clients_line(user, *, see_all, months=6):
         return None
     labels = list(bucket.keys())
     values = list(bucket.values())
-    return _bar(
+    return _line(
         'crm-chart-new-clients',
         'Nouvelles fiches clients',
         labels,
         values,
-        colors=['#60a5fa'] * len(labels),
+        dataset_label='Nouvelles fiches',
+        colors=['#60a5fa'],
         subtitle='Créations par mois',
     )
 
@@ -369,7 +374,7 @@ def build_finance_monthly_trend(selected_date, *, months=6):
         return None
     return {
         'id': 'finance-chart-monthly-trend',
-        'type': 'bar_grouped',
+        'type': 'line_multi',
         'title': 'Tendance mensuelle',
         'subtitle': 'Entrées vs sorties — 6 derniers mois',
         'labels': labels,
@@ -393,12 +398,13 @@ def build_overtime_monthly_chart(summary_rows):
         return None
     labels = list(buckets.keys())
     values = list(buckets.values())
-    return _bar(
+    return _line(
         'overtime-chart-monthly',
         'Jours sup. enregistrés',
         labels,
         values,
-        colors=['#fde047'] * len(labels),
+        dataset_label='Jours',
+        colors=['#fde047'],
         subtitle='Répartition mensuelle',
     )
 
