@@ -110,16 +110,6 @@
         {% include "partials/sidebar.html" %}
 
         <main class="dashboard-content">
-            <header class="dash-hero">
-                <p class="dash-hero__eyebrow">Direction</p>
-                <h1>Tableau de bord{% if full_name %} — {{ full_name|truncatewords:2 }}{% endif %}</h1>
-                <p>Vue consolidée des branches, indicateurs projets et suivi des équipes.</p>
-                <div class="dash-hero__meta">
-                    <span class="dash-chip">À faire · <strong>{{ task_status_counts.pending }}</strong></span>
-                    <span class="dash-chip">En cours · <strong>{{ task_status_counts.in_progress }}</strong></span>
-                    <span class="dash-chip">Terminées · <strong>{{ task_status_counts.done }}</strong></span>
-                </div>
-            </header>
             <section class="content-grid">
                 <div class="left-column">
                     <div class="profile-card">
@@ -189,7 +179,7 @@
                     </p>
                 </div>
 
-                <div class="stats-grid mgmt-stats-grid">
+                <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Tâches à faire</h3>
                         <div class="value pending">{{ task_status_counts.pending }}</div>

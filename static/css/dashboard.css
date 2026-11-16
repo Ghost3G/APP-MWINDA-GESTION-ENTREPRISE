@@ -14,7 +14,7 @@ body {
     align-items:center;
     padding:0 24px;
     height:72px;
-    background:#152033;
+    background:#fde047;
     box-shadow:0 4px 12px rgba(0,0,0,0.08);
     position:sticky;
     top:0;
@@ -84,7 +84,7 @@ body {
 }
 
 .sidebar-nav .nav-item.active {
-    background:#152033;
+    background:#fde047;
 }
 
 .sidebar-nav .nav-item .nav-icon {
@@ -245,7 +245,7 @@ body {
     width:180px;
     height:180px;
     border-radius:50%;
-    background:conic-gradient(#5eead4 0 calc(var(--progress) * 1%), #d1d5db calc(var(--progress) * 1%) 100%);
+    background:conic-gradient(#fde047 0 calc(var(--progress) * 1%), #d1d5db calc(var(--progress) * 1%) 100%);
     display:grid;
     place-items:center;
     position:relative;
@@ -319,7 +319,7 @@ body {
     padding:12px 24px;
     border-radius:999px;
     background:#111827;
-    color:#5eead4;
+    color:#fde047;
     font-weight:700;
     text-decoration:none;
 }
@@ -353,7 +353,7 @@ body {
 }
 
 .task-card, .tasks-card {
-    background:#152033;
+    background:#fde047;
     color:#111827;
     min-height:520px;
     padding:18px 14px;
@@ -443,7 +443,7 @@ body {
 
 .task-action-btn--start {
     background:#111827;
-    color:#5eead4;
+    color:#fde047;
 }
 
 .task-action-btn--stop {
@@ -1000,13 +1000,13 @@ width:400px;
    Thème sombre AppMwinda
    ------------------------------ */
 :root {
-    --app-bg: #0b1220;
-    --app-panel: #152033;
-    --app-panel-soft: #1c2b42;
-    --app-border: #243447;
-    --app-text: #e8eef7;
-    --app-muted: #94a3b8;
-    --app-yellow: #5eead4;
+    --app-bg: #050505;
+    --app-panel: #111111;
+    --app-panel-soft: #181818;
+    --app-border: #2b2b2b;
+    --app-text: #f8fafc;
+    --app-muted: #a1a1aa;
+    --app-yellow: #fde047;
 }
 
 body {
@@ -1203,8 +1203,8 @@ table th {
 }
 
 .task-item.next {
-    background: rgba(45, 212, 191, 0.12) !important;
-    border-color: rgba(45, 212, 191, 0.45) !important;
+    background: rgba(253, 224, 71, 0.12) !important;
+    border-color: rgba(253, 224, 71, 0.45) !important;
 }
 
 .task-item.completed {
@@ -1258,8 +1258,8 @@ textarea::placeholder {
     --app-border: rgba(255, 255, 255, 0.12);
     --app-text: #f5f5f7;
     --app-muted: #a1a1a6;
-    --app-yellow: #5eead4;
-    --app-yellow-hover: #2dd4bf;
+    --app-yellow: #fde047;
+    --app-yellow-hover: #facc15;
 }
 
 * {
@@ -1440,7 +1440,7 @@ select:focus,
 textarea:focus,
 .input-wrapper:focus-within {
     border-color: var(--app-yellow) !important;
-    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18) !important;
+    box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.18) !important;
     outline: none !important;
 }
 
@@ -1501,9 +1501,9 @@ textarea::placeholder {
 }
 
 .message-item {
-    background: rgba(45, 212, 191, 0.14) !important;
+    background: rgba(253, 224, 71, 0.14) !important;
     color: var(--app-text) !important;
-    border: 1px solid rgba(45, 212, 191, 0.28);
+    border: 1px solid rgba(253, 224, 71, 0.28);
 }
 
 .reports-list,
@@ -1818,9 +1818,9 @@ details > div {
 /* Couche finale locale: demandes visuelles prioritaires */
 .app-header {
     height: 72px !important;
-    background: linear-gradient(105deg, #152033 0%, #1c2b42 55%, #0f2030 100%) !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
-    box-shadow: 0 10px 26px rgba(2, 8, 23, 0.35) !important;
+    background: var(--app-yellow) !important;
+    border-bottom: 0 !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22) !important;
     padding: 0 24px !important;
 }
 
@@ -1961,7 +1961,7 @@ details > div {
     height: 34px !important;
     max-width: 34px !important;
     max-height: 34px !important;
-    filter: invert(78%) sepia(28%) saturate(620%) hue-rotate(118deg) brightness(102%) contrast(96%) !important;
+    filter: invert(86%) sepia(80%) saturate(746%) hue-rotate(349deg) brightness(104%) contrast(98%) !important;
 }
 
 .sidebar-nav .nav-item.active,

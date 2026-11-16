@@ -17,15 +17,6 @@
 
         <!-- Contenu principal du dashboard -->
         <main class="dashboard-content">
-            <header class="dash-hero">
-                <p class="dash-hero__eyebrow">Accueil</p>
-                <h1>Bonjour{% if full_name %}, {{ full_name|truncatewords:2 }}{% endif %}</h1>
-                <p>Votre espace de travail : timers, projets en cours et tâches du jour.</p>
-                <div class="dash-hero__meta">
-                    <span class="dash-chip">Rôle · <strong>{{ user_role_display }}</strong></span>
-                    <span class="dash-chip">Projet · <strong>{{ profile_progress }}%</strong></span>
-                </div>
-            </header>
             {% include "partials/mw_charts_section.html" %}
             <!-- Contenu principal du dashboard -->
             <section class="content-grid">
