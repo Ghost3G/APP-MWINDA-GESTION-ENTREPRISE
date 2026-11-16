@@ -3,6 +3,7 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, time, timedelta
 from types import SimpleNamespace
+import os
 import random
 
 from django.contrib.auth import get_user_model
@@ -221,7 +222,7 @@ def build_sessions(*, start, end, user=None):
         created_at__gte=start,
         created_at__lte=end,
         user__isnull=False,
-    ).select_related('user').order_by('created_at')
+    ).exclude(path=ILLUSTRATION_PATH).select_related('user').order_by('created_at')
     if user is not None:
         login_qs = login_qs.filter(user=user)
 
@@ -235,7 +236,7 @@ def build_sessions(*, start, end, user=None):
         user_id__in=user_ids,
         created_at__gte=start,
         created_at__lte=end + timedelta(days=1),
-    ).order_by('created_at')
+    ).exclude(path=ILLUSTRATION_PATH).order_by('created_at')
     if user is not None:
         logout_qs = logout_qs.filter(user=user)
 
@@ -1105,6 +1106,10 @@ def seed_presence_illustration(days=14):
     Heures d'illustration selon l’horaire du jour (Lun–Ven / Samedi).
     Remplace uniquement les logs marqués illustration (ré-exécutable).
     """
+    from django.conf import settings
+    if not settings.DEBUG and os.environ.get('ALLOW_DEMO_SEED', '').lower() not in {'1', 'true', 'yes'}:
+        return 0
+
     User = get_user_model()
     AuditLog.objects.filter(path=ILLUSTRATION_PATH).delete()
 

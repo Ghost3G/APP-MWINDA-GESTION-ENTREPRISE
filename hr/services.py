@@ -84,3 +84,38 @@ def leave_queryset_for(user, *, can_review):
     if can_review:
         return qs
     return qs.filter(user=user)
+
+
+def leave_balance_for(user, year=None):
+    """Solde congés annuels : quota − jours approuvés/en attente sur l’année."""
+    today = timezone.localdate()
+    year = year or today.year
+    allowance = int(getattr(user, 'annual_leave_days', 18) or 18)
+    year_start = today.replace(year=year, month=1, day=1)
+    year_end = today.replace(year=year, month=12, day=31)
+    used = 0
+    pending = 0
+    qs = LeaveRequest.objects.filter(
+        user=user,
+        leave_type=LeaveRequest.TYPE_ANNUAL,
+        start_date__lte=year_end,
+        end_date__gte=year_start,
+        status__in=[LeaveRequest.STATUS_APPROVED, LeaveRequest.STATUS_PENDING],
+    )
+    for leave in qs:
+        # Compte les jours de l’année civile uniquement
+        start = max(leave.start_date, year_start)
+        end = min(leave.end_date, year_end)
+        days = max((end - start).days + 1, 0)
+        if leave.status == LeaveRequest.STATUS_APPROVED:
+            used += days
+        else:
+            pending += days
+    remaining = max(allowance - used - pending, 0)
+    return {
+        'year': year,
+        'allowance': allowance,
+        'used': used,
+        'pending': pending,
+        'remaining': remaining,
+    }

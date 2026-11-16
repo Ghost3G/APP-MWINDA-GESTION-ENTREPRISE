@@ -122,3 +122,15 @@ class HRModuleTests(TestCase):
         response = hr_recruitment(request)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(JobApplication.objects.filter(full_name='Candidat Test').exists())
+
+    def test_agent_cannot_access_recruitment(self):
+        request = self.factory.get(reverse('hr_recruitment'))
+        request.user = self.agent
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.save()
+        request._messages = FallbackStorage(request)
+        response = hr_recruitment(request)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('hr_dashboard'))

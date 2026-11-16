@@ -10,7 +10,7 @@ from users.uploads import safe_filename, validate_attachment_upload
 
 from .models import HRDocument, LeaveRequest
 from .permissions import can_manage_hr_documents, can_review_leaves
-from .services import build_hr_dashboard_stats, leave_queryset_for
+from .services import build_hr_dashboard_stats, leave_balance_for, leave_queryset_for
 
 User = get_user_model()
 
@@ -98,6 +98,16 @@ def hr_leaves(request):
             elif end < start:
                 messages.error(request, 'La date de fin doit être après la date de début.')
             else:
+                days = max((end - start).days + 1, 0)
+                if leave_type == LeaveRequest.TYPE_ANNUAL:
+                    balance = leave_balance_for(request.user, year=start.year)
+                    if days > balance['remaining']:
+                        messages.error(
+                            request,
+                            f'Solde insuffisant : {balance["remaining"]} j restant(s) '
+                            f'sur {balance["allowance"]} j ({start.year}).',
+                        )
+                        return redirect('hr_leaves')
                 LeaveRequest.objects.create(
                     user=request.user,
                     leave_type=leave_type,
@@ -150,6 +160,7 @@ def hr_leaves(request):
         'leave_type_choices': LeaveRequest.TYPE_CHOICES,
         'status_choices': LeaveRequest.STATUS_CHOICES,
         'selected_status': status_filter,
+        'leave_balance': leave_balance_for(request.user),
     })
 
 

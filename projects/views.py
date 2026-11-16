@@ -557,20 +557,32 @@ def dashboard(request):
             })
 
         worker_stats = []
-        agents = User.objects.filter(role='agent').order_by('username')
+        agents = list(User.objects.filter(role='agent').order_by('username'))
+        agent_ids = [agent.id for agent in agents]
+        agent_task_rows = {
+            row['assigned_to_id']: row
+            for row in tasks_qs.filter(assigned_to_id__in=agent_ids)
+            .values('assigned_to_id')
+            .annotate(
+                pending=Count('id', filter=Q(status='pending')),
+                in_progress=Count('id', filter=Q(status='in_progress')),
+                done=Count('id', filter=Q(status='done')),
+                total=Count('id'),
+            )
+        }
         for agent in agents:
-            agent_tasks = tasks_qs.filter(assigned_to=agent)
-            agent_total = agent_tasks.count()
-            if not agent_total:
+            row = agent_task_rows.get(agent.id)
+            if not row or not row['total']:
                 continue
+            agent_total = row['total']
             worker_stats.append({
                 'user': agent,
                 'direction': direction_labels.get(agent.direction, agent.direction),
-                'pending': agent_tasks.filter(status='pending').count(),
-                'in_progress': agent_tasks.filter(status='in_progress').count(),
-                'done': agent_tasks.filter(status='done').count(),
+                'pending': row['pending'],
+                'in_progress': row['in_progress'],
+                'done': row['done'],
                 'total': agent_total,
-                'progress': round((agent_tasks.filter(status='done').count() / agent_total) * 100),
+                'progress': round((row['done'] / agent_total) * 100),
             })
 
         active_tasks = tasks_qs.filter(status='in_progress').order_by('-updated_at')[:12]

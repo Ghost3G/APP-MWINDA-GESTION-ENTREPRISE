@@ -13,6 +13,8 @@ def is_hr_manager(user):
         return False
     if is_admin_user(user):
         return True
+    if getattr(user, 'is_hr_officer', False):
+        return True
     username = (user.username or '').strip().lower()
     if username in HR_MANAGER_USERNAMES:
         return True

@@ -263,12 +263,18 @@
                 list.innerHTML = '<p class="notif-empty">Aucune notification.</p>';
                 return;
             }
+            const escapeHtml = (value) => String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
             list.innerHTML = data.items.map(item => `
-                <a class="notif-item ${item.is_read ? '' : 'unread'}" href="${item.url}">
-                    <span class="notif-kind">${kindLabel(item.kind)}</span>
-                    <strong>${item.title}</strong>
-                    <span>${item.body}</span>
-                    <small>${item.created_at}</small>
+                <a class="notif-item ${item.is_read ? '' : 'unread'}" href="${escapeHtml(item.url || '#')}">
+                    <span class="notif-kind">${escapeHtml(kindLabel(item.kind))}</span>
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.body)}</span>
+                    <small>${escapeHtml(item.created_at)}</small>
                 </a>
             `).join('');
         } catch (e) {

@@ -47,6 +47,7 @@ class Command(BaseCommand):
             'is_staff': True,
             'is_superuser': True,
             'is_active': True,
+            'is_hr_officer': True,
         }
 
         # Corrige l’ancien identifiant bertin.musila si encore présent.

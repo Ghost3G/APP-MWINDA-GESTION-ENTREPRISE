@@ -231,8 +231,14 @@ def can_access_stock(user):
 
 
 def can_edit_stock(user):
-    """Saisie stock / demandes d'achat : Joseph + direction."""
-    return can_access_stock(user)
+    """Saisie stock : direction, responsable stock, ou flag can_edit_stock_data."""
+    if not user or not user.is_authenticated:
+        return False
+    if is_management_user(user) or is_stock_manager(user):
+        return True
+    if getattr(user, 'can_edit_stock_data', False):
+        return True
+    return False
 
 
 def can_access_machines(user):
@@ -241,9 +247,11 @@ def can_access_machines(user):
 
 
 def can_edit_machines(user):
-    """Ajout / modification machines : DT, adjoint et Mme Louise."""
+    """Ajout / modification machines : DT, adjoint, Mme Louise, ou flag."""
     if not user or not user.is_authenticated:
         return False
+    if getattr(user, 'can_edit_machines_data', False):
+        return True
     return (user.username or '').strip().lower() in MACHINE_EDITOR_USERNAMES
 
 

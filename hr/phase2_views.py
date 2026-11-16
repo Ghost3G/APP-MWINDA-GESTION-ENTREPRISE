@@ -30,6 +30,10 @@ def _staff_choices():
 @login_required(login_url='login')
 def hr_recruitment(request):
     can_manage = is_hr_manager(request.user)
+    if not can_manage:
+        from django.contrib import messages as django_messages
+        django_messages.error(request, 'Le recrutement est réservé au DRH / administration.')
+        return redirect('hr_dashboard')
 
     if request.method == 'POST' and can_manage:
         action = request.POST.get('action', '').strip()

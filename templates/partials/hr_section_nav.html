@@ -5,7 +5,9 @@
     <a href="{% url 'hr_leaves' %}" class="{% if request.resolver_match.url_name == 'hr_leaves' %}is-active{% endif %}">Congés</a>
     <a href="{% url 'hr_staff' %}" class="{% if request.resolver_match.url_name == 'hr_staff' %}is-active{% endif %}">Effectif</a>
     <a href="{% url 'hr_documents' %}" class="{% if request.resolver_match.url_name == 'hr_documents' %}is-active{% endif %}">Documents</a>
+    {% if is_hr or is_admin %}
     <a href="{% url 'hr_recruitment' %}" class="{% if request.resolver_match.url_name == 'hr_recruitment' %}is-active{% endif %}">Recrutement</a>
+    {% endif %}
     <a href="{% url 'hr_reviews' %}" class="{% if request.resolver_match.url_name == 'hr_reviews' %}is-active{% endif %}">Évaluations</a>
     <a href="{% url 'hr_trainings' %}" class="{% if request.resolver_match.url_name == 'hr_trainings' %}is-active{% endif %}">Formations</a>
     <a href="{% url 'hr_sanctions' %}" class="{% if request.resolver_match.url_name == 'hr_sanctions' %}is-active{% endif %}">Sanctions</a>

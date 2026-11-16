@@ -59,6 +59,26 @@ class User(AbstractUser):
         choices=COMPETENCY_PROFILE_CHOICES,
         default='auto',
     )
+    # Capacités métier (complètent les usernames hardcodés — gérables en admin)
+    is_hr_officer = models.BooleanField(
+        'officier RH',
+        default=False,
+        help_text='Accès DRH élargi (congés, docs, recrutement…).',
+    )
+    can_edit_stock_data = models.BooleanField(
+        'peut modifier le stock',
+        default=False,
+        help_text='Écriture Logistique / stock (hors direction).',
+    )
+    can_edit_machines_data = models.BooleanField(
+        'peut modifier les machines',
+        default=False,
+    )
+    annual_leave_days = models.PositiveSmallIntegerField(
+        'jours de congé annuels',
+        default=18,
+        help_text='Quota annuel de congés (jours ouvrés de référence).',
+    )
 
     def get_display_name(self):
         full_name = self.get_full_name().strip()

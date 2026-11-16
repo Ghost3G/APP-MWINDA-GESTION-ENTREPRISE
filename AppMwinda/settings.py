@@ -261,11 +261,17 @@ if os.environ.get('CLOUDINARY_URL'):
         # Pas de préfixe "media/" : sinon les public_id Cloudinary (avatars/user_x) cassent l’URL
         'PREFIX': '',
     }
-elif not DEBUG:
-    # Prod sans Cloudinary : on logue un rappel (pas bloquant)
+elif not DEBUG and _is_prod_like:
+    # Prod Render sans Cloudinary : bloquer sauf contournement explicite
+    allow_ephemeral = os.environ.get('ALLOW_EPHEMERAL_MEDIA', '').lower() in {'1', 'true', 'yes'}
+    if not allow_ephemeral:
+        raise ImproperlyConfigured(
+            "CLOUDINARY_URL est requis en production (médias durables). "
+            "Définissez CLOUDINARY_URL, ou ALLOW_EPHEMERAL_MEDIA=1 pour forcer (non recommandé)."
+        )
     import logging
     logging.getLogger(__name__).warning(
-        "CLOUDINARY_URL absent : les médias uploadés ne survivront pas aux redeploys Render."
+        "CLOUDINARY_URL absent + ALLOW_EPHEMERAL_MEDIA=1 : médias non durables."
     )
 
 if not DEBUG:
@@ -293,6 +299,34 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 500
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 AUTH_USER_MODEL = 'users.User'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[{levelname}] {asctime} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.environ.get('LOG_LEVEL', 'INFO'),
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
 
 # Session security defaults for enterprise usage
 SESSION_COOKIE_AGE = 60 * 60 * 8  # 8 hours

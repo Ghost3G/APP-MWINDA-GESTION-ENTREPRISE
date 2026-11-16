@@ -11,6 +11,7 @@ def app_notifications(request):
             'is_crm': False,
             'can_reassign_crm': False,
             'is_stock': False,
+            'is_hr': False,
             'can_view_project_recap': False,
             'can_edit_project_distress': False,
             'alerts_actionable_count': 0,
@@ -70,6 +71,11 @@ def app_notifications(request):
     is_finance = can_access_finance(user)
     is_crm = can_access_crm(user)
     is_stock = can_access_stock(user)
+    try:
+        from hr.permissions import is_hr_manager
+        is_hr = is_hr_manager(user)
+    except Exception:
+        is_hr = is_admin
     agent_logout_warning = agent_logout_warning_payload(user)
     service_hours = service_hours_banner_payload(user=user)
 
@@ -141,12 +147,21 @@ def app_notifications(request):
     )
 
     alerts_actionable_count = 0
-    try:
-        from alerts.services import count_actionable_alerts
+    # Compteur alertes seulement sur pages Alertes (évite un coût DB global).
+    path = getattr(request, 'path', '') or ''
+    if path.startswith('/alerts'):
+        try:
+            from django.core.cache import cache
+            from alerts.services import count_actionable_alerts
 
-        alerts_actionable_count = count_actionable_alerts()
-    except Exception:
-        alerts_actionable_count = 0
+            cache_key = 'alerts_actionable_count_v1'
+            cached = cache.get(cache_key)
+            if cached is None:
+                cached = count_actionable_alerts()
+                cache.set(cache_key, cached, 30)
+            alerts_actionable_count = cached
+        except Exception:
+            alerts_actionable_count = 0
 
     return {
         'unread_messages_count': unread_messages_count,
@@ -160,6 +175,7 @@ def app_notifications(request):
         'is_crm': is_crm,
         'can_reassign_crm': can_reassign_crm_client(user) if is_crm else False,
         'is_stock': is_stock,
+        'is_hr': is_hr,
         'can_view_project_recap': True,
         'can_edit_project_distress': can_manage_projects(user),
         'project_deadline_alerts': project_deadline_alerts,

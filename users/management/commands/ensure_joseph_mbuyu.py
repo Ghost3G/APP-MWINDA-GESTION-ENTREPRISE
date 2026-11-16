@@ -45,6 +45,7 @@ class Command(BaseCommand):
             'department_name': 'Logistique',
             'is_staff': False,
             'is_superuser': False,
+            'can_edit_stock_data': True,
         }
 
         user, created = User.objects.get_or_create(

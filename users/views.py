@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -457,58 +459,73 @@ def users_directory(request):
     total_agents_count = count_qs.count()
 
     now = timezone.now()
-    for user in users:
-        entries = AgentTimeEntry.objects.filter(user=user)
+    user_ids = [u.id for u in users]
+    entries_by_user = defaultdict(list)
+    if user_ids:
+        for entry in AgentTimeEntry.objects.filter(user_id__in=user_ids).only(
+            'user_id', 'entry_type', 'duration_seconds', 'started_at', 'ended_at'
+        ):
+            entries_by_user[entry.user_id].append(entry)
 
-        task_entries = entries.filter(entry_type='task', ended_at__isnull=False)
-        task_durations = [entry.duration_seconds for entry in task_entries]
+    task_counts = {
+        row['assigned_to_id']: row
+        for row in ProjectTask.objects.filter(assigned_to_id__in=user_ids)
+        .values('assigned_to_id')
+        .annotate(
+            pending=Count('id', filter=Q(status='pending')),
+            in_progress=Count('id', filter=Q(status='in_progress')),
+            done=Count('id', filter=Q(status='done')),
+            total=Count('id'),
+        )
+    }
+    current_tasks = {}
+    for task in (
+        ProjectTask.objects.filter(assigned_to_id__in=user_ids, status='in_progress')
+        .order_by('assigned_to_id', '-updated_at')
+    ):
+        current_tasks.setdefault(task.assigned_to_id, task)
+
+    for user in users:
+        entries = entries_by_user.get(user.id, [])
+        task_durations = [
+            entry.duration_seconds
+            for entry in entries
+            if entry.entry_type == 'task' and entry.ended_at is not None
+        ]
         avg_task_seconds = int(sum(task_durations) / len(task_durations)) if task_durations else 0
         total_task_seconds = sum(task_durations)
 
-        work_entries = entries.filter(entry_type='work')
-        work_seconds = sum(
-            (entry.duration_seconds + max(int((now - entry.started_at).total_seconds()), 0))
-            if entry.ended_at is None else entry.duration_seconds
-            for entry in work_entries
-        )
-        pause_entries = entries.filter(entry_type='pause')
-        pause_seconds = sum(
-            (entry.duration_seconds + max(int((now - entry.started_at).total_seconds()), 0))
-            if entry.ended_at is None else entry.duration_seconds
-            for entry in pause_entries
-        )
+        work_seconds = 0
+        pause_seconds = 0
+        for entry in entries:
+            if entry.entry_type == 'work':
+                work_seconds += (
+                    entry.duration_seconds + max(int((now - entry.started_at).total_seconds()), 0)
+                    if entry.ended_at is None else entry.duration_seconds
+                )
+            elif entry.entry_type == 'pause':
+                pause_seconds += (
+                    entry.duration_seconds + max(int((now - entry.started_at).total_seconds()), 0)
+                    if entry.ended_at is None else entry.duration_seconds
+                )
 
         performance = int(min(100, round((total_task_seconds / work_seconds) * 100))) if work_seconds else 0
-
+        counts = task_counts.get(user.id, {})
         user.performance_score = performance
         user.avg_task_time = _format_seconds(avg_task_seconds)
         user.work_time_total = _format_seconds(work_seconds)
         user.pause_time_total = _format_seconds(pause_seconds)
-
-        user_tasks = ProjectTask.objects.filter(assigned_to=user)
-        user.task_pending = user_tasks.filter(status='pending').count()
-        user.task_in_progress = user_tasks.filter(status='in_progress').count()
-        user.task_done = user_tasks.filter(status='done').count()
-        user.task_total = user_tasks.count()
-        user.current_task = user_tasks.filter(status='in_progress').order_by('-updated_at').first()
+        user.task_pending = counts.get('pending', 0)
+        user.task_in_progress = counts.get('in_progress', 0)
+        user.task_done = counts.get('done', 0)
+        user.task_total = counts.get('total', 0)
+        user.current_task = current_tasks.get(user.id)
 
     full_name = request.user.get_display_name()
-    profile_progress = 75
-    current_project = {
-        'title': 'Conception logo 3D',
-        'description': 'Aperçu sur la description du projet en cours',
-        'button_text': 'OUVRIR',
-    }
-    tasks = [
-        {'label': 'Conception du logo', 'active': True},
-        {'label': 'Préparation du fichier de découpe', 'active': False},
-        {'label': 'Relecture du brief', 'active': False},
-    ]
-    time_stats = [
-        {'label': 'T. sur une tâche', 'value': '00:01:54', 'highlight': True},
-        {'label': 'Temps de travail', 'value': '04:01:54'},
-        {'label': 'Temps de pause', 'value': '00:00:00'},
-    ]
+    profile_progress = 0
+    current_project = None
+    tasks = []
+    time_stats = []
 
     context = {
         'users': users,

@@ -26,6 +26,25 @@
                 </div>
                 {% include "partials/hr_section_nav.html" %}
 
+                <div class="hr-stats">
+                    <div class="hr-stat">
+                        <small>Quota {{ leave_balance.year }}</small>
+                        <strong>{{ leave_balance.allowance }} j</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>Pris / approuvés</small>
+                        <strong>{{ leave_balance.used }} j</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>En attente</small>
+                        <strong>{{ leave_balance.pending }} j</strong>
+                    </div>
+                    <div class="hr-stat">
+                        <small>Reste disponible</small>
+                        <strong>{{ leave_balance.remaining }} j</strong>
+                    </div>
+                </div>
+
                 {% if messages %}
                 <div class="hr-panel">
                     {% for message in messages %}

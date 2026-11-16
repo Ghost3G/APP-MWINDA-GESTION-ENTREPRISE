@@ -198,4 +198,20 @@
     .hr-form__row {
         grid-template-columns: 1fr;
     }
+
+    .hr-section-nav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    .hr-section-nav a {
+        flex: 0 0 auto;
+    }
+
+    .hr-table {
+        display: block;
+        overflow-x: auto;
+    }
 }
