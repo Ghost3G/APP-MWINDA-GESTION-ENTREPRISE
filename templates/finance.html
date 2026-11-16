@@ -889,9 +889,8 @@
     </div>
 
     {{ chart_data|json_script:"finance-chart-data" }}
-    {% if mw_charts %}{{ mw_charts|json_script:"mw-charts-data" }}{% endif %}
+    {% include "partials/mw_charts_scripts.html" %}
     <script src="{% static 'js/chart.umd.min.js' %}"></script>
-    {% if mw_charts %}<script src="{% static 'js/mw-charts.js' %}?v=20260817a"></script>{% endif %}
     <script src="{% static 'js/dashboard.js' %}"></script>
     <script>
         (function () {

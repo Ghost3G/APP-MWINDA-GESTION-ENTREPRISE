@@ -1,0 +1,195 @@
+/* ============================================================
+   AppMwinda — visualisations en vagues (noir / jaune + accents)
+   ============================================================ */
+
+.mw-charts-section {
+    margin: 20px 0 24px;
+}
+
+.mw-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.mw-wave-card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, #161618 0%, #0a0a0b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.mw-wave-card--wide {
+    grid-column: 1 / -1;
+}
+
+.mw-wave-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 2;
+}
+
+.mw-wave-card__head h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: #f4f4f5;
+    letter-spacing: -0.01em;
+}
+
+.mw-wave-card__subtitle {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #71717a;
+}
+
+.mw-wave-stage {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    background:
+        radial-gradient(800px 180px at 20% 80%, rgba(253, 224, 71, 0.08), transparent 60%),
+        radial-gradient(600px 160px at 80% 30%, rgba(96, 165, 250, 0.07), transparent 55%),
+        #08080a;
+}
+
+.mw-wave-card--wide .mw-wave-stage {
+    height: 260px;
+}
+
+.mw-wave-stage svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.mw-wave-layer {
+    transform-origin: center;
+    animation: mwWaveDrift 7s ease-in-out infinite alternate;
+    cursor: pointer;
+    transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.mw-wave-layer:nth-child(2) { animation-duration: 8.5s; animation-delay: -1s; }
+.mw-wave-layer:nth-child(3) { animation-duration: 6.5s; animation-delay: -2s; }
+.mw-wave-layer:nth-child(4) { animation-duration: 9s; animation-delay: -0.5s; }
+.mw-wave-layer:nth-child(5) { animation-duration: 7.8s; animation-delay: -1.8s; }
+.mw-wave-layer:nth-child(6) { animation-duration: 8.2s; animation-delay: -2.4s; }
+
+.mw-wave-layer.is-dim {
+    opacity: 0.18;
+    filter: grayscale(0.4);
+}
+
+.mw-wave-layer.is-hot {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.45));
+}
+
+.mw-wave-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    position: relative;
+    z-index: 2;
+}
+
+.mw-wave-legend button {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #e4e4e7;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.mw-wave-legend button:hover,
+.mw-wave-legend button.is-active {
+    transform: translateY(-1px);
+    border-color: rgba(253, 224, 71, 0.55);
+    background: rgba(253, 224, 71, 0.1);
+}
+
+.mw-wave-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.mw-wave-tip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    min-width: 120px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(17, 17, 17, 0.94);
+    border: 1px solid rgba(253, 224, 71, 0.35);
+    color: #fafafa;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.mw-wave-tip.is-on {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.mw-wave-tip strong {
+    display: block;
+    color: #fde047;
+    margin-bottom: 2px;
+}
+
+.mw-wave-empty {
+    display: grid;
+    place-items: center;
+    height: 180px;
+    color: #71717a;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+@keyframes mwWaveDrift {
+    from { transform: translateX(-1.5%) scaleY(0.98); }
+    to { transform: translateX(1.5%) scaleY(1.03); }
+}
+
+@media (max-width: 960px) {
+    .mw-charts-grid {
+        grid-template-columns: 1fr;
+    }
+    .mw-wave-card--wide {
+        grid-column: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mw-wave-layer {
+        animation: none;
+    }
+}
