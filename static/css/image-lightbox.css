@@ -5,7 +5,7 @@
 }
 
 .lb-trigger:focus-visible {
-    outline: 2px solid #fde047;
+    outline: 2px solid #5eead4;
     outline-offset: 2px;
 }
 
@@ -85,9 +85,9 @@
 }
 
 .image-lightbox__btn:hover {
-    background: rgba(253, 224, 71, 0.18);
-    border-color: rgba(253, 224, 71, 0.5);
-    color: #fde047;
+    background: rgba(45, 212, 191, 0.18);
+    border-color: rgba(45, 212, 191, 0.5);
+    color: #5eead4;
 }
 
 .image-lightbox__zoom-label {
@@ -246,7 +246,7 @@
 .project-photo-tile:focus-visible,
 .project-photo-tile.is-active {
     transform: translateY(-3px) scale(1.05);
-    border-color: #fde047;
+    border-color: #5eead4;
     outline: none;
 }
 

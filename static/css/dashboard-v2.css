@@ -1,0 +1,264 @@
+/* ============================================================
+   Dashboards Accueil — layout & animations v2
+   ============================================================ */
+
+.dash-hero {
+    position: relative;
+    overflow: hidden;
+    margin: 0 0 18px;
+    padding: 22px 24px;
+    border-radius: 22px;
+    background:
+        linear-gradient(120deg, rgba(94, 234, 212, 0.12), transparent 42%),
+        linear-gradient(160deg, #152033 0%, #101a2b 100%);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 18px 40px rgba(2, 8, 23, 0.35);
+    animation: mwRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-hero::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -50px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(125, 211, 252, 0.18), transparent 70%);
+    pointer-events: none;
+}
+
+.dash-hero__eyebrow {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5eead4;
+}
+
+.dash-hero h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #f8fafc;
+}
+
+.dash-hero p {
+    margin: 0;
+    max-width: 52ch;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dash-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.dash-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dash-chip strong {
+    color: #5eead4;
+}
+
+.content-grid {
+    gap: 18px !important;
+}
+
+.profile-card,
+.progress-card,
+.report-shortcut-card,
+.due-alert-card {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.03), transparent 40%), #152033 !important;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    box-shadow: 0 14px 32px rgba(2, 8, 23, 0.28) !important;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.profile-card:hover,
+.progress-card:hover,
+.report-shortcut-card:hover,
+.due-alert-card:hover,
+.timer-card:hover,
+.project-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(94, 234, 212, 0.28) !important;
+    box-shadow: 0 20px 40px rgba(2, 8, 23, 0.4) !important;
+}
+
+.profile-info h1 {
+    color: #f8fafc !important;
+}
+
+.profile-info p,
+.progress-label {
+    color: #94a3b8 !important;
+}
+
+.report-shortcut-card {
+    color: #e2e8f0 !important;
+    text-decoration: none !important;
+}
+
+.due-alert-card h3 {
+    color: #fda4af !important;
+}
+
+.due-alert-card li {
+    color: #cbd5e1 !important;
+}
+
+/* Carte projet centrale */
+.project-card,
+.home-project-card,
+.current-project-card {
+    border-radius: 22px !important;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: #152033 !important;
+}
+
+/* Management dashboard */
+.management-page {
+    margin-top: 22px;
+    padding: 8px 4px 28px !important;
+}
+
+.management-page .header h1 {
+    color: #f8fafc !important;
+    letter-spacing: -0.03em;
+}
+
+.management-page .header p {
+    color: #94a3b8 !important;
+}
+
+.management-page .stat-card,
+.management-page .panel {
+    background:
+        linear-gradient(165deg, rgba(94, 234, 212, 0.06), transparent 45%),
+        #152033 !important;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 18px !important;
+    box-shadow: 0 14px 32px rgba(2, 8, 23, 0.28) !important;
+    color: #e2e8f0;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.28s ease;
+    animation: mwRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.management-page .stat-card:hover,
+.management-page .panel:hover {
+    transform: translateY(-3px);
+    border-color: rgba(94, 234, 212, 0.28);
+}
+
+.management-page .stat-card h3,
+.management-page .projects-table th,
+.management-page .section-title {
+    color: #94a3b8 !important;
+}
+
+.management-page .stat-card .value,
+.management-page .projects-table td {
+    color: #f1f5f9 !important;
+}
+
+.management-page .value.pending { color: #fdba74 !important; }
+.management-page .value.progress { color: #7dd3fc !important; }
+.management-page .value.done { color: #5eead4 !important; }
+
+.management-page .progress-bar,
+.management-page .mini-bar {
+    background: rgba(148, 163, 184, 0.18) !important;
+}
+
+.management-page .progress-fill {
+    background: linear-gradient(90deg, #2dd4bf, #5eead4) !important;
+}
+
+.management-page .mini-bar-fill {
+    background: linear-gradient(90deg, #7dd3fc, #2dd4bf) !important;
+}
+
+.management-page .projects-table th,
+.management-page .projects-table td {
+    border-bottom-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+.mgmt-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 1100px) {
+    .mgmt-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .mgmt-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .dash-hero {
+        padding: 18px;
+    }
+}
+
+/* Pulse doux sur le chrono actif */
+.timer-row.green {
+    position: relative;
+}
+
+.timer-row.green::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    background: #2dd4bf;
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.55);
+    animation: mwPulse 1.8s ease-out infinite;
+}
+
+@keyframes mwPulse {
+    0% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(45, 212, 191, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timer-row.green::before {
+        animation: none;
+    }
+    .profile-card:hover,
+    .progress-card:hover,
+    .report-shortcut-card:hover,
+    .due-alert-card:hover,
+    .timer-card:hover,
+    .project-card:hover,
+    .management-page .stat-card:hover,
+    .management-page .panel:hover {
+        transform: none;
+    }
+}

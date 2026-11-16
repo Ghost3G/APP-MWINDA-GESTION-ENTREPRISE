@@ -14,8 +14,11 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif;
-            background: #000000;
+            font-family: "Sora", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background:
+                radial-gradient(900px 480px at 18% -8%, rgba(94, 234, 212, 0.12), transparent 55%),
+                radial-gradient(700px 420px at 90% 10%, rgba(125, 211, 252, 0.1), transparent 50%),
+                linear-gradient(180deg, #101a2b 0%, #0b1220 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -26,14 +29,20 @@
         .login-wrapper {
             width: 100%;
             max-width: 420px;
+            animation: loginRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes loginRise {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .login-card {
-            background: #1c1c1e;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 20px;
+            background: linear-gradient(165deg, rgba(94, 234, 212, 0.06), transparent 40%), #152033;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 22px;
             padding: 40px;
-            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+            box-shadow: 0 24px 70px rgba(2, 8, 23, 0.5);
         }
 
         .login-header {
@@ -48,6 +57,7 @@
         .logo-container img {
             height: 48px;
             width: auto;
+            filter: brightness(0) invert(1);
         }
 
         .login-header h1 {
@@ -77,19 +87,19 @@
         .form-group input {
             width: 100%;
             padding: 12px 14px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.18);
             border-radius: 10px;
             font-size: 14px;
             transition: all 0.2s;
             font-family: inherit;
-            background: #151516;
+            background: #0f172a;
             color: #f5f5f7;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #fde047;
-            box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.1);
+            border-color: #5eead4;
+            box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
         }
 
         .form-group input::placeholder {
@@ -109,8 +119,8 @@
         .login-btn {
             width: 100%;
             padding: 12px 14px;
-            background: #fde047;
-            color: #111827;
+            background: linear-gradient(135deg, #5eead4, #2dd4bf);
+            color: #042f2e;
             border: none;
             border-radius: 10px;
             font-size: 16px;
@@ -122,8 +132,8 @@
 
         .login-btn:hover {
             transform: translateY(-2px);
-            background: #facc15;
-            box-shadow: 0 12px 24px rgba(253, 224, 71, 0.24);
+            filter: brightness(1.04);
+            box-shadow: 0 12px 24px rgba(45, 212, 191, 0.28);
         }
 
         .login-btn:active {
@@ -136,7 +146,7 @@
         }
 
         .forgot-password a {
-            color: #fde047;
+            color: #5eead4;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;

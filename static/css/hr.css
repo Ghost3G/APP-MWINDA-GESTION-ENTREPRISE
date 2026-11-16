@@ -24,8 +24,8 @@
 }
 
 .hr-section-nav a.is-active {
-    background: #fde047;
-    border-color: #fde047;
+    background: #5eead4;
+    border-color: #5eead4;
     color: #111827;
 }
 
@@ -36,7 +36,7 @@
 }
 
 .hr-stat {
-    background: #141416;
+    background: #152033;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 16px;
@@ -55,7 +55,7 @@
     display: block;
     margin-top: 8px;
     font-size: 28px;
-    color: #fde047;
+    color: #5eead4;
 }
 
 .hr-grid-2 {
@@ -65,7 +65,7 @@
 }
 
 .hr-panel {
-    background: #141416;
+    background: #152033;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 18px;
     padding: 16px;
@@ -103,7 +103,7 @@
     font-weight: 800;
 }
 
-.hr-badge--pending { background: rgba(253, 224, 71, 0.18); color: #fde047; }
+.hr-badge--pending { background: rgba(45, 212, 191, 0.18); color: #5eead4; }
 .hr-badge--approved { background: rgba(34, 197, 94, 0.18); color: #86efac; }
 .hr-badge--rejected { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
 .hr-badge--cancelled { background: rgba(161, 161, 170, 0.18); color: #d4d4d8; }
@@ -177,7 +177,7 @@
     align-items: center;
 }
 
-.btn-hr--primary { background: #fde047; color: #111827; }
+.btn-hr--primary { background: #5eead4; color: #111827; }
 .btn-hr--ok { background: #22c55e; color: #052e16; }
 .btn-hr--danger { background: #ef4444; color: #fff; }
 .btn-hr--ghost {
