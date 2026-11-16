@@ -1,8 +1,9 @@
 /* ============================================================
-   AppMwinda — visualisations en vagues (noir / jaune + accents)
+   AppMwinda — vagues maquette (aurora + rubans + pile)
    ============================================================ */
 
-.mw-charts-section {
+.mw-charts-section,
+.mw-wave-board {
     margin: 20px 0 24px;
 }
 
@@ -12,60 +13,68 @@
     gap: 16px;
 }
 
+.mw-wave-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
+}
+
+.mw-wave-board__main {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
 .mw-wave-card {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(160deg, #161618 0%, #0a0a0b 100%);
+    background: linear-gradient(165deg, #151517 0%, #0a0a0c 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 16px 18px 14px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.4);
+}
+
+.mw-wave-card--hero .mw-wave-stage {
+    height: 320px;
+}
+
+.mw-wave-card--stack .mw-wave-stage {
+    height: 100%;
+    min-height: 420px;
 }
 
 .mw-wave-card--wide {
     grid-column: 1 / -1;
 }
 
-.mw-wave-card__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-    position: relative;
-    z-index: 2;
-}
-
 .mw-wave-card__head h3 {
     margin: 0;
-    font-size: 0.98rem;
+    font-size: 1rem;
     font-weight: 800;
-    color: #f4f4f5;
-    letter-spacing: -0.01em;
+    color: #fafafa;
+    letter-spacing: -0.02em;
 }
 
 .mw-wave-card__subtitle {
     display: block;
     margin-top: 4px;
     font-size: 0.78rem;
-    font-weight: 500;
     color: #71717a;
+    font-weight: 500;
 }
 
 .mw-wave-stage {
     position: relative;
     width: 100%;
-    height: 220px;
+    height: 240px;
+    margin-top: 12px;
     border-radius: 16px;
     overflow: hidden;
     background:
-        radial-gradient(800px 180px at 20% 80%, rgba(253, 224, 71, 0.08), transparent 60%),
-        radial-gradient(600px 160px at 80% 30%, rgba(96, 165, 250, 0.07), transparent 55%),
-        #08080a;
-}
-
-.mw-wave-card--wide .mw-wave-stage {
-    height: 260px;
+        radial-gradient(900px 260px at 12% 90%, rgba(253, 224, 71, 0.1), transparent 55%),
+        radial-gradient(700px 240px at 88% 15%, rgba(56, 189, 248, 0.1), transparent 50%),
+        #050506;
 }
 
 .mw-wave-stage svg {
@@ -74,27 +83,73 @@
     height: 100%;
 }
 
-.mw-wave-layer {
-    transform-origin: center;
-    animation: mwWaveDrift 7s ease-in-out infinite alternate;
-    cursor: pointer;
-    transition: opacity 0.25s ease, filter 0.25s ease;
+.mw-wave-axis {
+    position: absolute;
+    inset: 12px 14px 28px 44px;
+    pointer-events: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.mw-wave-layer:nth-child(2) { animation-duration: 8.5s; animation-delay: -1s; }
-.mw-wave-layer:nth-child(3) { animation-duration: 6.5s; animation-delay: -2s; }
-.mw-wave-layer:nth-child(4) { animation-duration: 9s; animation-delay: -0.5s; }
-.mw-wave-layer:nth-child(5) { animation-duration: 7.8s; animation-delay: -1.8s; }
-.mw-wave-layer:nth-child(6) { animation-duration: 8.2s; animation-delay: -2.4s; }
-
-.mw-wave-layer.is-dim {
-    opacity: 0.18;
-    filter: grayscale(0.4);
+.mw-wave-axis__y,
+.mw-wave-axis__x {
+    position: absolute;
+    color: rgba(244, 244, 245, 0.55);
+    font-size: 10px;
+    font-weight: 600;
 }
 
-.mw-wave-layer.is-hot {
-    opacity: 1;
-    filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.45));
+.mw-wave-axis__y {
+    left: -40px;
+    width: 36px;
+    text-align: right;
+}
+
+.mw-wave-axis__x {
+    bottom: -22px;
+}
+
+.mw-wave-ribbons {
+    display: grid;
+    gap: 10px;
+}
+
+.mw-wave-ribbon {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) 64px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: #101012;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mw-wave-ribbon__label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f4f4f5;
+}
+
+.mw-wave-ribbon__value {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fde047;
+    text-align: right;
+}
+
+.mw-wave-ribbon__stage {
+    height: 46px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #070708;
+    position: relative;
+}
+
+.mw-wave-ribbon__stage svg {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .mw-wave-legend {
@@ -102,29 +157,25 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
-    position: relative;
-    z-index: 2;
 }
 
 .mw-wave-legend button {
     appearance: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.04);
     color: #e4e4e7;
     border-radius: 999px;
-    padding: 6px 10px;
+    padding: 6px 11px;
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .mw-wave-legend button:hover,
 .mw-wave-legend button.is-active {
-    transform: translateY(-1px);
     border-color: rgba(253, 224, 71, 0.55);
     background: rgba(253, 224, 71, 0.1);
 }
@@ -133,63 +184,60 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    box-shadow: 0 0 8px currentColor;
+    box-shadow: 0 0 10px currentColor;
 }
 
 .mw-wave-tip {
     position: absolute;
-    z-index: 5;
-    pointer-events: none;
+    z-index: 6;
     min-width: 120px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: rgba(17, 17, 17, 0.94);
-    border: 1px solid rgba(253, 224, 71, 0.35);
+    background: rgba(10, 10, 12, 0.95);
+    border: 1px solid rgba(253, 224, 71, 0.4);
     color: #fafafa;
     font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
     opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.15s ease, transform 0.15s ease;
+    transition: opacity 0.15s ease;
 }
 
-.mw-wave-tip.is-on {
-    opacity: 1;
-    transform: translateY(0);
-}
+.mw-wave-tip.is-on { opacity: 1; }
+.mw-wave-tip strong { display: block; color: #fde047; margin-bottom: 2px; }
 
-.mw-wave-tip strong {
-    display: block;
-    color: #fde047;
-    margin-bottom: 2px;
+.mw-wave-layer {
+    cursor: pointer;
+    transition: opacity 0.25s ease;
 }
+.mw-wave-layer.is-dim { opacity: 0.18; }
+.mw-wave-layer.is-hot { opacity: 1; filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.35)); }
 
 .mw-wave-empty {
     display: grid;
     place-items: center;
-    height: 180px;
+    min-height: 160px;
     color: #71717a;
     font-weight: 600;
-    font-size: 13px;
 }
 
-@keyframes mwWaveDrift {
-    from { transform: translateX(-1.5%) scaleY(0.98); }
-    to { transform: translateX(1.5%) scaleY(1.03); }
+@media (max-width: 1100px) {
+    .mw-wave-board {
+        grid-template-columns: 1fr;
+    }
+    .mw-wave-card--stack .mw-wave-stage {
+        min-height: 280px;
+    }
 }
 
 @media (max-width: 960px) {
-    .mw-charts-grid {
-        grid-template-columns: 1fr;
-    }
-    .mw-wave-card--wide {
-        grid-column: auto;
-    }
+    .mw-charts-grid { grid-template-columns: 1fr; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .mw-wave-layer {
-        animation: none;
+@media (max-width: 700px) {
+    .mw-wave-ribbon {
+        grid-template-columns: 1fr;
+        gap: 6px;
     }
+    .mw-wave-ribbon__value { text-align: left; }
 }

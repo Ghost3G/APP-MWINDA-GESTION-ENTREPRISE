@@ -1,6 +1,8 @@
 {% load static %}
-{% if mw_charts %}
-    <link rel="stylesheet" href="{% static 'css/mw-waves.css' %}?v=20261117w">
-    {{ mw_charts|json_script:"mw-charts-data" }}
-    <script src="{% static 'js/mw-waves.js' %}?v=20261117w" defer></script>
+{% if mw_charts or wave_board %}
+    <link rel="stylesheet" href="{% static 'css/mw-waves.css' %}?v=20261117m">
+    {% if mw_charts %}
+        {{ mw_charts|json_script:"mw-charts-data" }}
+    {% endif %}
+    <script src="{% static 'js/mw-waves.js' %}?v=20261117m" defer></script>
 {% endif %}
