@@ -2,7 +2,8 @@
 from users.permissions import is_admin_user, is_management_user
 
 HR_MANAGER_USERNAMES = frozenset({
-    'bertin.musila',
+    'bastin.musila',
+    'bertin.musila',  # rétrocompat si ancien username encore actif
 })
 
 

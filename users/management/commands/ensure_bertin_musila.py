@@ -1,82 +1,22 @@
-"""
-Crée / met à jour le compte Bertin Musila (DRH, administrateur tous accès).
-
-Usage Render Shell :
-  python manage.py ensure_bertin_musila
-"""
-from django.contrib.auth import get_user_model
+"""Alias rétrocompatibilité → ensure_bastin_musila (correction du prénom)."""
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
-
-User = get_user_model()
-
-DEFAULT_USERNAME = 'bertin.musila'
-DEFAULT_PASSWORD = 'Musila2026'
 
 
 class Command(BaseCommand):
-    help = "Assure le compte bertin.musila (DRH, admin, tous les accès)."
+    help = "Alias : utilisez ensure_bastin_musila (prénom corrigé Bastin)."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--password',
-            type=str,
-            default=DEFAULT_PASSWORD,
-            help='Mot de passe initial (uniquement si le compte est créé).',
-        )
-        parser.add_argument(
-            '--reset-password',
-            action='store_true',
-            help='Réécrit le mot de passe même si le compte existe.',
-        )
+        parser.add_argument('--password', type=str, default=None)
+        parser.add_argument('--reset-password', action='store_true')
 
     def handle(self, *args, **options):
-        password = options['password']
-        reset = options['reset_password']
-
-        defaults = {
-            'email': 'bertin.musila@agencemwinda.com',
-            'first_name': 'Bertin',
-            'last_name': 'Musila',
-            'role': 'admin',
-            'org_group': 'rh',
-            'direction': 'metal_design',
-            'job_title': 'DRH',
-            'grade': 'DIRECTEUR RH',
-            'department_name': 'Ressources Humaines',
-            'is_staff': True,
-            'is_superuser': True,
-            'is_active': True,
-        }
-
-        user, created = User.objects.get_or_create(
-            username=DEFAULT_USERNAME,
-            defaults=defaults,
-        )
-
-        changed = False
-        for field, value in defaults.items():
-            if getattr(user, field) != value:
-                setattr(user, field, value)
-                changed = True
-
-        if created or reset:
-            user.set_password(password)
-            changed = True
-
-        if changed:
-            user.save()
-
-        if created:
-            self.stdout.write(self.style.SUCCESS(
-                f'[OK] Compte créé : {user.username} / mdp initial : {password}'
-            ))
-        elif reset:
-            self.stdout.write(self.style.SUCCESS(
-                f'[OK] Compte mis à jour + mot de passe réinitialisé : {user.username}'
-            ))
-        else:
-            self.stdout.write(self.style.SUCCESS(
-                f'[OK] Compte déjà présent / synchronisé : {user.get_labeled_name()} ({user.username})'
-            ))
-
-        self.stdout.write('Accès : Administrateur / DRH (tous les modules).')
+        kwargs = {}
+        if options.get('password'):
+            kwargs['password'] = options['password']
+        if options.get('reset_password'):
+            kwargs['reset_password'] = True
+        self.stdout.write(self.style.WARNING(
+            '[INFO] Correction du prénom : Bertin → Bastin. Lancement de ensure_bastin_musila…'
+        ))
+        call_command('ensure_bastin_musila', **kwargs)

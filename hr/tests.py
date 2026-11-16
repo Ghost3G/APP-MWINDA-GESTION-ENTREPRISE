@@ -24,13 +24,13 @@ class HRModuleTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.drh = User.objects.create_user(
-            username='bertin.musila',
+            username='bastin.musila',
             password='testpass123',
-            email='bertin@example.com',
+            email='bastin@example.com',
             role='admin',
             org_group='rh',
             job_title='DRH',
-            first_name='Bertin',
+            first_name='Bastin',
             last_name='Musila',
             is_staff=True,
             is_superuser=True,
@@ -45,7 +45,7 @@ class HRModuleTests(TestCase):
             last_name='Test',
         )
 
-    def test_bertin_is_hr_manager(self):
+    def test_bastin_is_hr_manager(self):
         self.assertTrue(is_hr_manager(self.drh))
         self.assertFalse(is_hr_manager(self.agent))
 
