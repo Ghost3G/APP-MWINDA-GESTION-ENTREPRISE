@@ -405,13 +405,14 @@ class ProjectsFeatureTests(TestCase):
         project.save(update_fields=['end_date'])
         today_warning = project.get_deadline_week_warning()
         self.assertEqual(today_warning['label'], 'Échéance aujourd’hui')
-        self.assertEqual(today_warning['level'], 'overdue')
+        self.assertEqual(today_warning['level'], 'soon')
 
         project.end_date = today - timedelta(days=1)
         project.save(update_fields=['end_date'])
         overdue_one = project.get_deadline_week_warning()
         self.assertEqual(overdue_one['label'], 'Échéance dépassée d’1 j')
         self.assertEqual(overdue_one['days_left'], -1)
+        self.assertEqual(overdue_one['level'], 'overdue')
 
         project.end_date = today - timedelta(days=4)
         project.save(update_fields=['end_date'])
@@ -421,7 +422,10 @@ class ProjectsFeatureTests(TestCase):
 
         project.end_date = today + timedelta(days=8)
         project.save(update_fields=['end_date'])
-        self.assertIsNone(project.get_deadline_week_warning())
+        far = project.get_deadline_week_warning()
+        self.assertIsNotNone(far)
+        self.assertEqual(far['level'], 'soon')
+        self.assertEqual(far['label'], 'Échéance dans 8 j')
 
         project.end_date = today + timedelta(days=3)
         project.status = 'done'

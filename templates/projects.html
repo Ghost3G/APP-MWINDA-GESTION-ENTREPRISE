@@ -310,6 +310,18 @@
             font-weight: 800;
         }
 
+        .status-awaiting-paint {
+            background: rgba(234, 179, 8, 0.95);
+            color: #111827;
+            font-weight: 800;
+        }
+
+        .status-awaiting-pose {
+            background: rgba(56, 189, 248, 0.95);
+            color: #0c4a6e;
+            font-weight: 800;
+        }
+
         .project-item.is-urgent {
             border-color: #ef4444 !important;
             background: #141416 !important;
@@ -891,6 +903,8 @@
         .month-report-stat.is-done strong::before { background: #4ade80; }
         .month-report-stat.is-progress strong::before { background: #60a5fa; }
         .month-report-stat.is-awaiting_delivery strong::before { background: #fb923c; }
+        .month-report-stat.is-awaiting_paint strong::before { background: #eab308; }
+        .month-report-stat.is-awaiting_pose strong::before { background: #38bdf8; }
         .month-report-stat.is-pending strong::before { background: #fbbf24; }
         .month-report-stat.is-urgent strong::before { background: #f87171; }
 
@@ -935,6 +949,8 @@
         .month-report-group.is-done .dot { background: #4ade80; }
         .month-report-group.is-progress .dot { background: #60a5fa; }
         .month-report-group.is-awaiting_delivery .dot { background: #fb923c; }
+        .month-report-group.is-awaiting_paint .dot { background: #eab308; }
+        .month-report-group.is-awaiting_pose .dot { background: #38bdf8; }
         .month-report-group.is-pending .dot { background: #fbbf24; }
         .month-report-group.is-urgent .dot { background: #f87171; }
 
@@ -1241,7 +1257,7 @@
                                         <span class="project-cover-home">Accueil · {{ project.home_order }}</span>
                                     {% endif %}
                                     {% include "partials/project_deadline_tag.html" %}
-                                    <span class="project-cover-badge status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% elif project.status == 'urgent' %}urgent{% elif project.status == 'awaiting_delivery' %}awaiting-delivery{% else %}completed{% endif %}">
+                                    <span class="project-cover-badge status-badge status-{% if project.status == 'pending' %}pending{% elif project.status == 'progress' %}in-progress{% elif project.status == 'urgent' %}urgent{% elif project.status == 'awaiting_delivery' %}awaiting-delivery{% elif project.status == 'awaiting_paint' %}awaiting-paint{% elif project.status == 'awaiting_pose' %}awaiting-pose{% else %}completed{% endif %}">
                                         {{ project.get_status_display }}
                                     </span>
                                 </div>

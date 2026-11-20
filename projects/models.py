@@ -35,6 +35,8 @@ class Project(models.Model):
 
     STATUS_CHOICES = (
         ('pending', 'En attente'),
+        ('awaiting_paint', 'En attente de peinture'),
+        ('awaiting_pose', 'En attente de la pose'),
         ('progress', 'En cours'),
         ('urgent', 'Urgence'),
         ('awaiting_delivery', 'En attente de livraison'),
@@ -160,13 +162,11 @@ class Project(models.Model):
         return get_branch_label(self.branch)
 
     def get_deadline_week_warning(self):
-        """Étiquette d’échéance : dans ≤ 7 j, aujourd’hui, ou en retard (jours dépassés)."""
+        """Étiquette d’échéance projet : orange avant, rouge une fois dépassée."""
         if self.status == 'done' or not self.end_date:
             return None
         from django.utils import timezone
         days_left = (self.end_date - timezone.localdate()).days
-        if days_left > 7:
-            return None
         if days_left < 0:
             overdue = abs(days_left)
             label = (
@@ -177,7 +177,7 @@ class Project(models.Model):
             level = 'overdue'
         elif days_left == 0:
             label = 'Échéance aujourd’hui'
-            level = 'overdue'
+            level = 'soon'
         elif days_left == 1:
             label = 'Échéance demain'
             level = 'soon'

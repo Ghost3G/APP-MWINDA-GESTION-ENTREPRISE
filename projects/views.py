@@ -523,6 +523,8 @@ def dashboard(request):
         projects_qs = Project.objects.select_related('manager').prefetch_related('members')
         project_status_counts = {
             'pending': projects_qs.filter(status='pending').count(),
+            'awaiting_paint': projects_qs.filter(status='awaiting_paint').count(),
+            'awaiting_pose': projects_qs.filter(status='awaiting_pose').count(),
             'progress': projects_qs.filter(status='progress').count(),
             'urgent': projects_qs.filter(status='urgent').count(),
             'awaiting_delivery': projects_qs.filter(status='awaiting_delivery').count(),
@@ -962,6 +964,8 @@ _MONTH_REPORT_STATUSES = (
     ('done', 'Terminés'),
     ('progress', 'En cours'),
     ('awaiting_delivery', 'En attente de livraison'),
+    ('awaiting_paint', 'En attente de peinture'),
+    ('awaiting_pose', 'En attente de la pose'),
     ('pending', 'En attente'),
     ('urgent', 'Urgence'),
 )

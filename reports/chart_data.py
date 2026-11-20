@@ -299,6 +299,8 @@ def build_projects_status_chart(projects_qs):
     colors = []
     color_map = {
         'pending': '#fde047',
+        'awaiting_paint': '#eab308',
+        'awaiting_pose': '#38bdf8',
         'progress': '#60a5fa',
         'awaiting_delivery': '#fb923c',
         'done': '#4ade80',
@@ -525,6 +527,8 @@ def crm_reports_charts(reports_qs, *, show_leaderboard):
 
 PROJECT_STATUS_LABELS = {
     'pending': 'En attente',
+    'awaiting_paint': 'Attente peinture',
+    'awaiting_pose': 'Attente pose',
     'progress': 'En cours',
     'urgent': 'Urgent',
     'awaiting_delivery': 'Attente livraison',
@@ -544,6 +548,8 @@ def build_management_dashboard_charts(project_status_counts, task_status_counts,
     proj_colors = []
     color_map = {
         'pending': '#fde047',
+        'awaiting_paint': '#eab308',
+        'awaiting_pose': '#38bdf8',
         'progress': '#60a5fa',
         'urgent': '#f87171',
         'awaiting_delivery': '#fb923c',
