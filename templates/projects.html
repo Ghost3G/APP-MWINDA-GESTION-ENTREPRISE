@@ -222,6 +222,7 @@
 
         .project-item.is-collapsed:hover {
             transform: none;
+            z-index: 3;
         }
 
         .btn-voir-plus {
@@ -1265,6 +1266,7 @@
                                     <div class="project-header">
                                         <h3 class="project-title">{{ project.name }}</h3>
                                     </div>
+                                    {% include "partials/project_checklist.html" with checklist_compact=True checklist_card=True checklist_next=request.path %}
                                     <button type="button" class="btn-voir-plus" aria-expanded="false">Voir plus</button>
                                     <div class="project-details">
                                     {% if project.description %}
@@ -1323,7 +1325,6 @@
                                             {% endif %}
                                         </div>
                                     </div>
-                                    {% include "partials/project_checklist.html" with checklist_compact=True checklist_next=request.path %}
                                     <div class="project-footer">
                                         <a class="btn-card-primary" href="{% url 'project_detail' project.id %}">Voir le projet</a>
                                         {% if can_create_project %}

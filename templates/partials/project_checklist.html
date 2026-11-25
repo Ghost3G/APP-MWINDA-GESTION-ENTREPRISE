@@ -1,44 +1,48 @@
 {% with progress=project.checklist_progress %}
-<section class="project-checklist{% if checklist_compact %} project-checklist--compact{% endif %}" aria-label="Checklist production">
+<section class="project-checklist{% if checklist_compact %} project-checklist--compact{% endif %}{% if checklist_card %} project-checklist--card{% endif %}" aria-label="Checklist production">
     <header class="project-checklist__head">
         <h4 class="project-checklist__title">Checklist production</h4>
         <span class="project-checklist__count{% if progress.complete %} is-complete{% endif %}">
             {{ progress.done }}/{{ progress.total }}
         </span>
     </header>
-    {% if progress.total %}
-    <ul class="project-checklist__list">
-        {% for item in project.checklist_items.all %}
-        <li class="project-checklist__item{% if item.is_done %} is-done{% endif %}">
-            {% if can_toggle_checklist %}
-            <form method="POST" action="{% if checklist_action_url %}{{ checklist_action_url }}{% else %}{% url 'projects_list' %}{% endif %}" class="project-checklist__form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="toggle_checklist">
-                <input type="hidden" name="project_id" value="{{ project.id }}">
-                <input type="hidden" name="item_id" value="{{ item.id }}">
-                <input type="hidden" name="next" value="{{ checklist_next|default:request.path }}">
-                <label class="project-checklist__label">
-                    <input type="checkbox" name="is_done" value="1" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
-                    <span>{{ item.label }}</span>
-                </label>
-            </form>
-            {% else %}
-            <span class="project-checklist__label is-readonly">
-                <span class="project-checklist__box{% if item.is_done %} is-checked{% endif %}" aria-hidden="true"></span>
-                <span>{{ item.label }}</span>
-            </span>
+    <div class="project-checklist__reveal">
+        <div class="project-checklist__reveal-inner">
+            {% if progress.total %}
+            <ul class="project-checklist__list">
+                {% for item in project.checklist_items.all %}
+                <li class="project-checklist__item{% if item.is_done %} is-done{% endif %}">
+                    {% if can_toggle_checklist %}
+                    <form method="POST" action="{% if checklist_action_url %}{{ checklist_action_url }}{% else %}{% url 'projects_list' %}{% endif %}" class="project-checklist__form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_checklist">
+                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <input type="hidden" name="next" value="{{ checklist_next|default:request.path }}">
+                        <label class="project-checklist__label">
+                            <input type="checkbox" name="is_done" value="1" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
+                            <span>{{ item.label }}</span>
+                        </label>
+                    </form>
+                    {% else %}
+                    <span class="project-checklist__label is-readonly">
+                        <span class="project-checklist__box{% if item.is_done %} is-checked{% endif %}" aria-hidden="true"></span>
+                        <span>{{ item.label }}</span>
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% if not can_toggle_checklist %}
+            <p class="project-checklist__hint">Validation réservée au DT et à son Assistant.</p>
             {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% if not can_toggle_checklist %}
-    <p class="project-checklist__hint">Validation réservée au DT et à son Assistant.</p>
-    {% endif %}
-    {% if not progress.complete %}
-    <p class="project-checklist__block-note">Bloque « Terminer » et « En attente de livraison » tant que tout n’est pas coché.</p>
-    {% endif %}
-    {% else %}
-    <p class="project-checklist__hint">Aucune étape pour cette branche.</p>
-    {% endif %}
+            {% if not progress.complete %}
+            <p class="project-checklist__block-note">Bloque « Terminer » et « En attente de livraison » tant que tout n’est pas coché.</p>
+            {% endif %}
+            {% else %}
+            <p class="project-checklist__hint">Aucune étape pour cette branche.</p>
+            {% endif %}
+        </div>
+    </div>
 </section>
 {% endwith %}

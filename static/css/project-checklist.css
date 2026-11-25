@@ -121,3 +121,56 @@
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+/* Carte projet : compteur toujours visible, liste au survol */
+.project-checklist--card {
+    margin: 0;
+    position: relative;
+    z-index: 2;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.project-checklist--card .project-checklist__head {
+    margin-bottom: 0;
+}
+
+.project-checklist--card .project-checklist__reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.28s ease, opacity 0.22s ease, margin 0.22s ease;
+    margin-top: 0;
+}
+
+.project-checklist--card .project-checklist__reveal-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.project-checklist--card .project-checklist__list {
+    padding-top: 8px;
+}
+
+.project-item.is-collapsed:hover .project-checklist--card,
+.project-item:not(.is-collapsed) .project-checklist--card,
+.project-checklist--card:focus-within {
+    border-color: rgba(253, 224, 71, 0.28);
+    background: rgba(24, 24, 27, 0.92);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.project-item.is-collapsed:hover .project-checklist--card .project-checklist__reveal,
+.project-item:not(.is-collapsed) .project-checklist--card .project-checklist__reveal,
+.project-checklist--card:focus-within .project-checklist__reveal {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-top: 4px;
+}
+
+@media (hover: none) {
+    .project-item.is-collapsed .project-checklist--card .project-checklist__reveal {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        margin-top: 4px;
+    }
+}
