@@ -1,6 +1,21 @@
+def _app_meta():
+    from django.conf import settings
+
+    return {
+        'app_version': getattr(settings, 'APP_VERSION', 'V1.6.1'),
+        'app_conceptor_name': getattr(settings, 'APP_CONCEPTOR_NAME', 'Japhete KUTA SUAZ'),
+        'app_conceptor_title': getattr(
+            settings,
+            'APP_CONCEPTOR_TITLE',
+            'Graphique Designer · Développeur FullStack',
+        ),
+    }
+
+
 def app_notifications(request):
     if not request.user.is_authenticated:
         return {
+            **_app_meta(),
             'unread_messages_count': 0,
             'unread_project_assignments': 0,
             'unread_task_assignments': 0,
@@ -164,6 +179,7 @@ def app_notifications(request):
             alerts_actionable_count = 0
 
     return {
+        **_app_meta(),
         'unread_messages_count': unread_messages_count,
         'unread_project_assignments': unread_project_assignments,
         'unread_task_assignments': unread_task_assignments,

@@ -202,7 +202,13 @@ class Project(models.Model):
         items = list(self.checklist_items.all())
         total = len(items)
         done = sum(1 for item in items if item.is_done)
-        return {'done': done, 'total': total, 'complete': total > 0 and done == total}
+        percent = int(round((done * 100) / total)) if total else 0
+        return {
+            'done': done,
+            'total': total,
+            'percent': percent,
+            'complete': total > 0 and done == total,
+        }
 
 
 class ProjectChecklistItem(models.Model):

@@ -1,11 +1,21 @@
 {% with progress=project.checklist_progress %}
 <section class="project-checklist{% if checklist_compact %} project-checklist--compact{% endif %}{% if checklist_card %} project-checklist--card{% endif %}" aria-label="Checklist production">
     <header class="project-checklist__head">
-        <h4 class="project-checklist__title">Checklist production</h4>
+        <h4 class="project-checklist__title">Progression travaux</h4>
         <span class="project-checklist__count{% if progress.complete %} is-complete{% endif %}">
-            {{ progress.done }}/{{ progress.total }}
+            {{ progress.percent }}% · {{ progress.done }}/{{ progress.total }}
         </span>
     </header>
+    <div
+        class="project-checklist__bar{% if progress.complete %} is-complete{% endif %}"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="{{ progress.percent }}"
+        aria-label="Progression des travaux {{ progress.percent }} %"
+    >
+        <span class="project-checklist__bar-fill" style="width: {{ progress.percent }}%;"></span>
+    </div>
     <div class="project-checklist__reveal">
         <div class="project-checklist__reveal-inner">
             {% if progress.total %}
@@ -35,9 +45,6 @@
             </ul>
             {% if not can_toggle_checklist %}
             <p class="project-checklist__hint">Validation réservée au DT et à son Assistant.</p>
-            {% endif %}
-            {% if not progress.complete %}
-            <p class="project-checklist__block-note">Bloque « Terminer » et « En attente de livraison » tant que tout n’est pas coché.</p>
             {% endif %}
             {% else %}
             <p class="project-checklist__hint">Aucune étape pour cette branche.</p>

@@ -300,6 +300,11 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 AUTH_USER_MODEL = 'users.User'
 
+# Version affichée en bas de la sidebar
+APP_VERSION = os.environ.get('APP_VERSION', 'V1.6.1')
+APP_CONCEPTOR_NAME = 'Japhete KUTA SUAZ'
+APP_CONCEPTOR_TITLE = 'Graphique Designer · Développeur FullStack'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

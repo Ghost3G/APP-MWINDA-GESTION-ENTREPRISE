@@ -511,3 +511,4 @@ class ProjectsFeatureTests(TestCase):
 
         ProjectChecklistItem.objects.filter(project=metal).update(is_done=True)
         self.assertTrue(is_project_checklist_complete(metal))
+        self.assertEqual(metal.checklist_progress()['percent'], 100)

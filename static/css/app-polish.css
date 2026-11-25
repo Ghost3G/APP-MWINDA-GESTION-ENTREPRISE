@@ -341,6 +341,51 @@ body {
     background: linear-gradient(180deg, #0c0c0e 0%, #080809 100%) !important;
     border-right: 1px solid var(--mw-border) !important;
     padding-top: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.sidebar-app-meta {
+    margin-top: auto;
+    padding: 16px 12px 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.35;
+}
+
+.sidebar-app-meta__version {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-bottom: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #111827;
+    background: #fde047;
+}
+
+.sidebar-app-meta__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #71717a;
+}
+
+.sidebar-app-meta__name {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #e4e4e7;
+}
+
+.sidebar-app-meta__title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #a1a1aa;
 }
 
 .sidebar-nav {

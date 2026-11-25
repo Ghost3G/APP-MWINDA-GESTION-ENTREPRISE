@@ -92,10 +92,12 @@ def project_checklist_stats(project):
         items = list(project.checklist_items.all())
     total = len(items)
     done = sum(1 for item in items if item.is_done)
+    percent = int(round((done * 100) / total)) if total else 0
     return {
         'items': items,
         'total': total,
         'done': done,
+        'percent': percent,
         'complete': total > 0 and done == total,
         'remaining': [item.label for item in items if not item.is_done],
     }
