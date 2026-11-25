@@ -34,6 +34,20 @@ BRANCH_CHECKLISTS = {
     'design_rd_innovation': BRANDING_FAMILY_CHECKLIST,
 }
 
+# Groupes à choix unique (XOR) : une seule option compte comme une étape
+CHOICE_GROUPS = {
+    'peinture': {
+        'labels': frozenset({'Peinture auto', 'Électrostatique'}),
+        'unit_label': 'Peinture (auto ou électrostatique)',
+    },
+}
+
+LABEL_TO_CHOICE_GROUP = {
+    label: group
+    for group, meta in CHOICE_GROUPS.items()
+    for label in meta['labels']
+}
+
 
 def checklist_template_for_branch(branch):
     key = normalize_branch(branch)
@@ -43,6 +57,10 @@ def checklist_template_for_branch(branch):
 def step_key(label, index):
     base = slugify(label) or f'step-{index}'
     return f'{index:02d}-{base}'[:80]
+
+
+def choice_group_for_item(item):
+    return LABEL_TO_CHOICE_GROUP.get(item.label)
 
 
 def ensure_project_checklist(project, *, reset_if_branch_changed=False):
@@ -85,21 +103,51 @@ def ensure_project_checklist(project, *, reset_if_branch_changed=False):
     return created
 
 
+def _progress_units(items):
+    """
+    Convertit les cases en unités de progression.
+    Un groupe XOR (ex. peinture) = 1 unité, satisfaite si au moins une option est cochée.
+    """
+    grouped = {}
+    units = []
+    remaining = []
+
+    for item in items:
+        group = choice_group_for_item(item)
+        if group:
+            grouped.setdefault(group, []).append(item)
+            continue
+        units.append(item.is_done)
+        if not item.is_done:
+            remaining.append(item.label)
+
+    for group, group_items in grouped.items():
+        done = any(item.is_done for item in group_items)
+        units.append(done)
+        if not done:
+            remaining.append(CHOICE_GROUPS[group]['unit_label'])
+
+    total = len(units)
+    done = sum(1 for ok in units if ok)
+    percent = int(round((done * 100) / total)) if total else 0
+    return {
+        'total': total,
+        'done': done,
+        'percent': percent,
+        'complete': total > 0 and done == total,
+        'remaining': remaining,
+    }
+
+
 def project_checklist_stats(project):
     items = list(project.checklist_items.all())
     if not items:
         ensure_project_checklist(project)
         items = list(project.checklist_items.all())
-    total = len(items)
-    done = sum(1 for item in items if item.is_done)
-    percent = int(round((done * 100) / total)) if total else 0
+    progress = _progress_units(items)
     return {
         'items': items,
-        'total': total,
-        'done': done,
-        'percent': percent,
-        'complete': total > 0 and done == total,
-        'remaining': [item.label for item in items if not item.is_done],
+        **progress,
     }
 
 
@@ -123,7 +171,9 @@ def checklist_block_message(project):
 
 
 def toggle_checklist_item(item, user, *, is_done=None):
-    """Bascule ou force l’état d’une étape. Retourne le nouvel état."""
+    """Bascule ou force l’état d’une étape. Options d’un même groupe = choix unique."""
+    from .models import ProjectChecklistItem
+
     new_done = (not item.is_done) if is_done is None else bool(is_done)
     item.is_done = new_done
     if new_done:
@@ -133,4 +183,13 @@ def toggle_checklist_item(item, user, *, is_done=None):
         item.completed_at = None
         item.completed_by = None
     item.save(update_fields=['is_done', 'completed_at', 'completed_by'])
+
+    group = choice_group_for_item(item)
+    if group and new_done:
+        siblings = ProjectChecklistItem.objects.filter(
+            project_id=item.project_id,
+            label__in=CHOICE_GROUPS[group]['labels'],
+        ).exclude(id=item.id).filter(is_done=True)
+        siblings.update(is_done=False, completed_at=None, completed_by=None)
+
     return item

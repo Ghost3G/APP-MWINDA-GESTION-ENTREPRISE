@@ -199,15 +199,14 @@ class Project(models.Model):
         return users
 
     def checklist_progress(self):
-        items = list(self.checklist_items.all())
-        total = len(items)
-        done = sum(1 for item in items if item.is_done)
-        percent = int(round((done * 100) / total)) if total else 0
+        from .checklist import project_checklist_stats
+
+        stats = project_checklist_stats(self)
         return {
-            'done': done,
-            'total': total,
-            'percent': percent,
-            'complete': total > 0 and done == total,
+            'done': stats['done'],
+            'total': stats['total'],
+            'percent': stats['percent'],
+            'complete': stats['complete'],
         }
 
 

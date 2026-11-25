@@ -21,7 +21,10 @@
             {% if progress.total %}
             <ul class="project-checklist__list">
                 {% for item in project.checklist_items.all %}
-                <li class="project-checklist__item{% if item.is_done %} is-done{% endif %}">
+                {% if item.label == 'Peinture auto' %}
+                <li class="project-checklist__group-label">Peinture — choisir une option</li>
+                {% endif %}
+                <li class="project-checklist__item{% if item.is_done %} is-done{% endif %}{% if item.label == 'Peinture auto' or item.label == 'Électrostatique' %} is-choice{% endif %}">
                     {% if can_toggle_checklist %}
                     <form method="POST" action="{% if checklist_action_url %}{{ checklist_action_url }}{% else %}{% url 'projects_list' %}{% endif %}" class="project-checklist__form">
                         {% csrf_token %}
@@ -30,13 +33,18 @@
                         <input type="hidden" name="item_id" value="{{ item.id }}">
                         <input type="hidden" name="next" value="{{ checklist_next|default:request.path }}">
                         <label class="project-checklist__label">
+                            {% if item.label == 'Peinture auto' or item.label == 'Électrostatique' %}
+                            <input type="radio" name="paint_choice_{{ project.id }}" value="1" {% if item.is_done %}checked{% endif %} onchange="this.form.is_done.value='1'; this.form.submit()">
+                            <input type="hidden" name="is_done" value="1">
+                            {% else %}
                             <input type="checkbox" name="is_done" value="1" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
+                            {% endif %}
                             <span>{{ item.label }}</span>
                         </label>
                     </form>
                     {% else %}
                     <span class="project-checklist__label is-readonly">
-                        <span class="project-checklist__box{% if item.is_done %} is-checked{% endif %}" aria-hidden="true"></span>
+                        <span class="project-checklist__box{% if item.is_done %} is-checked{% endif %}{% if item.label == 'Peinture auto' or item.label == 'Électrostatique' %} is-radio{% endif %}" aria-hidden="true"></span>
                         <span>{{ item.label }}</span>
                     </span>
                     {% endif %}

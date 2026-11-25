@@ -77,8 +77,21 @@
     gap: 6px;
 }
 
+.project-checklist__group-label {
+    margin: 6px 0 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+}
+
 .project-checklist__item {
     margin: 0;
+}
+
+.project-checklist__item.is-choice {
+    margin-left: 4px;
 }
 
 .project-checklist__form {
@@ -95,7 +108,8 @@
     line-height: 1.35;
 }
 
-.project-checklist__label input[type="checkbox"] {
+.project-checklist__label input[type="checkbox"],
+.project-checklist__label input[type="radio"] {
     margin-top: 2px;
     accent-color: #fde047;
     width: 15px;
@@ -126,6 +140,10 @@
     border-color: #fde047;
     background: #fde047;
     box-shadow: inset 0 0 0 2px #18181b;
+}
+
+.project-checklist__box.is-radio {
+    border-radius: 999px;
 }
 
 .project-checklist__hint {

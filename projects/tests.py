@@ -486,6 +486,7 @@ class ProjectsFeatureTests(TestCase):
         )
         ensure_project_checklist(metal)
         self.assertEqual(ProjectChecklistItem.objects.filter(project=metal).count(), 6)
+        self.assertEqual(metal.checklist_progress()['total'], 5)  # peinture = 1 choix
         self.assertFalse(is_project_checklist_complete(metal))
 
         branding = Project.objects.create(
@@ -509,6 +510,18 @@ class ProjectsFeatureTests(TestCase):
         self.assertTrue(item.is_done)
         self.assertEqual(item.completed_by_id, self.directeur.id)
 
-        ProjectChecklistItem.objects.filter(project=metal).update(is_done=True)
+        paint_auto = ProjectChecklistItem.objects.get(project=metal, label='Peinture auto')
+        paint_electro = ProjectChecklistItem.objects.get(project=metal, label='Électrostatique')
+        toggle_checklist_item(paint_auto, self.directeur, is_done=True)
+        toggle_checklist_item(paint_electro, self.directeur, is_done=True)
+        paint_auto.refresh_from_db()
+        paint_electro.refresh_from_db()
+        self.assertFalse(paint_auto.is_done)
+        self.assertTrue(paint_electro.is_done)
+
+        ProjectChecklistItem.objects.filter(project=metal).exclude(
+            label__in=['Peinture auto', 'Électrostatique']
+        ).update(is_done=True)
         self.assertTrue(is_project_checklist_complete(metal))
         self.assertEqual(metal.checklist_progress()['percent'], 100)
+        self.assertEqual(metal.checklist_progress()['done'], 5)
