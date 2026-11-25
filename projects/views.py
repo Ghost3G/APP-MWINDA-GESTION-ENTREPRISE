@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from .board_services import accessible_projects, can_access_project
-from .models import Project
+from .models import Project, ProjectChecklistItem
 from .models import AgentTimeEntry, ProjectAssignmentNotification, ProjectTask, TaskAssignmentNotification
 from .branches import TECH_BRANCH_CHOICES, TECH_DEPARTMENT_LABEL, normalize_branch, is_valid_branch
 from .task_services import (
@@ -37,6 +37,12 @@ from .project_notifications import (
     notify_assigned_members_by_message,
     notify_commercial_on_project,
     notify_logistics_awaiting_delivery,
+)
+from .checklist import (
+    checklist_block_message,
+    ensure_project_checklist,
+    is_project_checklist_complete,
+    toggle_checklist_item,
 )
 from reports.models import DailyReport
 from messaging.models import Message
@@ -349,6 +355,35 @@ def _default_project_manager():
 
 def _project_stakeholders(project):
     return project.get_stakeholders()
+
+
+def _safe_next_path(raw, fallback='/projects/'):
+    path = (raw or '').strip()
+    if path.startswith('/') and not path.startswith('//'):
+        return path
+    return fallback
+
+
+def _ensure_projects_checklists(projects_qs):
+    """Seed checklist pour les projets sans étapes (ex. projets déjà créés)."""
+    from django.db.models import prefetch_related_objects
+
+    project_list = list(projects_qs)
+    seeded = False
+    for project in project_list:
+        if not list(project.checklist_items.all()):
+            ensure_project_checklist(project)
+            seeded = True
+    if seeded and project_list:
+        prefetch_related_objects(project_list, 'checklist_items')
+    return project_list
+
+
+def _block_if_checklist_incomplete(request, project):
+    if is_project_checklist_complete(project):
+        return False
+    messages.error(request, checklist_block_message(project))
+    return True
 
 
 def _handle_task_management_post(request, default_project_id=None):
@@ -1093,7 +1128,7 @@ def project_recap(request):
 def projects_list(request):
     projects = accessible_projects(request.user).select_related(
         'manager', 'technical_director', 'commercial_agent', 'client'
-    ).prefetch_related('members', 'photos')
+    ).prefetch_related('members', 'photos', 'checklist_items')
 
     status = request.GET.get('status', '').strip()
     branch = request.GET.get('branch', '').strip()
@@ -1112,6 +1147,18 @@ def projects_list(request):
             )
 
         action = request.POST.get('action', 'create').strip() or 'create'
+
+        if action == 'toggle_checklist':
+            project = get_object_or_404(Project, id=request.POST.get('project_id', '').strip() or 0)
+            item = get_object_or_404(
+                ProjectChecklistItem.objects.filter(project=project),
+                id=request.POST.get('item_id', '').strip() or 0,
+            )
+            is_done = request.POST.get('is_done') == '1'
+            toggle_checklist_item(item, request.user, is_done=is_done)
+            state = 'cochée' if item.is_done else 'décochée'
+            messages.success(request, f'Étape « {item.label} » {state}.')
+            return redirect(_safe_next_path(request.POST.get('next'), '/projects/'))
 
         if action == 'delete':
             project_id = request.POST.get('project_id', '').strip()
@@ -1135,12 +1182,18 @@ def projects_list(request):
                 if request.POST.get('confirm_done') != '1':
                     messages.error(request, "Confirmez que le projet est bien terminé.")
                     return redirect('projects_list')
+                ensure_project_checklist(project)
+                if _block_if_checklist_incomplete(request, project):
+                    return redirect('projects_list')
                 project.status = 'done'
                 project.show_on_home = False
                 project.home_order = 0
                 project.save(update_fields=['status', 'show_on_home', 'home_order'])
                 messages.success(request, f'Projet « {project.name} » marqué comme terminé.')
             elif action == 'awaiting_delivery':
+                ensure_project_checklist(project)
+                if _block_if_checklist_incomplete(request, project):
+                    return redirect('projects_list')
                 project.status = 'awaiting_delivery'
                 project.show_on_home = False
                 project.home_order = 0
@@ -1196,6 +1249,7 @@ def projects_list(request):
             project.start_date = start_date
             project.end_date = end_date
             previous_status = project.status
+            previous_branch = project.branch
             project.status = project_status
             project.branch = branch
             project.client = client
@@ -1210,6 +1264,11 @@ def projects_list(request):
             except Exception:
                 messages.error(request, "Montant du projet invalide.")
                 return redirect('projects_list')
+
+            if project_status in {'done', 'awaiting_delivery'} and previous_status != project_status:
+                ensure_project_checklist(project)
+                if _block_if_checklist_incomplete(request, project):
+                    return redirect('projects_list')
 
             if project_status in {'done', 'awaiting_delivery'}:
                 project.show_on_home = False
@@ -1242,6 +1301,10 @@ def projects_list(request):
                 project.cover_image = None
 
             project.save()
+            if previous_branch != project.branch:
+                ensure_project_checklist(project, reset_if_branch_changed=True)
+            else:
+                ensure_project_checklist(project)
             remove_project_photos(project, remove_ids)
             photo_error = attach_project_photos(project, prepared_photos, request.user)
             if photo_error:
@@ -1333,6 +1396,7 @@ def projects_list(request):
             client=client,
             contract_amount=contract_amount,
         )
+        ensure_project_checklist(project)
         photo_error = attach_project_photos(project, prepared_photos, request.user)
         if photo_error:
             messages.error(request, photo_error)
@@ -1393,6 +1457,7 @@ def projects_list(request):
         )
         completed_projects = projects.filter(status='done')
 
+    active_projects = _ensure_projects_checklists(active_projects)
     completed_by_month = _group_completed_projects_by_month(completed_projects)
     completed_total = sum(group['count'] for group in completed_by_month)
 
@@ -1402,6 +1467,7 @@ def projects_list(request):
         'projects': projects,
         'active_projects': active_projects,
         'completed_projects': completed_projects,
+        'can_toggle_checklist': is_manager,
         'completed_by_month': completed_by_month,
         'completed_total': completed_total,
         'status_choices': Project.STATUS_CHOICES,
@@ -1436,13 +1502,17 @@ def projects_list(request):
 @login_required(login_url='login')
 def project_detail(request, project_id):
     project = get_object_or_404(
-        Project.objects.select_related('manager', 'technical_director', 'commercial_agent', 'client').prefetch_related('members', 'photos'),
+        Project.objects.select_related('manager', 'technical_director', 'commercial_agent', 'client').prefetch_related(
+            'members', 'photos', 'checklist_items'
+        ),
         id=project_id,
     )
 
     is_manager_role = _is_management_user(request.user)
     if not can_access_project(request.user, project):
         return HttpResponseForbidden("Vous n'avez pas la permission d'accéder à ce projet.")
+
+    ensure_project_checklist(project)
 
     ProjectAssignmentNotification.objects.filter(
         user=request.user,
@@ -1475,6 +1545,7 @@ def project_detail(request, project_id):
         'project': project,
         'is_admin': request.user.is_superuser or request.user.role == 'admin',
         'is_management': is_manager_role,
+        'can_toggle_checklist': can_manage_projects(request.user),
         'tasks_by_member': list(tasks_by_member.values()),
         'direction_labels': dict(TECH_BRANCH_CHOICES),
         'direction_choices': TECH_BRANCH_CHOICES,

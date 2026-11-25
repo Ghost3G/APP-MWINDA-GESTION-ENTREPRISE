@@ -465,3 +465,49 @@ class ProjectsFeatureTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Projet Détail')
+
+    def test_project_checklist_seeds_and_blocks_complete(self):
+        from .checklist import (
+            ensure_project_checklist,
+            is_project_checklist_complete,
+            toggle_checklist_item,
+        )
+        from .models import ProjectChecklistItem
+        from users.permissions import can_manage_projects
+
+        metal = Project.objects.create(
+            name='Projet Checklist Metal',
+            description='Test checklist',
+            start_date='2026-04-01',
+            end_date='2026-04-30',
+            status='progress',
+            branch='metal_design',
+            manager=self.directeur,
+        )
+        ensure_project_checklist(metal)
+        self.assertEqual(ProjectChecklistItem.objects.filter(project=metal).count(), 6)
+        self.assertFalse(is_project_checklist_complete(metal))
+
+        branding = Project.objects.create(
+            name='Projet Checklist Branding',
+            description='Test checklist',
+            start_date='2026-04-01',
+            end_date='2026-04-30',
+            status='progress',
+            branch='branding',
+            manager=self.directeur,
+        )
+        ensure_project_checklist(branding)
+        self.assertEqual(ProjectChecklistItem.objects.filter(project=branding).count(), 7)
+
+        self.assertTrue(can_manage_projects(self.directeur))
+        self.assertFalse(can_manage_projects(self.agent))
+
+        item = ProjectChecklistItem.objects.filter(project=metal).first()
+        toggle_checklist_item(item, self.directeur, is_done=True)
+        item.refresh_from_db()
+        self.assertTrue(item.is_done)
+        self.assertEqual(item.completed_by_id, self.directeur.id)
+
+        ProjectChecklistItem.objects.filter(project=metal).update(is_done=True)
+        self.assertTrue(is_project_checklist_complete(metal))

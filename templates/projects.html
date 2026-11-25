@@ -1323,15 +1323,17 @@
                                             {% endif %}
                                         </div>
                                     </div>
+                                    {% include "partials/project_checklist.html" with checklist_compact=True checklist_next=request.path %}
                                     <div class="project-footer">
                                         <a class="btn-card-primary" href="{% url 'project_detail' project.id %}">Voir le projet</a>
                                         {% if can_create_project %}
+                                        {% with progress=project.checklist_progress %}
                                         {% if project.status != 'awaiting_delivery' %}
                                         <form method="POST" style="margin:0;">
                                             {% csrf_token %}
                                             <input type="hidden" name="action" value="awaiting_delivery">
                                             <input type="hidden" name="project_id" value="{{ project.id }}">
-                                            <button type="submit" class="btn-awaiting-delivery">En attente de livraison</button>
+                                            <button type="submit" class="btn-awaiting-delivery" {% if not progress.complete %}disabled title="Checklist incomplète ({{ progress.done }}/{{ progress.total }})"{% endif %}>En attente de livraison</button>
                                         </form>
                                         {% else %}
                                         <form method="POST" style="margin:0;">
@@ -1346,8 +1348,9 @@
                                             <input type="hidden" name="action" value="complete">
                                             <input type="hidden" name="project_id" value="{{ project.id }}">
                                             <input type="hidden" name="confirm_done" value="0" class="confirm-done-field">
-                                            <button type="submit" class="btn-complete">Terminer le projet</button>
+                                            <button type="submit" class="btn-complete" {% if not progress.complete %}disabled title="Checklist incomplète ({{ progress.done }}/{{ progress.total }})"{% endif %}>Terminer le projet</button>
                                         </form>
+                                        {% endwith %}
                                         <button type="button" class="btn-card-ghost" onclick="document.getElementById('edit-{{ project.id }}').style.display = document.getElementById('edit-{{ project.id }}').style.display === 'none' ? 'block' : 'none';">Modifier le projet</button>
                                         <form method="POST" class="delete-project-form" style="margin:0;">
                                             {% csrf_token %}

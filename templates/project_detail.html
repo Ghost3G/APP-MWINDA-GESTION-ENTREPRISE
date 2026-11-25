@@ -250,6 +250,8 @@
                     <h3 style="margin: 0 0 8px 0;">Description</h3>
                     <p style="line-height:1.6; color:#d4d4d8;">{{ project.description }}</p>
 
+                    {% include "partials/project_checklist.html" with checklist_next=request.path %}
+
                     <h3 style="margin: 18px 0 6px 0;">Membres assignés</h3>
                     <div class="members-wrap">
                         {% for member in project.members.all %}

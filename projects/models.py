@@ -198,6 +198,41 @@ class Project(models.Model):
                 users.insert(0, user)
         return users
 
+    def checklist_progress(self):
+        items = list(self.checklist_items.all())
+        total = len(items)
+        done = sum(1 for item in items if item.is_done)
+        return {'done': done, 'total': total, 'complete': total > 0 and done == total}
+
+
+class ProjectChecklistItem(models.Model):
+    """Étape de production du projet (modèle fixe par branche)."""
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='checklist_items',
+    )
+    key = models.CharField(max_length=80)
+    label = models.CharField(max_length=160)
+    order = models.PositiveSmallIntegerField(default=0)
+    is_done = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='completed_project_checklist_items',
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        ordering = ('order', 'id')
+        unique_together = (('project', 'key'),)
+
+    def __str__(self):
+        return f'{self.project_id}: {self.label}'
+
 
 class ProjectPhoto(models.Model):
     project = models.ForeignKey(
